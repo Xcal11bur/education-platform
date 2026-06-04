@@ -1,0 +1,44 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: education-platform
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/education_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+app:
+  security:
+    jwt-secret: ${JWT_SECRET:replace-this-with-a-long-random-secret-key-for-dev-only}
+    token-expire-seconds: 7200
+  oss:
+    endpoint: ${OSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
+    bucket-name: ${OSS_BUCKET_NAME:education-platform-333}
+    access-key-id: ${OSS_ACCESS_KEY_ID:}
+    access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+    public-base-url: ${OSS_PUBLIC_BASE_URL:https://education-platform-333.oss-cn-beijing.aliyuncs.com}
+    base-path: ${OSS_BASE_PATH:education-platform/materials}

@@ -1,0 +1,25 @@
+package com.education.platform.config;
+
+import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
+import java.time.LocalDateTime;
+import org.apache.ibatis.reflection.MetaObject;
+import org.springframework.stereotype.Component;
+
+@Component
+public class MybatisPlusMetaObjectHandler implements MetaObjectHandler {
+
+    @Override
+    public void insertFill(MetaObject metaObject) {
+        strictInsertFill(metaObject, "createdAt", LocalDateTime.class, LocalDateTime.now());
+        strictInsertFill(metaObject, "updatedAt", LocalDateTime.class, LocalDateTime.now());
+        strictInsertFill(metaObject, "createdBy", Long.class, 0L);
+        strictInsertFill(metaObject, "updatedBy", Long.class, 0L);
+        strictInsertFill(metaObject, "deleted", Integer.class, 0);
+    }
+
+    @Override
+    public void updateFill(MetaObject metaObject) {
+        strictUpdateFill(metaObject, "updatedAt", LocalDateTime.class, LocalDateTime.now());
+        strictUpdateFill(metaObject, "updatedBy", Long.class, 0L);
+    }
+}
