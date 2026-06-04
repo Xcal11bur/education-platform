@@ -1,7 +1,9 @@
 package com.education.platform.auth.controller;
 
 import com.education.platform.auth.dto.LoginRequest;
+import com.education.platform.auth.dto.MemberRegisterRequest;
 import com.education.platform.auth.service.AuthService;
+import com.education.platform.auth.vo.CaptchaResponse;
 import com.education.platform.auth.vo.LoginResponse;
 import com.education.platform.auth.vo.UserProfileResponse;
 import com.education.platform.common.result.Result;
@@ -20,6 +22,11 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @GetMapping("/captcha")
+    public Result<CaptchaResponse> captcha() {
+        return Result.success(authService.getCaptcha());
+    }
+
     @PostMapping("/admin/login")
     public Result<LoginResponse> adminLogin(@Valid @RequestBody LoginRequest request) {
         return Result.success(authService.adminLogin(request));
@@ -33,6 +40,12 @@ public class AuthController {
     @PostMapping("/member/login")
     public Result<LoginResponse> memberLogin(@Valid @RequestBody LoginRequest request) {
         return Result.success(authService.memberLogin(request));
+    }
+
+    @PostMapping("/member/register")
+    public Result<Void> memberRegister(@Valid @RequestBody MemberRegisterRequest request) {
+        authService.memberRegister(request);
+        return Result.success();
     }
 
     @GetMapping("/profile")

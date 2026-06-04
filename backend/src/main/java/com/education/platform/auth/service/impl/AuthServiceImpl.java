@@ -2,10 +2,13 @@ package com.education.platform.auth.service.impl;
 
 import com.education.platform.admin.entity.AdminUser;
 import com.education.platform.admin.service.AdminUserService;
+import com.education.platform.auth.dto.MemberRegisterRequest;
 import com.education.platform.auth.dto.LoginRequest;
 import com.education.platform.auth.model.LoginUser;
 import com.education.platform.auth.service.AuthService;
+import com.education.platform.auth.service.CaptchaService;
 import com.education.platform.auth.service.TokenService;
+import com.education.platform.auth.vo.CaptchaResponse;
 import com.education.platform.auth.vo.LoginResponse;
 import com.education.platform.auth.vo.UserProfileResponse;
 import com.education.platform.auth.util.SecurityUtils;
@@ -30,13 +33,20 @@ public class AuthServiceImpl implements AuthService {
     private static final String ROLE_MEMBER = "MEMBER";
 
     private final TokenService tokenService;
+    private final CaptchaService captchaService;
     private final PasswordEncoder passwordEncoder;
     private final AdminUserService adminUserService;
     private final TeacherService teacherService;
     private final MemberService memberService;
 
     @Override
+    public CaptchaResponse getCaptcha() {
+        return captchaService.generateCaptcha();
+    }
+
+    @Override
     public LoginResponse adminLogin(LoginRequest request) {
+        validateCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
         AdminUser adminUser = adminUserService.findByUsername(request.getUsername())
                 .orElseThrow(() -> new BusinessException(ResultCode.UNAUTHORIZED.getCode(), "username or password is incorrect"));
         validatePasswordAndStatus(request.getPassword(), adminUser.getPassword(), adminUser.getStatus());
@@ -45,6 +55,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginResponse teacherLogin(LoginRequest request) {
+        validateCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
         Teacher teacher = teacherService.findByLoginName(request.getUsername())
                 .orElseThrow(() -> new BusinessException(ResultCode.UNAUTHORIZED.getCode(), "username or password is incorrect"));
         validatePasswordAndStatus(request.getPassword(), teacher.getPassword(), teacher.getStatus());
@@ -53,10 +64,31 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginResponse memberLogin(LoginRequest request) {
+        validateCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
         Member member = memberService.findByMobile(request.getUsername())
                 .orElseThrow(() -> new BusinessException(ResultCode.UNAUTHORIZED.getCode(), "username or password is incorrect"));
         validatePasswordAndStatus(request.getPassword(), member.getPassword(), member.getStatus());
         return buildResponse(member.getId(), member.getMobile(), ROLE_MEMBER, member.getNickname());
+    }
+
+    @Override
+    public void memberRegister(MemberRegisterRequest request) {
+        validateCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
+        if (!request.getPassword().equals(request.getConfirmPassword())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "password confirmation does not match");
+        }
+        if (memberService.findByMobile(request.getMobile()).isPresent()) {
+            throw new BusinessException(ResultCode.CONFLICT.getCode(), "mobile already exists");
+        }
+
+        Member member = new Member();
+        member.setMobile(request.getMobile());
+        member.setPassword(passwordEncoder.encode(request.getPassword()));
+        member.setNickname(request.getNickname());
+        member.setRealName(request.getRealName());
+        member.setStatus(StatusEnum.ENABLED.getCode());
+        member.setRegisterSource("WEB");
+        memberService.save(member);
     }
 
     @Override
@@ -69,6 +101,10 @@ public class AuthServiceImpl implements AuthService {
                 .role(loginUser.getRole())
                 .displayName(loginUser.getDisplayName())
                 .build();
+    }
+
+    private void validateCaptcha(String captchaKey, String captchaCode) {
+        captchaService.validateCaptcha(captchaKey, captchaCode);
     }
 
     private LoginResponse buildResponse(Long userId, String username, String role, String displayName) {

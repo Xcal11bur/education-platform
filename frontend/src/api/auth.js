@@ -1,5 +1,12 @@
 import request from '@/utils/request'
 
+export function getCaptcha() {
+  return request({
+    url: '/auth/captcha',
+    method: 'get'
+  })
+}
+
 export function loginAdmin(data) {
   return request({
     url: '/auth/admin/login',
@@ -11,6 +18,14 @@ export function loginAdmin(data) {
 export function loginMember(data) {
   return request({
     url: '/auth/member/login',
+    method: 'post',
+    data
+  })
+}
+
+export function registerMember(data) {
+  return request({
+    url: '/auth/member/register',
     method: 'post',
     data
   })

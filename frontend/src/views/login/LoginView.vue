@@ -1,54 +1,132 @@
 <template>
   <div class="login-shell">
     <div class="login-window">
-      <div class="login-head">
+      <div class="login-topbar">
         <div class="login-badge">Education Platform</div>
-        <h1>{{ isAdminMode ? '管理员登录' : '学员登录' }}</h1>
-        <p>{{ isAdminMode ? '进入后台管理系统' : '进入教育平台首页' }}</p>
+        <el-radio-group v-model="panelMode" size="small">
+          <el-radio-button label="登录" value="login" />
+          <el-radio-button label="注册" value="register" />
+        </el-radio-group>
       </div>
 
-      <el-radio-group v-model="loginMode" class="login-mode">
-        <el-radio-button label="管理员登录" value="admin" />
-        <el-radio-button label="学员登录" value="member" />
-      </el-radio-group>
+      <h1>{{ panelMode === 'login' ? (isAdminMode ? '管理员登录' : '学员登录') : '学员注册' }}</h1>
 
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        label-position="top"
-        class="login-form"
-        @keyup.enter="handleSubmit"
-      >
-        <el-form-item :label="isAdminMode ? '账号' : '手机号'" prop="username">
-          <el-input
-            v-model="form.username"
-            :placeholder="isAdminMode ? '请输入管理员账号' : '请输入学员手机号'"
-          />
-        </el-form-item>
+      <template v-if="panelMode === 'login'">
+        <el-radio-group v-model="loginMode" class="login-mode">
+          <el-radio-button label="管理员" value="admin" />
+          <el-radio-button label="学员" value="member" />
+        </el-radio-group>
 
-        <el-form-item label="密码" prop="password">
-          <el-input
-            v-model="form.password"
-            type="password"
-            show-password
-            placeholder="请输入登录密码"
-          />
-        </el-form-item>
-
-        <el-button
-          type="primary"
-          class="login-submit"
-          :loading="loading"
-          @click="handleSubmit"
+        <el-form
+          ref="loginFormRef"
+          :model="loginForm"
+          :rules="loginRules"
+          label-position="top"
+          class="login-form"
+          @keyup.enter="handleLogin"
         >
-          {{ isAdminMode ? '登录后台' : '进入平台' }}
-        </el-button>
-      </el-form>
+          <el-form-item :label="isAdminMode ? '账号' : '手机号'" prop="username">
+            <el-input
+              v-model="loginForm.username"
+              :placeholder="isAdminMode ? '请输入管理员账号' : '请输入学员手机号'"
+            />
+          </el-form-item>
 
-      <p class="login-hint">
-        {{ isAdminMode ? '管理员登录后进入后台管理系统' : '学员登录后进入教育平台首页，当前首页为占位页' }}
-      </p>
+          <el-form-item label="密码" prop="password">
+            <el-input
+              v-model="loginForm.password"
+              type="password"
+              show-password
+              placeholder="请输入密码"
+            />
+          </el-form-item>
+
+          <el-form-item label="验证码" prop="captchaCode">
+            <div class="captcha-row">
+              <el-input
+                v-model="loginForm.captchaCode"
+                placeholder="请输入验证码"
+                maxlength="4"
+              />
+              <button type="button" class="captcha-image" @click="refreshCaptcha">
+                <img v-if="captcha.imageBase64" :src="captcha.imageBase64" alt="captcha" />
+              </button>
+            </div>
+          </el-form-item>
+
+          <el-button
+            type="primary"
+            class="login-submit"
+            :loading="submitting"
+            @click="handleLogin"
+          >
+            {{ isAdminMode ? '登录后台' : '进入平台' }}
+          </el-button>
+        </el-form>
+      </template>
+
+      <template v-else>
+        <el-form
+          ref="registerFormRef"
+          :model="registerForm"
+          :rules="registerRules"
+          label-position="top"
+          class="login-form"
+          @keyup.enter="handleRegister"
+        >
+          <el-form-item label="手机号" prop="mobile">
+            <el-input v-model="registerForm.mobile" placeholder="请输入手机号" />
+          </el-form-item>
+
+          <el-form-item label="昵称" prop="nickname">
+            <el-input v-model="registerForm.nickname" placeholder="请输入昵称" />
+          </el-form-item>
+
+          <el-form-item label="真实姓名" prop="realName">
+            <el-input v-model="registerForm.realName" placeholder="选填" />
+          </el-form-item>
+
+          <el-form-item label="密码" prop="password">
+            <el-input
+              v-model="registerForm.password"
+              type="password"
+              show-password
+              placeholder="请输入密码"
+            />
+          </el-form-item>
+
+          <el-form-item label="确认密码" prop="confirmPassword">
+            <el-input
+              v-model="registerForm.confirmPassword"
+              type="password"
+              show-password
+              placeholder="请再次输入密码"
+            />
+          </el-form-item>
+
+          <el-form-item label="验证码" prop="captchaCode">
+            <div class="captcha-row">
+              <el-input
+                v-model="registerForm.captchaCode"
+                placeholder="请输入验证码"
+                maxlength="4"
+              />
+              <button type="button" class="captcha-image" @click="refreshCaptcha">
+                <img v-if="captcha.imageBase64" :src="captcha.imageBase64" alt="captcha" />
+              </button>
+            </div>
+          </el-form-item>
+
+          <el-button
+            type="primary"
+            class="login-submit"
+            :loading="submitting"
+            @click="handleRegister"
+          >
+            注册
+          </el-button>
+        </el-form>
+      </template>
     </div>
   </div>
 </template>
@@ -57,33 +135,54 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { getCaptcha, registerMember } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const formRef = ref()
-const loading = ref(false)
+
+const loginFormRef = ref()
+const registerFormRef = ref()
+const submitting = ref(false)
+const panelMode = ref('login')
 const loginMode = ref('admin')
+
+const captcha = reactive({
+  captchaKey: '',
+  imageBase64: ''
+})
 
 const defaults = {
   admin: {
     username: 'admin',
-    password: '123456'
+    password: '123456',
+    captchaCode: ''
   },
   member: {
-    username: '',
-    password: '123456'
+    username: '13800000011',
+    password: '123456',
+    captchaCode: ''
   }
 }
 
-const form = reactive({
+const loginForm = reactive({
   username: defaults.admin.username,
-  password: defaults.admin.password
+  password: defaults.admin.password,
+  captchaCode: ''
+})
+
+const registerForm = reactive({
+  mobile: '',
+  nickname: '',
+  realName: '',
+  password: '',
+  confirmPassword: '',
+  captchaCode: ''
 })
 
 const isAdminMode = computed(() => loginMode.value === 'admin')
 
-const rules = computed(() => ({
+const loginRules = computed(() => ({
   username: [
     {
       required: true,
@@ -94,28 +193,124 @@ const rules = computed(() => ({
   password: [
     {
       required: true,
-      message: '请输入登录密码',
+      message: '请输入密码',
+      trigger: 'blur'
+    }
+  ],
+  captchaCode: [
+    {
+      required: true,
+      message: '请输入验证码',
       trigger: 'blur'
     }
   ]
 }))
 
+const registerRules = {
+  mobile: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { pattern: /^1\d{10}$/, message: '手机号格式不正确', trigger: 'blur' }
+  ],
+  nickname: [
+    { required: true, message: '请输入昵称', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, max: 20, message: '密码长度需为 6-20 位', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请再次输入密码', trigger: 'blur' },
+    {
+      validator: (_rule, value, callback) => {
+        if (value !== registerForm.password) {
+          callback(new Error('两次输入的密码不一致'))
+          return
+        }
+        callback()
+      },
+      trigger: 'blur'
+    }
+  ],
+  captchaCode: [
+    { required: true, message: '请输入验证码', trigger: 'blur' }
+  ]
+}
+
 watch(loginMode, (mode) => {
-  Object.assign(form, defaults[mode])
-  formRef.value?.clearValidate()
+  Object.assign(loginForm, defaults[mode])
+  loginFormRef.value?.clearValidate()
+  refreshCaptcha()
 })
 
-async function handleSubmit() {
-  await formRef.value.validate()
-  loading.value = true
+watch(panelMode, () => {
+  loginFormRef.value?.clearValidate()
+  registerFormRef.value?.clearValidate()
+  loginForm.captchaCode = ''
+  registerForm.captchaCode = ''
+  refreshCaptcha()
+})
+
+async function refreshCaptcha() {
+  const { data } = await getCaptcha()
+  captcha.captchaKey = data.captchaKey
+  captcha.imageBase64 = data.imageBase64
+}
+
+async function handleLogin() {
+  await loginFormRef.value.validate()
+  submitting.value = true
   try {
-    await authStore.login(loginMode.value, form)
+    await authStore.login(loginMode.value, {
+      username: loginForm.username,
+      password: loginForm.password,
+      captchaKey: captcha.captchaKey,
+      captchaCode: loginForm.captchaCode
+    })
     ElMessage.success('登录成功')
     router.push(authStore.getDefaultRoute())
   } finally {
-    loading.value = false
+    submitting.value = false
+    loginForm.captchaCode = ''
+    await refreshCaptcha()
   }
 }
+
+async function handleRegister() {
+  await registerFormRef.value.validate()
+  submitting.value = true
+  try {
+    await registerMember({
+      mobile: registerForm.mobile,
+      nickname: registerForm.nickname,
+      realName: registerForm.realName,
+      password: registerForm.password,
+      confirmPassword: registerForm.confirmPassword,
+      captchaKey: captcha.captchaKey,
+      captchaCode: registerForm.captchaCode
+    })
+    ElMessage.success('注册成功，请登录')
+    panelMode.value = 'login'
+    loginMode.value = 'member'
+    Object.assign(loginForm, {
+      username: registerForm.mobile,
+      password: registerForm.password,
+      captchaCode: ''
+    })
+    Object.assign(registerForm, {
+      mobile: '',
+      nickname: '',
+      realName: '',
+      password: '',
+      confirmPassword: '',
+      captchaCode: ''
+    })
+  } finally {
+    submitting.value = false
+    await refreshCaptcha()
+  }
+}
+
+refreshCaptcha()
 </script>
 
 <style scoped>
@@ -131,15 +326,19 @@ async function handleSubmit() {
 
 .login-window {
   width: min(440px, 100%);
-  padding: 40px 36px 30px;
+  padding: 28px 28px 26px;
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(214, 224, 237, 0.72);
   box-shadow: 0 20px 56px rgba(31, 45, 61, 0.12);
 }
 
-.login-head {
-  margin-bottom: 24px;
+.login-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .login-badge {
@@ -153,24 +352,17 @@ async function handleSubmit() {
   text-transform: uppercase;
 }
 
-.login-head h1 {
-  margin: 18px 0 8px;
-  font-size: 38px;
+.login-window h1 {
+  margin: 0 0 18px;
+  font-size: 34px;
   line-height: 1.08;
   color: #1f2a3d;
-  text-wrap: balance;
-}
-
-.login-head p {
-  margin: 0;
-  color: #607086;
-  font-size: 14px;
 }
 
 .login-mode {
   display: flex;
   width: 100%;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
 }
 
 .login-mode :deep(.el-radio-button) {
@@ -186,6 +378,29 @@ async function handleSubmit() {
   font-weight: 600;
 }
 
+.captcha-row {
+  display: grid;
+  grid-template-columns: 1fr 132px;
+  gap: 10px;
+  width: 100%;
+}
+
+.captcha-image {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: #f8fbff;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.captcha-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .login-submit {
   width: 100%;
   height: 44px;
@@ -194,25 +409,31 @@ async function handleSubmit() {
   font-weight: 700;
 }
 
-.login-hint {
-  margin: 16px 0 0;
-  color: #7b8898;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
 @media (max-width: 640px) {
   .login-shell {
     padding: 16px;
   }
 
   .login-window {
-    padding: 28px 22px 24px;
+    padding: 22px 18px 20px;
     border-radius: 20px;
   }
 
-  .login-head h1 {
-    font-size: 30px;
+  .login-topbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .login-window h1 {
+    font-size: 28px;
+  }
+
+  .captcha-row {
+    grid-template-columns: 1fr;
+  }
+
+  .captcha-image {
+    height: 52px;
   }
 }
 </style>

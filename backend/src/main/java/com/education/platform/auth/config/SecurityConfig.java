@@ -25,10 +25,12 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/captcha").permitAll()
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/auth/admin/login",
                                 "/api/v1/auth/teacher/login",
-                                "/api/v1/auth/member/login"
+                                "/api/v1/auth/member/login",
+                                "/api/v1/auth/member/register"
                         ).permitAll()
                         .requestMatchers(
                                 "/api/v1/health",
