@@ -16,6 +16,8 @@ backend/target/
 # IDE and OS files
 .idea/
 .vscode/
+**/.idea/
+**/.vscode/
 *.iml
 .DS_Store
 Thumbs.db
