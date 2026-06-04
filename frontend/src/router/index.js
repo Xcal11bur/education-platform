@@ -2,6 +2,14 @@ import { createRouter, createWebHistory } from 'vue-router'
 import NProgress from 'nprogress'
 import { useAuthStore } from '@/stores/auth'
 
+function hasRouteAccess(route, role) {
+  const roles = route.meta?.roles
+  if (!roles || roles.length === 0) {
+    return true
+  }
+  return roles.includes(role)
+}
+
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -12,59 +20,68 @@ const router = createRouter({
       meta: { public: true }
     },
     {
+      path: '/member-home',
+      name: 'MemberHome',
+      component: () => import('@/views/member/MemberHomeView.vue'),
+      meta: { title: '教育平台首页', roles: ['MEMBER'] }
+    },
+    {
       path: '/',
       component: () => import('@/layout/AppLayout.vue'),
       redirect: '/dashboard',
+      meta: { roles: ['ADMIN'] },
       children: [
         {
           path: 'dashboard',
           name: 'Dashboard',
           component: () => import('@/views/dashboard/DashboardView.vue'),
-          meta: { title: '工作台' }
+          meta: { title: '工作台', roles: ['ADMIN'] }
         },
         {
           path: 'teachers',
           name: 'Teachers',
           component: () => import('@/views/teachers/TeacherListView.vue'),
-          meta: { title: '教师管理' }
+          meta: { title: '教师管理', roles: ['ADMIN'] }
         },
         {
           path: 'categories',
           name: 'Categories',
           component: () => import('@/views/categories/CategoryListView.vue'),
-          meta: { title: '课程分类' }
+          meta: { title: '课程分类', roles: ['ADMIN'] }
         },
         {
           path: 'courses',
           name: 'Courses',
           component: () => import('@/views/courses/CourseListView.vue'),
-          meta: { title: '课程列表', activeMenu: '/courses' }
+          meta: { title: '课程列表', activeMenu: '/courses', roles: ['ADMIN'] }
         },
         {
           path: 'course-management/chapters',
           name: 'CourseChapters',
           component: () => import('@/views/chapters/CourseChapterView.vue'),
-          meta: { title: '课程章节', activeMenu: '/course-management/chapters' }
+          meta: { title: '课程章节', activeMenu: '/course-management/chapters', roles: ['ADMIN'] }
         },
         {
           path: 'course-management/materials',
           name: 'CourseMaterials',
           component: () => import('@/views/materials/CourseMaterialView.vue'),
-          meta: { title: '课程资料', activeMenu: '/course-management/materials' }
+          meta: { title: '课程资料', activeMenu: '/course-management/materials', roles: ['ADMIN'] }
         },
         {
           path: 'courses/:id/chapters',
           redirect: (to) => ({
             path: '/course-management/chapters',
             query: { courseId: to.params.id }
-          })
+          }),
+          meta: { roles: ['ADMIN'] }
         },
         {
           path: 'courses/:id/materials',
           redirect: (to) => ({
             path: '/course-management/materials',
             query: { courseId: to.params.id }
-          })
+          }),
+          meta: { roles: ['ADMIN'] }
         }
       ]
     }
@@ -74,9 +91,10 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   NProgress.start()
   const authStore = useAuthStore()
+
   if (to.meta.public) {
     if (to.path === '/login' && authStore.token) {
-      next('/')
+      next(authStore.getDefaultRoute())
       return
     }
     next()
@@ -97,6 +115,12 @@ router.beforeEach(async (to, from, next) => {
       return
     }
   }
+
+  if (!hasRouteAccess(to, authStore.role)) {
+    next(authStore.getDefaultRoute())
+    return
+  }
+
   next()
 })
 

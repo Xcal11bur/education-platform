@@ -8,9 +8,11 @@ import com.education.platform.course.dto.CourseChapterSaveDTO;
 import com.education.platform.course.entity.Course;
 import com.education.platform.course.entity.CourseChapter;
 import com.education.platform.course.entity.CourseSection;
+import com.education.platform.course.entity.SectionMaterial;
 import com.education.platform.course.mapper.CourseChapterMapper;
 import com.education.platform.course.mapper.CourseMapper;
 import com.education.platform.course.mapper.CourseSectionMapper;
+import com.education.platform.course.mapper.SectionMaterialMapper;
 import com.education.platform.course.service.CourseChapterService;
 import com.education.platform.course.vo.CourseChapterVO;
 import com.education.platform.course.vo.CourseSectionVO;
@@ -29,10 +31,15 @@ public class CourseChapterServiceImpl extends ServiceImpl<CourseChapterMapper, C
 
     private final CourseMapper courseMapper;
     private final CourseSectionMapper courseSectionMapper;
+    private final SectionMaterialMapper sectionMaterialMapper;
 
-    public CourseChapterServiceImpl(CourseMapper courseMapper, CourseSectionMapper courseSectionMapper) {
+    public CourseChapterServiceImpl(
+            CourseMapper courseMapper,
+            CourseSectionMapper courseSectionMapper,
+            SectionMaterialMapper sectionMaterialMapper) {
         this.courseMapper = courseMapper;
         this.courseSectionMapper = courseSectionMapper;
+        this.sectionMaterialMapper = sectionMaterialMapper;
     }
 
     @Override
@@ -85,6 +92,13 @@ public class CourseChapterServiceImpl extends ServiceImpl<CourseChapterMapper, C
                         .eq(CourseSection::getCourseId, courseId)
                         .orderByAsc(CourseSection::getSort, CourseSection::getId)
         );
+        Map<Long, Long> sectionMaterialCountMap = sections.isEmpty()
+                ? Map.of()
+                : sectionMaterialMapper.selectList(
+                                Wrappers.<SectionMaterial>lambdaQuery()
+                                        .in(SectionMaterial::getSectionId, sections.stream().map(CourseSection::getId).toList())
+                        ).stream()
+                        .collect(Collectors.groupingBy(SectionMaterial::getSectionId, Collectors.counting()));
         Map<Long, List<CourseSection>> sectionMap = sections.stream()
                 .collect(Collectors.groupingBy(CourseSection::getChapterId));
 
@@ -95,7 +109,7 @@ public class CourseChapterServiceImpl extends ServiceImpl<CourseChapterMapper, C
                     BeanUtils.copyProperties(chapter, vo);
                     List<CourseSectionVO> sectionVOs = sectionMap.getOrDefault(chapter.getId(), List.of()).stream()
                             .sorted(Comparator.comparing(CourseSection::getSort).thenComparing(CourseSection::getId))
-                            .map(this::toSectionVO)
+                            .map(section -> toSectionVO(section, sectionMaterialCountMap.getOrDefault(section.getId(), 0L)))
                             .toList();
                     vo.setSections(sectionVOs);
                     return vo;
@@ -122,9 +136,10 @@ public class CourseChapterServiceImpl extends ServiceImpl<CourseChapterMapper, C
         return chapter;
     }
 
-    private CourseSectionVO toSectionVO(CourseSection section) {
+    private CourseSectionVO toSectionVO(CourseSection section, Long materialCount) {
         CourseSectionVO vo = new CourseSectionVO();
         BeanUtils.copyProperties(section, vo);
+        vo.setMaterialCount(materialCount);
         return vo;
     }
 }

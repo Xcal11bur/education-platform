@@ -239,10 +239,11 @@ com.education.platform
 6. `course_chapter`
 7. `course_section`
 8. `course_material`
-9. `course_review`
-10. `course_task`
-11. `task_question`
-12. `task_submission`
+9. `section_material`
+10. `course_review`
+11. `course_task`
+12. `task_question`
+13. `task_submission`
 
 ### 4.2 字段规范
 
@@ -317,6 +318,7 @@ com.education.platform
 - 登录和权限是所有接口的入口
 - 教师和分类是课程表单的前置依赖
 - 课程详情是前台核心页面，尽早稳定收益最大
+- 如果新增“小节级资料”，建议放在课程章节联调之后、考试/作业之前
 
 ---
 

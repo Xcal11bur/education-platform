@@ -81,7 +81,7 @@
 | 课程分类 | `course_category` |
 | 课程基本信息 | `course` |
 | 课程章节 | `course_chapter`, `course_section` |
-| 课程资料 | `course_material` |
+| 课程资料 | `course_material`, `section_material` |
 | 课程评价 | `course_review` |
 | 考试/作业 | `course_task`, `task_question`, `task_submission` |
 
@@ -496,6 +496,8 @@
 - 课程目录分为 `章节 chapter` 和 `小节 section`
 - 一个课程下可有多个章节
 - 一个章节下可有多个小节
+- 小节主学习内容继续保留在 `course_section.videoUrl / content`
+- 小节补充资料单独落表 `section_material`，不复用 `course_material`
 
 ### 8.2 章节字段定义
 
@@ -698,6 +700,91 @@
 说明：
 
 - 当前实现为物理删除，会直接删除 `course_material` 表中的记录
+
+### 10.6 小节级资料设计
+
+设计原则：
+
+- `course_material` 继续表示课程级公共资料，例如整门课源码、总讲义、课程附件
+- `section_material` 只表示某个小节下的补充资料，例如某节课 PPT、案例附件、练习文档
+- 小节主视频仍保留在 `course_section.videoUrl`，避免把“小节本体”和“小节附件”混到一张表
+
+字段定义：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| id | bigint | 主键 |
+| courseId | bigint | 课程ID，便于课程维度汇总 |
+| chapterId | bigint | 章节ID，便于章节维度查询 |
+| sectionId | bigint | 小节ID |
+| materialName | varchar(200) | 资料名称 |
+| materialType | tinyint | 1文档 2压缩包 3图片 4其他 |
+| fileUrl | varchar(255) | 文件地址 |
+| fileSize | bigint | 文件大小，字节 |
+| downloadLimit | tinyint | 0全部学员可下 1已报名学员 |
+| sort | int | 排序 |
+
+后台接口建议：
+
+- `GET /api/v1/admin/sections/{sectionId}/materials`
+- `GET /api/v1/admin/section-materials/{id}`
+- `POST /api/v1/admin/sections/{sectionId}/materials`
+- `PUT /api/v1/admin/section-materials/{id}`
+- `DELETE /api/v1/admin/section-materials/{id}`
+
+新增请求参数建议：
+
+```json
+{
+  "materialName": "本节课讲义.pdf",
+  "materialType": 1,
+  "fileUrl": "https://cdn.xxx.com/section-materials/lesson-1-note.pdf",
+  "fileSize": 3145728,
+  "downloadLimit": 1,
+  "sort": 1
+}
+```
+
+后台列表返回建议：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": [
+    {
+      "id": 1,
+      "courseId": 1,
+      "courseTitle": "Spring Boot 实战课",
+      "chapterId": 1,
+      "chapterTitle": "第一章：Spring Boot 基础入门",
+      "sectionId": 1,
+      "sectionTitle": "1.1 Spring Boot 项目初始化",
+      "materialName": "本节课讲义.pdf",
+      "materialType": 1,
+      "fileUrl": "https://cdn.xxx.com/section-materials/lesson-1-note.pdf",
+      "fileSize": 3145728,
+      "downloadLimit": 1,
+      "sort": 1
+    }
+  ]
+}
+```
+
+前台接口建议：
+
+- `GET /api/v1/portal/sections/{sectionId}/materials`
+
+前台展示建议：
+
+- 学员进入某个小节详情时，同时返回 `videoUrl/content + sectionMaterials`
+- 如果暂时不做单独小节详情页，也可以在章节树点击当前小节后单独拉取该接口
+
+约束建议：
+
+- 新增或修改资料时，必须校验 `sectionId -> chapterId -> courseId` 归属关系一致
+- 删除小节前，需先删除或迁移该小节下资料
+- 小节资料当前建议先走逻辑删除；如果后续与 OSS 文件联动删除，再单独补物理删除策略
 
 ---
 

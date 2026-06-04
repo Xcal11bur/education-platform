@@ -15,4 +15,5 @@ public class CourseSectionVO {
     private Integer duration;
     private Integer isFreeTrial;
     private Integer sort;
+    private Long materialCount;
 }

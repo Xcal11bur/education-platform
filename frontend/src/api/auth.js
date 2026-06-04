@@ -8,6 +8,14 @@ export function loginAdmin(data) {
   })
 }
 
+export function loginMember(data) {
+  return request({
+    url: '/auth/member/login',
+    method: 'post',
+    data
+  })
+}
+
 export function getProfile() {
   return request({
     url: '/auth/profile',

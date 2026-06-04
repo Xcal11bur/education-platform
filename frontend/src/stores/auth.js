@@ -1,19 +1,28 @@
 import { defineStore } from 'pinia'
-import { getProfile, loginAdmin } from '@/api/auth'
+import { getProfile, loginAdmin, loginMember } from '@/api/auth'
 
-const TOKEN_KEY = 'edu_admin_token'
+const TOKEN_KEY = 'edu_platform_token'
+const ROLE_KEY = 'edu_platform_role'
+
+function resolveLoginRequest(mode) {
+  return mode === 'member' ? loginMember : loginAdmin
+}
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: localStorage.getItem(TOKEN_KEY) || '',
+    role: localStorage.getItem(ROLE_KEY) || '',
     profile: null,
     profileLoaded: false
   }),
   actions: {
-    async login(form) {
-      const { data } = await loginAdmin(form)
+    async login(mode, form) {
+      const request = resolveLoginRequest(mode)
+      const { data } = await request(form)
       this.token = data.token
+      this.role = data.role || ''
       localStorage.setItem(TOKEN_KEY, data.token)
+      localStorage.setItem(ROLE_KEY, this.role)
       this.profileLoaded = false
       await this.fetchProfile()
       return data
@@ -21,14 +30,21 @@ export const useAuthStore = defineStore('auth', {
     async fetchProfile() {
       const { data } = await getProfile()
       this.profile = data
+      this.role = data.role || this.role
       this.profileLoaded = true
+      localStorage.setItem(ROLE_KEY, this.role)
       return data
+    },
+    getDefaultRoute() {
+      return this.role === 'MEMBER' ? '/member-home' : '/dashboard'
     },
     logout() {
       this.token = ''
+      this.role = ''
       this.profile = null
       this.profileLoaded = false
       localStorage.removeItem(TOKEN_KEY)
+      localStorage.removeItem(ROLE_KEY)
     }
   }
 })

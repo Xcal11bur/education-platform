@@ -74,7 +74,7 @@
         </el-button>
       </div>
 
-      <el-table
+        <el-table
         v-if="currentChapter"
         :data="currentChapter.sections || []"
         :header-cell-style="{ background: '#fafbfc', color: '#5e6d82', fontWeight: '600' }"
@@ -99,9 +99,15 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="排序" width="90" align="center" prop="sort" />
-        <el-table-column label="操作" width="160" align="center">
+        <el-table-column label="资料数" width="90" align="center">
           <template #default="{ row }">
+            {{ row.materialCount || 0 }}
+          </template>
+        </el-table-column>
+        <el-table-column label="排序" width="90" align="center" prop="sort" />
+        <el-table-column label="操作" width="220" align="center">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="openSectionMaterials(row)">资料</el-button>
             <el-button link type="primary" @click="openSectionEdit(row)">编辑</el-button>
             <el-button link type="danger" @click="handleDeleteSection(row)">删除</el-button>
           </template>
@@ -181,6 +187,108 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="sectionMaterialDialogVisible"
+      title="小节资料"
+      width="980px"
+      top="6vh"
+      @closed="handleSectionMaterialDialogClosed"
+    >
+      <div v-if="currentMaterialSection" class="section-material-toolbar">
+        <div class="section-material-context">
+          <div class="section-material-title">{{ currentMaterialSection.title }}</div>
+          <div class="section-material-meta">
+            {{ currentMaterialChapter?.title || '-' }}
+          </div>
+        </div>
+        <el-button type="primary" @click="openMaterialCreate">上传资料</el-button>
+      </div>
+
+      <el-table
+        v-loading="sectionMaterialLoading"
+        :data="sectionMaterials"
+        :header-cell-style="{ background: '#fafbfc', color: '#5e6d82', fontWeight: '600' }"
+        row-class-name="table-row"
+      >
+        <el-table-column type="index" label="#" width="56" align="center" />
+        <el-table-column label="资料名称" min-width="180" prop="materialName" />
+        <el-table-column label="资料类型" width="110" align="center">
+          <template #default="{ row }">
+            {{ materialTypeText(row.materialType) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="文件地址" min-width="240" prop="fileUrl" show-overflow-tooltip />
+        <el-table-column label="大小(MB)" width="110" align="center">
+          <template #default="{ row }">
+            {{ formatFileSizeMb(row.fileSize) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="下载权限" width="120" align="center">
+          <template #default="{ row }">
+            {{ downloadLimitText(row.downloadLimit) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="排序" width="90" align="center" prop="sort" />
+        <el-table-column label="操作" width="150" align="center" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="openMaterialEdit(row.id)">编辑</el-button>
+            <el-button link type="danger" @click="handleDeleteMaterial(row.id)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
+
+    <el-dialog
+      v-model="materialDialogVisible"
+      :title="editingMaterialId ? '编辑资料' : '上传资料'"
+      width="680px"
+      top="8vh"
+      @closed="resetMaterialForm"
+    >
+      <el-form ref="materialFormRef" :model="materialForm" :rules="materialRules" label-width="100px">
+        <el-form-item label="资料名称" prop="materialName">
+          <el-input v-model="materialForm.materialName" />
+        </el-form-item>
+        <el-form-item label="资料类型" prop="materialType">
+          <el-select v-model="materialForm.materialType">
+            <el-option label="文档" :value="1" />
+            <el-option label="压缩包" :value="2" />
+            <el-option label="图片" :value="3" />
+            <el-option label="其他" :value="4" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="文件上传" prop="uploadFile">
+          <div class="upload-field">
+            <input
+              :key="materialFileInputKey"
+              type="file"
+              class="upload-input"
+              @change="handleMaterialFileChange"
+            />
+            <p class="upload-tip">
+              {{ selectedMaterialFileName || existingMaterialFileName || '支持单个文件，大小不超过 100MB' }}
+            </p>
+            <p v-if="materialUploadError" class="upload-error">{{ materialUploadError }}</p>
+          </div>
+        </el-form-item>
+        <el-form-item label="下载权限">
+          <el-radio-group v-model="materialForm.downloadLimit">
+            <el-radio :value="0">全部学员</el-radio>
+            <el-radio :value="1">已报名学员</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="排序">
+          <el-input-number v-model="materialForm.sort" :min="0" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="materialDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="materialSaving" @click="submitMaterialForm">
+          保存
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -189,6 +297,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCourseList } from '@/api/course'
+import { uploadMaterialFile } from '@/api/material'
 import {
   createChapter,
   createSection,
@@ -198,6 +307,13 @@ import {
   updateChapter,
   updateSection
 } from '@/api/chapter'
+import {
+  createSectionMaterial,
+  deleteSectionMaterial,
+  getSectionMaterialDetail,
+  getSectionMaterialList,
+  updateSectionMaterial
+} from '@/api/sectionMaterial'
 
 const route = useRoute()
 const router = useRouter()
@@ -231,6 +347,29 @@ const sectionForm = reactive({
   sort: 0
 })
 
+const sectionMaterialDialogVisible = ref(false)
+const sectionMaterialLoading = ref(false)
+const currentMaterialSection = ref(null)
+const currentMaterialChapter = ref(null)
+const sectionMaterials = ref([])
+
+const materialDialogVisible = ref(false)
+const materialSaving = ref(false)
+const editingMaterialId = ref(null)
+const materialFormRef = ref()
+const selectedMaterialUploadFile = ref(null)
+const selectedMaterialFileName = ref('')
+const materialUploadError = ref('')
+const materialFileInputKey = ref(0)
+const materialForm = reactive({
+  materialName: '',
+  materialType: 1,
+  fileUrl: '',
+  fileSize: 0,
+  downloadLimit: 1,
+  sort: 0
+})
+
 const chapterRules = {
   title: [{ required: true, message: '请输入章节标题', trigger: 'blur' }]
 }
@@ -240,9 +379,32 @@ const sectionRules = {
   sectionType: [{ required: true, message: '请选择小节类型', trigger: 'change' }]
 }
 
+const materialRules = {
+  materialName: [{ required: true, message: '请输入资料名称', trigger: 'blur' }],
+  materialType: [{ required: true, message: '请选择资料类型', trigger: 'change' }],
+  uploadFile: [{
+    validator: (_rule, _value, callback) => {
+      if (materialForm.fileUrl || selectedMaterialUploadFile.value) {
+        callback()
+        return
+      }
+      callback(new Error('请选择上传文件'))
+    },
+    trigger: 'change'
+  }]
+}
+
 const currentChapter = computed(() =>
   chapters.value.find((item) => item.id === activeChapterId.value) || null
 )
+
+const existingMaterialFileName = computed(() => {
+  if (!materialForm.fileUrl) {
+    return ''
+  }
+  const parts = materialForm.fileUrl.split('/')
+  return parts[parts.length - 1] || materialForm.fileUrl
+})
 
 function resetChapterForm() {
   Object.assign(chapterForm, {
@@ -267,6 +429,23 @@ function resetSectionForm() {
   sectionFormRef.value?.clearValidate()
 }
 
+function resetMaterialForm() {
+  Object.assign(materialForm, {
+    materialName: '',
+    materialType: 1,
+    fileUrl: '',
+    fileSize: 0,
+    downloadLimit: 1,
+    sort: 0
+  })
+  editingMaterialId.value = null
+  selectedMaterialUploadFile.value = null
+  selectedMaterialFileName.value = ''
+  materialUploadError.value = ''
+  materialFileInputKey.value += 1
+  materialFormRef.value?.clearValidate()
+}
+
 function sectionTypeText(value) {
   return (
     {
@@ -275,6 +454,31 @@ function sectionTypeText(value) {
       3: '直播回放'
     }[value] || '未知'
   )
+}
+
+function materialTypeText(value) {
+  return (
+    {
+      1: '文档',
+      2: '压缩包',
+      3: '图片',
+      4: '其他'
+    }[value] || '未知'
+  )
+}
+
+function downloadLimitText(value) {
+  return (
+    {
+      0: '全部学员',
+      1: '已报名学员'
+    }[value] || '未知'
+  )
+}
+
+function formatFileSizeMb(value) {
+  const size = Number(value || 0)
+  return `${(size / 1024 / 1024).toFixed(2)} MB`
 }
 
 async function fetchCourseOptions() {
@@ -286,22 +490,25 @@ async function fetchChapterTree() {
   if (!courseId.value) {
     chapters.value = []
     activeChapterId.value = null
+    syncCurrentMaterialSection()
     return
   }
   chapterLoading.value = true
   try {
     const { data } = await getChapterTree(courseId.value)
     chapters.value = data || []
-    if (chapters.value.some((item) => item.id === activeChapterId.value)) {
-      return
+    if (!chapters.value.some((item) => item.id === activeChapterId.value)) {
+      activeChapterId.value = chapters.value[0]?.id ?? null
     }
-    activeChapterId.value = chapters.value[0]?.id ?? null
   } finally {
     chapterLoading.value = false
   }
+  syncCurrentMaterialSection()
 }
 
 async function handleCourseChange(value) {
+  sectionMaterialDialogVisible.value = false
+  materialDialogVisible.value = false
   router.replace({
     path: '/course-management/chapters',
     query: { courseId: value }
@@ -352,6 +559,37 @@ function openSectionEdit(section) {
   sectionDialogVisible.value = true
 }
 
+async function openSectionMaterials(section) {
+  currentMaterialSection.value = section
+  currentMaterialChapter.value = currentChapter.value
+  sectionMaterialDialogVisible.value = true
+  await fetchSectionMaterials(section.id)
+}
+
+function openMaterialCreate() {
+  if (!currentMaterialSection.value) {
+    return
+  }
+  resetMaterialForm()
+  materialForm.sort = (sectionMaterials.value.length || 0) + 1
+  materialDialogVisible.value = true
+}
+
+async function openMaterialEdit(id) {
+  const { data } = await getSectionMaterialDetail(id)
+  resetMaterialForm()
+  editingMaterialId.value = id
+  Object.assign(materialForm, {
+    materialName: data.materialName,
+    materialType: data.materialType,
+    fileUrl: data.fileUrl,
+    fileSize: data.fileSize,
+    downloadLimit: data.downloadLimit,
+    sort: data.sort
+  })
+  materialDialogVisible.value = true
+}
+
 async function submitChapter() {
   await chapterFormRef.value.validate()
   chapterSaving.value = true
@@ -388,6 +626,53 @@ async function submitSection() {
   }
 }
 
+async function fetchSectionMaterials(sectionId = currentMaterialSection.value?.id) {
+  if (!sectionId) {
+    sectionMaterials.value = []
+    return
+  }
+  sectionMaterialLoading.value = true
+  try {
+    const { data } = await getSectionMaterialList(sectionId)
+    sectionMaterials.value = data || []
+  } finally {
+    sectionMaterialLoading.value = false
+  }
+}
+
+async function submitMaterialForm() {
+  if (!currentMaterialSection.value) {
+    return
+  }
+  await materialFormRef.value.validate()
+  materialSaving.value = true
+  try {
+    const payload = {
+      ...materialForm
+    }
+
+    if (selectedMaterialUploadFile.value) {
+      const { data } = await uploadMaterialFile(selectedMaterialUploadFile.value)
+      payload.fileUrl = data.url
+      payload.fileSize = data.size
+      materialUploadError.value = ''
+    }
+
+    if (editingMaterialId.value) {
+      await updateSectionMaterial(editingMaterialId.value, payload)
+      ElMessage.success('资料已更新')
+    } else {
+      await createSectionMaterial(currentMaterialSection.value.id, payload)
+      ElMessage.success('资料已上传')
+    }
+
+    materialDialogVisible.value = false
+    await refreshSectionMaterialsState()
+  } finally {
+    materialSaving.value = false
+  }
+}
+
 async function handleDeleteChapter(chapter) {
   await ElMessageBox.confirm(`确定删除章节“${chapter.title}”吗？`, '删除章节', { type: 'warning' })
   await deleteChapter(chapter.id)
@@ -403,6 +688,88 @@ async function handleDeleteSection(section) {
   await deleteSection(section.id)
   ElMessage.success('小节已删除')
   await fetchChapterTree()
+}
+
+async function handleDeleteMaterial(id) {
+  await ElMessageBox.confirm('确定删除该小节资料吗？', '删除资料', { type: 'warning' })
+  await deleteSectionMaterial(id)
+  ElMessage.success('资料已删除')
+  await refreshSectionMaterialsState()
+}
+
+function validateMaterialFile(file) {
+  const maxSize = 100 * 1024 * 1024
+  if (file.size > maxSize) {
+    materialUploadError.value = '单个文件大小不能超过 100MB'
+    return false
+  }
+  return true
+}
+
+function handleMaterialFileChange(event) {
+  const target = event.target
+  const file = target.files?.[0]
+
+  materialUploadError.value = ''
+
+  if (!file) {
+    selectedMaterialUploadFile.value = null
+    selectedMaterialFileName.value = ''
+    materialFormRef.value?.validateField('uploadFile')
+    return
+  }
+
+  if (!validateMaterialFile(file)) {
+    selectedMaterialUploadFile.value = null
+    selectedMaterialFileName.value = ''
+    materialFileInputKey.value += 1
+    materialFormRef.value?.validateField('uploadFile')
+    return
+  }
+
+  selectedMaterialUploadFile.value = file
+  selectedMaterialFileName.value = file.name
+  if (!materialForm.materialName) {
+    materialForm.materialName = file.name
+  }
+  materialFormRef.value?.validateField('uploadFile')
+}
+
+function syncCurrentMaterialSection() {
+  if (!currentMaterialSection.value) {
+    currentMaterialChapter.value = currentChapter.value
+    return
+  }
+
+  for (const chapter of chapters.value) {
+    const section = chapter.sections?.find((item) => item.id === currentMaterialSection.value.id)
+    if (section) {
+      currentMaterialSection.value = section
+      currentMaterialChapter.value = chapter
+      return
+    }
+  }
+
+  currentMaterialSection.value = null
+  currentMaterialChapter.value = null
+  sectionMaterials.value = []
+  sectionMaterialDialogVisible.value = false
+  materialDialogVisible.value = false
+}
+
+async function refreshSectionMaterialsState() {
+  const sectionId = currentMaterialSection.value?.id
+  await fetchChapterTree()
+  if (sectionId && currentMaterialSection.value) {
+    await fetchSectionMaterials(sectionId)
+  }
+}
+
+function handleSectionMaterialDialogClosed() {
+  currentMaterialSection.value = null
+  currentMaterialChapter.value = null
+  sectionMaterials.value = []
+  materialDialogVisible.value = false
 }
 
 onMounted(async () => {
@@ -431,6 +798,8 @@ watch(
     }
     courseId.value = nextId
     activeChapterId.value = null
+    sectionMaterialDialogVisible.value = false
+    materialDialogVisible.value = false
     await fetchChapterTree()
   }
 )
@@ -480,6 +849,64 @@ watch(
   font-weight: 700;
 }
 
+.section-material-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.section-material-context {
+  min-width: 0;
+}
+
+.section-material-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.section-material-meta {
+  margin-top: 6px;
+  color: #909399;
+  font-size: 13px;
+}
+
+.upload-field {
+  width: 100%;
+}
+
+.upload-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.upload-input::file-selector-button {
+  margin-right: 12px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(64, 158, 255, 0.12);
+  color: #409eff;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.upload-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #909399;
+}
+
+.upload-error {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--el-color-danger);
+}
+
 .empty-state {
   text-align: center;
   padding: 60px 0;
@@ -505,5 +932,12 @@ watch(
 .empty-state p {
   color: #909399;
   font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .section-material-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 </style>
