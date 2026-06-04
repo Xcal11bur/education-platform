@@ -1,9 +1,6 @@
 <template>
   <div class="page-card">
-    <div class="page-header">
-      <div>
-        <h2 class="page-title">教师管理</h2>
-      </div>
+    <div class="toolbar" style="justify-content: flex-end; margin-bottom: 18px;">
       <el-button type="primary" @click="openCreate">新增教师</el-button>
     </div>
 

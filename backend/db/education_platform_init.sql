@@ -307,56 +307,50 @@ INSERT INTO `admin_user` (
 ) VALUES
   (1, 'admin', '$2a$10$K/Bk4X/AoR8SH7nMaOn5JONc3/uax1seUz7s.Pah6EJAUmABVl9da', '系统管理员', '13800000001', 'admin@edu.com', 1, 0, 0);
 
-INSERT INTO `member` (
-  `id`, `mobile`, `password`, `nickname`, `real_name`, `avatar`, `gender`, `birthday`, `status`, `register_source`, `created_by`, `updated_by`
-) VALUES
-  (10001, '13800000002', '$2a$10$K/Bk4X/AoR8SH7nMaOn5JONc3/uax1seUz7s.Pah6EJAUmABVl9da', '学员小张', '张三', 'https://cdn.edu.com/avatar/member-10001.png', 1, '2000-01-01', 1, 'WEB', 1, 1),
-  (10002, '13800000003', '$2a$10$K/Bk4X/AoR8SH7nMaOn5JONc3/uax1seUz7s.Pah6EJAUmABVl9da', '学员小李', '李四', 'https://cdn.edu.com/avatar/member-10002.png', 2, '2001-05-20', 1, 'WEB', 1, 1);
-
 INSERT INTO `teacher` (
   `id`, `login_name`, `password`, `name`, `title`, `intro`, `avatar`, `mobile`, `email`, `status`, `created_by`, `updated_by`
 ) VALUES
-  (2001, 'teacher_li', '$2a$10$K/Bk4X/AoR8SH7nMaOn5JONc3/uax1seUz7s.Pah6EJAUmABVl9da', '李老师', '高级讲师', '10年 Java 与企业项目实战教学经验。', 'https://cdn.edu.com/avatar/teacher-2001.png', '13900000001', 'li.teacher@edu.com', 1, 1, 1),
-  (2002, 'teacher_wang', '$2a$10$K/Bk4X/AoR8SH7nMaOn5JONc3/uax1seUz7s.Pah6EJAUmABVl9da', '王老师', '前端讲师', '专注前端工程化与组件化开发。', 'https://cdn.edu.com/avatar/teacher-2002.png', '13900000002', 'wang.teacher@edu.com', 1, 1, 1);
+  (1, 'teacher_li', '$2a$10$K/Bk4X/AoR8SH7nMaOn5JONc3/uax1seUz7s.Pah6EJAUmABVl9da', '李老师', '高级讲师', '主讲 Java 后端开发与 Spring Boot 实战。', 'https://cdn.edu.com/avatar/teacher-1.png', '13900000001', 'li.teacher@edu.com', 1, 1, 1),
+  (2, 'teacher_wang', '$2a$10$K/Bk4X/AoR8SH7nMaOn5JONc3/uax1seUz7s.Pah6EJAUmABVl9da', '王老师', '前端讲师', '主讲 Vue 3、工程化与前端项目实战。', 'https://cdn.edu.com/avatar/teacher-2.png', '13900000002', 'wang.teacher@edu.com', 1, 1, 1);
 
 INSERT INTO `course_category` (
   `id`, `parent_id`, `name`, `level`, `sort`, `status`, `created_by`, `updated_by`
 ) VALUES
   (1, 0, '编程开发', 1, 1, 1, 1, 1),
-  (2, 0, '升学考试', 1, 2, 1, 1, 1),
-  (11, 1, 'Java', 2, 1, 1, 1, 1),
-  (12, 1, '前端开发', 2, 2, 1, 1, 1);
+  (2, 0, '设计创作', 1, 2, 1, 1, 1),
+  (3, 1, 'Java', 2, 1, 1, 1, 1),
+  (4, 2, 'UI 设计', 2, 1, 1, 1, 1);
 
 INSERT INTO `course` (
   `id`, `title`, `sub_title`, `teacher_id`, `category_level1_id`, `category_level2_id`,
   `cover_url`, `description`, `difficulty`, `price`, `publish_status`, `study_count`, `sort`, `created_by`, `updated_by`
 ) VALUES
   (
-    3001,
+    1,
     'Spring Boot 实战课',
     '从入门到项目落地',
-    2001,
     1,
-    11,
+    1,
+    3,
     'https://cdn.edu.com/course/springboot-cover.jpg',
     '本课程覆盖 Spring Boot 基础、接口设计、项目分层、数据库集成与综合案例。',
     2,
     199.00,
     1,
-    2,
+    0,
     100,
     1,
     1
   ),
   (
-    3002,
-    '前端工程化入门',
-    '快速掌握现代前端开发流程',
-    2002,
-    1,
-    12,
-    'https://cdn.edu.com/course/frontend-cover.jpg',
-    '本课程覆盖 npm、Vite、组件化开发与前端部署基础。',
+    2,
+    'Figma 界面设计基础',
+    '掌握组件化设计与页面规范',
+    2,
+    2,
+    4,
+    'https://cdn.edu.com/course/figma-cover.jpg',
+    '本课程覆盖 Figma 基础操作、组件样式、界面结构与设计交付。',
     1,
     99.00,
     0,
@@ -366,31 +360,24 @@ INSERT INTO `course` (
     1
   );
 
-INSERT INTO `course_enrollment` (
-  `id`, `course_id`, `member_id`, `enroll_type`, `source_order_no`, `study_progress`,
-  `last_study_section_id`, `status`, `expire_time`, `created_by`, `updated_by`
-) VALUES
-  (4001, 3001, 10001, 2, 'ORDER202606020001', 50.00, 6002, 1, '2027-06-02 23:59:59', 1, 1),
-  (4002, 3001, 10002, 3, 'ADMIN_ASSIGN_001', 0.00, NULL, 1, '2027-06-02 23:59:59', 1, 1);
-
 INSERT INTO `course_chapter` (
   `id`, `course_id`, `title`, `sort`, `created_by`, `updated_by`
 ) VALUES
-  (5001, 3001, '第一章：Spring Boot 基础入门', 1, 1, 1),
-  (5002, 3001, '第二章：接口与数据库实战', 2, 1, 1);
+  (1, 1, '第一章：Spring Boot 基础入门', 1, 1, 1),
+  (2, 2, '第一章：Figma 页面结构', 1, 1, 1);
 
 INSERT INTO `course_section` (
   `id`, `course_id`, `chapter_id`, `title`, `section_type`, `content`,
   `video_url`, `duration`, `is_free_trial`, `sort`, `created_by`, `updated_by`
 ) VALUES
   (
-    6001,
-    3001,
-    5001,
+    1,
+    1,
+    1,
     '1.1 Spring Boot 项目初始化',
     1,
     '介绍 IDEA 创建 Spring Boot 项目的基本步骤。',
-    'https://cdn.edu.com/video/3001-6001.mp4',
+    'https://cdn.edu.com/video/course-1-section-1.mp4',
     900,
     1,
     1,
@@ -398,15 +385,15 @@ INSERT INTO `course_section` (
     1
   ),
   (
-    6002,
-    3001,
-    5002,
-    '2.1 RESTful API 与 MySQL 集成',
-    1,
-    '讲解 Controller、Service、Mapper 分层和数据库访问。',
-    'https://cdn.edu.com/video/3001-6002.mp4',
-    1200,
+    2,
+    2,
+    2,
+    '1.1 Figma 基础画板与布局',
+    2,
+    '讲解画板、栅格、布局与基础组件搭建。',
+    NULL,
     0,
+    1,
     1,
     1,
     1
@@ -416,114 +403,5 @@ INSERT INTO `course_material` (
   `id`, `course_id`, `material_name`, `material_type`, `file_url`,
   `file_size`, `download_limit`, `sort`, `created_by`, `updated_by`
 ) VALUES
-  (7001, 3001, '课程源码.zip', 2, 'https://cdn.edu.com/material/3001-source.zip', 204800, 1, 1, 1, 1),
-  (7002, 3001, '课程讲义.pdf', 1, 'https://cdn.edu.com/material/3001-note.pdf', 102400, 1, 2, 1, 1);
-
-INSERT INTO `course_review` (
-  `id`, `course_id`, `member_id`, `score`, `content`, `anonymous_flag`,
-  `status`, `reviewed_at`, `created_by`, `updated_by`
-) VALUES
-  (8001, 3001, 10001, 5, '课程讲解清晰，适合有一定 Java 基础后继续进阶。', 0, 1, '2026-06-02 10:00:00', 10001, 1);
-
-INSERT INTO `course_task` (
-  `id`, `course_id`, `title`, `task_type`, `description`, `total_score`,
-  `pass_score`, `start_time`, `end_time`, `duration_minutes`, `allow_retake_count`,
-  `status`, `created_by`, `updated_by`
-) VALUES
-  (
-    9001,
-    3001,
-    '第一章单元测验',
-    1,
-    '完成第一章基础知识检测，考试开始后 60 分钟内提交。',
-    100,
-    60,
-    '2026-06-10 09:00:00',
-    '2026-06-20 23:59:59',
-    60,
-    1,
-    1,
-    1,
-    1
-  ),
-  (
-    9002,
-    3001,
-    '接口设计作业',
-    2,
-    '请根据课程内容设计一套课程管理接口文档。',
-    100,
-    60,
-    '2026-06-12 09:00:00',
-    '2026-06-25 23:59:59',
-    NULL,
-    1,
-    1,
-    1,
-    1
-  );
-
-INSERT INTO `task_question` (
-  `id`, `task_id`, `question_type`, `stem`, `options_json`, `answer_json`,
-  `analysis`, `score`, `sort`, `created_by`, `updated_by`
-) VALUES
-  (
-    9101,
-    9001,
-    1,
-    'Spring Boot 默认内嵌的 Web 容器通常是哪个？',
-    JSON_ARRAY(
-      JSON_OBJECT('label', 'A', 'content', 'Tomcat'),
-      JSON_OBJECT('label', 'B', 'content', 'Nginx'),
-      JSON_OBJECT('label', 'C', 'content', 'Apache HTTP Server'),
-      JSON_OBJECT('label', 'D', 'content', 'IIS')
-    ),
-    JSON_ARRAY('A'),
-    'Spring Boot Web Starter 默认使用内嵌 Tomcat。',
-    50,
-    1,
-    1,
-    1
-  ),
-  (
-    9102,
-    9001,
-    3,
-    'Spring Boot 可以通过 application.yml 管理项目配置。',
-    JSON_ARRAY(
-      JSON_OBJECT('label', 'A', 'content', '正确'),
-      JSON_OBJECT('label', 'B', 'content', '错误')
-    ),
-    JSON_ARRAY('A'),
-    'application.yml 是 Spring Boot 常用配置文件之一。',
-    50,
-    2,
-    1,
-    1
-  );
-
-INSERT INTO `task_submission` (
-  `id`, `task_id`, `member_id`, `attempt_no`, `answers_json`, `attachment_url`,
-  `objective_score`, `subjective_score`, `score`, `review_status`, `review_comment`,
-  `submitted_at`, `reviewed_at`, `created_by`, `updated_by`
-) VALUES
-  (
-    9201,
-    9001,
-    10001,
-    1,
-    JSON_ARRAY(
-      JSON_OBJECT('questionId', 9101, 'answer', JSON_ARRAY('A')),
-      JSON_OBJECT('questionId', 9102, 'answer', JSON_ARRAY('A'))
-    ),
-    NULL,
-    100,
-    0,
-    100,
-    1,
-    '客观题全对，继续保持。',
-    '2026-06-12 20:00:00',
-    '2026-06-12 20:10:00',
-    10001,
-    1
-  );
+  (1, 1, '课程源码.zip', 2, 'https://cdn.edu.com/material/course-1-source.zip', 10485760, 1, 1, 1, 1),
+  (2, 2, '界面设计稿.fig', 4, 'https://cdn.edu.com/material/course-2-figma.fig', 5242880, 1, 1, 1, 1);

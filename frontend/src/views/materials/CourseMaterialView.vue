@@ -1,23 +1,39 @@
 <template>
   <div class="page-card">
-    <div class="page-header">
-      <div>
-        <h2 class="page-title">课程资料</h2>
-      </div>
-      <div class="toolbar">
-        <el-button @click="goBack">返回课程列表</el-button>
-        <el-button type="primary" @click="openCreate">新增资料</el-button>
+    <div class="search-card">
+      <el-form :inline="true">
+        <el-form-item label="选择课程">
+          <el-select
+            v-model="courseId"
+            placeholder="请选择课程"
+            filterable
+            style="width: 280px"
+            @change="handleCourseChange"
+          >
+            <el-option
+              v-for="item in courseOptions"
+              :key="item.id"
+              :label="`${item.title} (ID:${item.id})`"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="openCreate" :disabled="!courseId">上传资料</el-button>
+        </el-form-item>
+      </el-form>
+    </div>
+
+    <div v-if="courseInfo" class="material-toolbar">
+      <div class="material-course-info">
+        <div class="material-course-title">{{ courseInfo.title }}</div>
+        <div class="muted" style="margin-top: 6px;">
+          {{ courseInfo.teacher?.name || '-' }} / {{ courseInfo.categoryLevel1?.name || '-' }} / {{ courseInfo.categoryLevel2?.name || '-' }}
+        </div>
       </div>
     </div>
 
-    <div v-if="courseInfo" class="page-card" style="margin-bottom:18px; padding:16px;">
-      <div style="font-size:18px; font-weight:700;">{{ courseInfo.title }}</div>
-      <div class="muted" style="margin-top:6px;">
-        {{ courseInfo.teacher?.name || '-' }} / {{ courseInfo.categoryLevel1?.name || '-' }} / {{ courseInfo.categoryLevel2?.name || '-' }}
-      </div>
-    </div>
-
-    <div class="filter-bar">
+    <div v-if="courseId" class="filter-bar">
       <el-input v-model="query.materialName" placeholder="资料名称" clearable />
       <el-select v-model="query.materialType" placeholder="资料类型" clearable>
         <el-option label="文档" :value="1" />
@@ -28,14 +44,16 @@
       <el-button type="primary" @click="fetchMaterials">查询</el-button>
     </div>
 
-    <el-table :data="materials" border>
+    <el-table v-if="courseId" :data="materials" border>
       <el-table-column prop="id" label="ID" width="90" />
       <el-table-column prop="materialName" label="资料名称" min-width="180" />
       <el-table-column label="资料类型" width="120">
         <template #default="{ row }">{{ materialTypeText(row.materialType) }}</template>
       </el-table-column>
       <el-table-column prop="fileUrl" label="文件地址" min-width="260" show-overflow-tooltip />
-      <el-table-column prop="fileSize" label="大小(字节)" width="120" />
+      <el-table-column label="大小(MB)" width="120">
+        <template #default="{ row }">{{ formatFileSizeMb(row.fileSize) }}</template>
+      </el-table-column>
       <el-table-column label="下载权限" width="130">
         <template #default="{ row }">{{ downloadLimitText(row.downloadLimit) }}</template>
       </el-table-column>
@@ -48,7 +66,7 @@
       </el-table-column>
     </el-table>
 
-    <div class="list-footer">
+    <div v-if="courseId" class="list-footer">
       <el-pagination
         v-model:current-page="query.pageNum"
         v-model:page-size="query.pageSize"
@@ -57,6 +75,11 @@
         @current-change="fetchMaterials"
         @size-change="fetchMaterials"
       />
+    </div>
+
+    <div v-if="!courseId" class="empty-state">
+      <div class="empty-icon-box">↑</div>
+      <p>请先选择一门课程</p>
     </div>
 
     <el-dialog v-model="dialogVisible" :title="editingId ? '编辑资料' : '新增资料'" width="680px">
@@ -72,20 +95,19 @@
             <el-option label="其他" :value="4" />
           </el-select>
         </el-form-item>
-        <el-form-item label="文件地址" prop="fileUrl">
-          <el-input v-model="form.fileUrl" />
-        </el-form-item>
-        <el-form-item label="上传文件">
-          <el-upload
-            :show-file-list="false"
-            :http-request="handleUpload"
-            :before-upload="beforeUpload"
-          >
-            <el-button type="primary" :loading="uploading">上传到 OSS</el-button>
-          </el-upload>
-        </el-form-item>
-        <el-form-item label="文件大小">
-          <el-input-number v-model="form.fileSize" :min="0" />
+        <el-form-item label="文件上传" prop="uploadFile">
+          <div class="upload-field">
+            <input
+              :key="fileInputKey"
+              type="file"
+              class="upload-input"
+              @change="handleFileChange"
+            />
+            <p class="upload-tip">
+              {{ selectedFileName || existingFileName || '支持单个文件，大小不超过 100MB' }}
+            </p>
+            <p v-if="uploadError" class="upload-error">{{ uploadError }}</p>
+          </div>
         </el-form-item>
         <el-form-item label="下载权限">
           <el-radio-group v-model="form.downloadLimit">
@@ -106,10 +128,10 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getCourseDetail } from '@/api/course'
+import { getCourseDetail, getCourseList } from '@/api/course'
 import {
   createMaterial,
   deleteMaterial,
@@ -121,8 +143,9 @@ import {
 
 const route = useRoute()
 const router = useRouter()
-const courseId = Number(route.params.id)
 
+const courseId = ref(null)
+const courseOptions = ref([])
 const courseInfo = ref(null)
 const materials = ref([])
 const total = ref(0)
@@ -131,31 +154,51 @@ const editingId = ref(null)
 const saving = ref(false)
 const uploading = ref(false)
 const formRef = ref()
+const selectedUploadFile = ref(null)
+const selectedFileName = ref('')
+const uploadError = ref('')
+const fileInputKey = ref(0)
 
 const query = reactive({
   pageNum: 1,
   pageSize: 10,
-  courseId,
+  courseId: null,
   materialName: '',
   materialType: null
 })
 
 const defaultForm = () => ({
-  courseId,
+  courseId: courseId.value,
   materialName: '',
   materialType: 1,
   fileUrl: '',
-  fileSize: 0,
   downloadLimit: 1,
   sort: 0
 })
 
 const form = reactive(defaultForm())
 
+const existingFileName = computed(() => {
+  if (!form.fileUrl) {
+    return ''
+  }
+  const parts = form.fileUrl.split('/')
+  return parts[parts.length - 1] || form.fileUrl
+})
+
 const rules = {
   materialName: [{ required: true, message: '请输入资料名称', trigger: 'blur' }],
   materialType: [{ required: true, message: '请选择资料类型', trigger: 'change' }],
-  fileUrl: [{ required: true, message: '请输入文件地址', trigger: 'blur' }]
+  uploadFile: [{
+    validator: (_rule, _value, callback) => {
+      if (form.fileUrl || selectedUploadFile.value) {
+        callback()
+        return
+      }
+      callback(new Error('请选择上传文件'))
+    },
+    trigger: 'change'
+  }]
 }
 
 function materialTypeText(value) {
@@ -166,12 +209,32 @@ function downloadLimitText(value) {
   return ({ 0: '全部学员', 1: '已报名学员' }[value] || '未知')
 }
 
+function formatFileSizeMb(value) {
+  const size = Number(value || 0)
+  return `${(size / 1024 / 1024).toFixed(2)} MB`
+}
+
+async function fetchCourseOptions() {
+  const { data } = await getCourseList({ pageNum: 1, pageSize: 100 })
+  courseOptions.value = data.list || []
+}
+
 async function fetchCourseInfo() {
-  const { data } = await getCourseDetail(courseId)
+  if (!courseId.value) {
+    courseInfo.value = null
+    return
+  }
+  const { data } = await getCourseDetail(courseId.value)
   courseInfo.value = data
 }
 
 async function fetchMaterials() {
+  if (!courseId.value) {
+    materials.value = []
+    total.value = 0
+    return
+  }
+  query.courseId = courseId.value
   const { data } = await getMaterialList(query)
   materials.value = data.list
   total.value = data.total
@@ -179,6 +242,10 @@ async function fetchMaterials() {
 
 function resetForm() {
   Object.assign(form, defaultForm())
+  selectedUploadFile.value = null
+  selectedFileName.value = ''
+  uploadError.value = ''
+  fileInputKey.value += 1
 }
 
 function openCreate() {
@@ -196,7 +263,6 @@ async function openEdit(id) {
     materialName: data.materialName,
     materialType: data.materialType,
     fileUrl: data.fileUrl,
-    fileSize: data.fileSize,
     downloadLimit: data.downloadLimit,
     sort: data.sort
   })
@@ -207,60 +273,222 @@ async function submitForm() {
   await formRef.value.validate()
   saving.value = true
   try {
+    const payload = {
+      ...form,
+      courseId: courseId.value
+    }
+
+    if (selectedUploadFile.value) {
+      uploading.value = true
+      try {
+        const { data } = await uploadMaterialFile(selectedUploadFile.value)
+        payload.fileUrl = data.url
+        payload.fileSize = data.size
+        uploadError.value = ''
+      } finally {
+        uploading.value = false
+      }
+    }
+
     if (editingId.value) {
-      await updateMaterial(editingId.value, form)
+      await updateMaterial(editingId.value, payload)
       ElMessage.success('资料已更新')
     } else {
-      await createMaterial(form)
+      await createMaterial(payload)
       ElMessage.success('资料已创建')
     }
     dialogVisible.value = false
-    fetchMaterials()
+    await fetchMaterials()
   } finally {
     saving.value = false
   }
 }
 
-function beforeUpload(file) {
-  const maxSize = 50 * 1024 * 1024
+function validateFile(file) {
+  const maxSize = 100 * 1024 * 1024
   if (file.size > maxSize) {
-    ElMessage.error('单个文件大小不能超过 50MB')
+    uploadError.value = '单个文件大小不能超过 100MB'
     return false
   }
   return true
 }
 
-async function handleUpload(option) {
-  uploading.value = true
-  try {
-    const { data } = await uploadMaterialFile(option.file)
-    form.fileUrl = data.url
-    form.fileSize = data.size
-    if (!form.materialName) {
-      form.materialName = data.originalFilename
-    }
-    ElMessage.success('文件已上传到 OSS')
-    option.onSuccess?.(data)
-  } catch (error) {
-    option.onError?.(error)
-  } finally {
-    uploading.value = false
+function handleFileChange(event) {
+  const target = event.target
+  const file = target.files?.[0]
+
+  uploadError.value = ''
+
+  if (!file) {
+    selectedUploadFile.value = null
+    selectedFileName.value = ''
+    formRef.value?.validateField('uploadFile')
+    return
   }
+
+  if (!validateFile(file)) {
+    selectedUploadFile.value = null
+    selectedFileName.value = ''
+    fileInputKey.value += 1
+    formRef.value?.validateField('uploadFile')
+    return
+  }
+
+  selectedUploadFile.value = file
+  selectedFileName.value = file.name
+  if (!form.materialName) {
+    form.materialName = file.name
+  }
+  formRef.value?.validateField('uploadFile')
 }
 
 async function handleDelete(id) {
   await ElMessageBox.confirm('确认删除该课程资料？', '删除资料', { type: 'warning' })
   await deleteMaterial(id)
   ElMessage.success('资料已删除')
-  fetchMaterials()
+  await fetchMaterials()
 }
 
-function goBack() {
-  router.push('/courses')
+async function syncCourseContext() {
+  await Promise.all([fetchCourseInfo(), fetchMaterials()])
+}
+
+async function handleCourseChange(value) {
+  query.pageNum = 1
+  query.materialName = ''
+  query.materialType = null
+  router.replace({
+    path: '/course-management/materials',
+    query: { courseId: value }
+  })
+  await syncCourseContext()
 }
 
 onMounted(async () => {
-  await fetchCourseInfo()
-  await fetchMaterials()
+  await fetchCourseOptions()
+  const routeCourseId = Number(route.query.courseId)
+  if (Number.isFinite(routeCourseId) && routeCourseId > 0) {
+    courseId.value = routeCourseId
+  } else {
+    courseId.value = courseOptions.value[0]?.id ?? null
+    if (courseId.value) {
+      router.replace({
+        path: '/course-management/materials',
+        query: { courseId: courseId.value }
+      })
+    }
+  }
+  query.courseId = courseId.value
+  await syncCourseContext()
 })
+
+watch(
+  () => route.query.courseId,
+  async (value) => {
+    const nextId = Number(value)
+    if (!Number.isFinite(nextId) || nextId <= 0 || nextId === courseId.value) {
+      return
+    }
+    courseId.value = nextId
+    query.pageNum = 1
+    query.courseId = nextId
+    await syncCourseContext()
+  }
+)
 </script>
+
+<style scoped>
+.search-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px 20px 4px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.search-card :deep(.el-form-item) {
+  margin-bottom: 12px;
+}
+
+.material-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.material-course-info {
+  min-width: 0;
+}
+
+.material-course-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.upload-field {
+  width: 100%;
+}
+
+.upload-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.upload-input::file-selector-button {
+  margin-right: 12px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(64, 158, 255, 0.12);
+  color: #409eff;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.upload-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.upload-error {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--el-color-danger);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 0;
+}
+
+.empty-icon-box {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: #f5f7fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: #c0c4cc;
+}
+
+.empty-state p {
+  color: #909399;
+  font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .material-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+</style>

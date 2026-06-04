@@ -10,7 +10,8 @@
       </div>
 
       <el-menu
-        :default-active="route.path"
+        :default-active="activeMenu"
+        :default-openeds="openMenus"
         class="side-menu"
         background-color="transparent"
         text-color="#bfcbd9"
@@ -29,10 +30,15 @@
           <el-icon><Grid /></el-icon>
           <span>课程分类</span>
         </el-menu-item>
-        <el-menu-item index="/courses">
-          <el-icon><Reading /></el-icon>
-          <span>课程管理</span>
-        </el-menu-item>
+        <el-sub-menu index="course-hub">
+          <template #title>
+            <el-icon><Reading /></el-icon>
+            <span>课程管理</span>
+          </template>
+          <el-menu-item index="/courses">课程列表</el-menu-item>
+          <el-menu-item index="/course-management/chapters">课程章节</el-menu-item>
+          <el-menu-item index="/course-management/materials">课程资料</el-menu-item>
+        </el-sub-menu>
       </el-menu>
     </aside>
 
@@ -67,6 +73,14 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const currentTitle = computed(() => route.meta?.title || '后台管理')
+const activeMenu = computed(() => route.meta?.activeMenu || route.path)
+const openMenus = computed(() => {
+  const menus = []
+  if (route.path.startsWith('/courses') || route.path.startsWith('/course-management/')) {
+    menus.push('course-hub')
+  }
+  return menus
+})
 
 function handleLogout() {
   authStore.logout()

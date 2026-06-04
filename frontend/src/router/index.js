@@ -38,19 +38,33 @@ const router = createRouter({
           path: 'courses',
           name: 'Courses',
           component: () => import('@/views/courses/CourseListView.vue'),
-          meta: { title: '课程管理' }
+          meta: { title: '课程列表', activeMenu: '/courses' }
+        },
+        {
+          path: 'course-management/chapters',
+          name: 'CourseChapters',
+          component: () => import('@/views/chapters/CourseChapterView.vue'),
+          meta: { title: '课程章节', activeMenu: '/course-management/chapters' }
+        },
+        {
+          path: 'course-management/materials',
+          name: 'CourseMaterials',
+          component: () => import('@/views/materials/CourseMaterialView.vue'),
+          meta: { title: '课程资料', activeMenu: '/course-management/materials' }
         },
         {
           path: 'courses/:id/chapters',
-          name: 'CourseChapters',
-          component: () => import('@/views/chapters/CourseChapterView.vue'),
-          meta: { title: '章节管理' }
+          redirect: (to) => ({
+            path: '/course-management/chapters',
+            query: { courseId: to.params.id }
+          })
         },
         {
           path: 'courses/:id/materials',
-          name: 'CourseMaterials',
-          component: () => import('@/views/materials/CourseMaterialView.vue'),
-          meta: { title: '课程资料' }
+          redirect: (to) => ({
+            path: '/course-management/materials',
+            query: { courseId: to.params.id }
+          })
         }
       ]
     }
