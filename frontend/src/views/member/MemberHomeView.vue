@@ -45,55 +45,48 @@
           <div class="panel-title">课程分类</div>
 
           <div class="category-content">
-            <div class="category-level1">
-              <el-button
-                v-for="item in categoryTree"
-                :key="item.id"
-                class="category-item"
-                :type="item.id === activeCategoryId ? 'primary' : 'default'"
-                text
-                bg
-                @click="activeCategoryId = item.id"
-              >
-                <span>{{ item.name }}</span>
-                <span class="category-arrow">›</span>
-              </el-button>
-            </div>
+            <div class="category-menu-shell">
+              <div class="category-level1">
+                <button
+                  v-for="(item, index) in categoryTree"
+                  :key="item.id"
+                  class="category-item"
+                  :class="{ 'is-active': item.id === activeCategoryId }"
+                  type="button"
+                  @click="handleCategorySelect(item.id)"
+                >
+                  <span>{{ item.name }}</span>
+                  <span class="category-arrow">›</span>
+                </button>
+              </div>
 
-            <div class="category-level2">
-              <div class="category-level2-head">二级分类</div>
-              <div class="category-level2-list">
-                <template v-if="activeSubcategories.length">
-                  <el-button
+              <div
+                v-if="activeSubcategories.length"
+                class="category-level2-float"
+                :style="activeSubmenuStyle"
+              >
+                <div class="category-level2-list">
+                  <button
                     v-for="item in activeSubcategories"
                     :key="item.id"
-                    class="subcategory-chip"
-                    plain
+                    class="subcategory-row"
+                    type="button"
                   >
-                    {{ item.name }}
-                  </el-button>
-                </template>
-                <el-empty
-                  v-else
-                  class="subcategory-empty"
-                  description="暂无二级分类"
-                  :image-size="56"
-                />
+                    <span>{{ item.name }}</span>
+                    <span class="subcategory-arrow">›</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         <div class="banner-panel">
-          <div class="panel-title">轮播推荐</div>
-          <div class="banner-copy">
-            <h1>课程发现与学习入口</h1>
-            <p>轮播图模块预留，后续接入后端配置和推荐内容。</p>
-          </div>
-          <div class="banner-stage">
-            <div class="banner-placeholder">
-              <el-icon class="banner-placeholder-icon"><PictureFilled /></el-icon>
-              <span>轮播图区域</span>
+          <div class="banner-surface">
+            <div class="banner-badge">轮播推荐</div>
+            <div class="banner-track">
+              <div class="banner-main-copy">课程轮播区域</div>
+              <div class="banner-subcopy">Banner</div>
             </div>
           </div>
         </div>
@@ -101,10 +94,7 @@
 
       <section class="course-section">
         <div class="section-head">
-          <div>
-            <h2>热门课程</h2>
-            <p>先完成首页结构，后续再接入真实推荐数据和点击逻辑。</p>
-          </div>
+          <h2>热门课程</h2>
           <el-button plain>查看全部</el-button>
         </div>
 
@@ -137,7 +127,6 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { PictureFilled } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -234,7 +223,7 @@ const hotCourses = [
 ]
 
 const activeNav = ref('home')
-const activeCategoryId = ref(categoryTree[0]?.id ?? null)
+const activeCategoryId = ref(null)
 
 const displayName = computed(
   () => authStore.profile?.displayName || authStore.profile?.username || '学员'
@@ -244,8 +233,23 @@ const activeSubcategories = computed(() => {
   return categoryTree.find((item) => item.id === activeCategoryId.value)?.children || []
 })
 
+const activeSubmenuStyle = computed(() => {
+  const activeIndex = categoryTree.findIndex((item) => item.id === activeCategoryId.value)
+  if (activeIndex < 0) {
+    return {}
+  }
+
+  return {
+    top: `${activeIndex * 52}px`
+  }
+})
+
 function handleNavSelect(key) {
   activeNav.value = key
+}
+
+function handleCategorySelect(id) {
+  activeCategoryId.value = activeCategoryId.value === id ? null : id
 }
 
 function handleLogout() {
@@ -257,7 +261,10 @@ function handleLogout() {
 <style scoped>
 .member-home {
   min-height: 100vh;
-  background: #f5f7fa;
+  background:
+    radial-gradient(circle at top left, rgba(64, 158, 255, 0.14), transparent 26%),
+    radial-gradient(circle at top right, rgba(31, 45, 61, 0.08), transparent 24%),
+    linear-gradient(180deg, #f6f8fc 0%, #eef3f9 100%);
   color: #303133;
 }
 
@@ -268,8 +275,9 @@ function handleLogout() {
   gap: 24px;
   padding: 0 32px;
   height: 64px;
-  background: #fff;
-  border-bottom: 1px solid #dcdfe6;
+  background: rgba(255, 255, 255, 0.88);
+  border-bottom: 1px solid rgba(220, 223, 230, 0.9);
+  backdrop-filter: blur(14px);
 }
 
 .brand-block {
@@ -293,8 +301,8 @@ function handleLogout() {
 
 .profile-entry {
   border: 1px solid #dcdfe6;
-  background: #fff;
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 10px;
   padding: 6px 10px;
   display: flex;
   align-items: center;
@@ -344,122 +352,194 @@ function handleLogout() {
 .category-panel,
 .banner-panel,
 .course-section {
-  background: #fff;
-  border: 1px solid #dcdfe6;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(220, 223, 230, 0.95);
+  border-radius: 14px;
+  box-shadow: 0 14px 32px rgba(31, 45, 61, 0.06);
 }
 
 .category-panel {
   padding: 16px;
+  min-height: 260px;
+  position: relative;
+  overflow: visible;
+  z-index: 3;
 }
 
 .panel-title {
   font-size: 14px;
   font-weight: 600;
   color: #1f2d3d;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .category-content {
-  display: grid;
-  grid-template-columns: 144px minmax(0, 1fr);
-  gap: 16px;
+  min-height: 208px;
+}
+
+.category-menu-shell {
+  width: 180px;
+  position: relative;
 }
 
 .category-level1 {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  background: linear-gradient(180deg, #eef4ff 0%, #e7effc 100%);
+  border: 1px solid #d6e2f2;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 10px 26px rgba(71, 104, 151, 0.12);
 }
 
 .category-item {
   width: 100%;
-  margin-left: 0;
+  padding: 0 18px;
+  min-height: 52px;
+  border: 0;
+  border-bottom: 1px solid #d9e5f5;
+  background: transparent;
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  color: #606266;
+  color: #4c5e78;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.category-item:last-child {
+  border-bottom: 0;
+}
+
+.category-item:hover,
+.category-item.is-active {
+  background: rgba(255, 255, 255, 0.42);
+  color: #1f2d3d;
 }
 
 .category-arrow {
   font-size: 14px;
-  color: #909399;
+  color: #7f92ad;
 }
 
-.category-level2 {
-  min-height: 100%;
-  padding: 16px;
-  background: #f9fbff;
-  border: 1px solid #ebeef5;
-}
-
-.category-level2-head {
-  font-size: 14px;
-  font-weight: 600;
-  color: #409eff;
+.category-level2-float {
+  position: absolute;
+  left: calc(100% + 12px);
+  width: 190px;
+  padding: 0;
+  background: linear-gradient(180deg, #eef4ff 0%, #e7effc 100%);
+  border: 1px solid #d6e2f2;
+  border-radius: 14px;
+  box-shadow: 0 14px 30px rgba(71, 104, 151, 0.18);
+  overflow: hidden;
 }
 
 .category-level2-list {
-  margin-top: 14px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: flex-start;
-}
-
-.subcategory-chip {
-  margin-left: 0;
-}
-
-.subcategory-empty {
-  padding: 12px 0 0;
-  width: 100%;
-}
-
-.banner-panel {
-  padding: 16px;
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  gap: 20px;
-}
-
-.banner-copy {
   display: flex;
   flex-direction: column;
-  justify-content: center;
 }
 
-.banner-copy h1 {
-  margin: 0 0 12px;
-  font-size: 28px;
-  line-height: 1.25;
+.subcategory-row {
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  border-bottom: 1px solid #d9e5f5;
+  background: transparent;
+  color: #4c5e78;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.subcategory-row:last-child {
+  border-bottom: 0;
+}
+
+.subcategory-row:hover {
+  background: rgba(255, 255, 255, 0.42);
   color: #1f2d3d;
 }
 
-.banner-copy p {
-  margin: 0;
-  color: #606266;
-  line-height: 1.8;
+.subcategory-arrow {
+  color: #7f92ad;
 }
 
-.banner-stage {
-  min-height: 240px;
+.banner-panel {
+  min-height: 260px;
+  padding: 0;
+  overflow: hidden;
 }
 
-.banner-placeholder {
+.banner-surface {
   height: 100%;
-  min-height: 240px;
-  border: 1px dashed #c0c4cc;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  color: #909399;
-  background: #fafafa;
+  justify-content: space-between;
+  padding: 18px 22px;
+  background:
+    linear-gradient(135deg, rgba(18, 86, 170, 0.92) 0%, rgba(54, 126, 214, 0.88) 52%, rgba(110, 170, 234, 0.78) 100%),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.3), transparent 26%);
+  position: relative;
 }
 
-.banner-placeholder-icon {
-  font-size: 28px;
+.banner-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.08) 14%, transparent 14%, transparent 50%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.08) 52%, transparent 52%),
+    linear-gradient(0deg, rgba(7, 34, 73, 0.12), rgba(7, 34, 73, 0.12));
+  pointer-events: none;
+}
+
+.banner-badge,
+.banner-track {
+  position: relative;
+  z-index: 1;
+}
+
+.banner-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: #fff;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+
+.banner-track {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+}
+
+.banner-main-copy {
+  font-size: clamp(30px, 4vw, 46px);
+  font-weight: 700;
+  line-height: 1.1;
+  color: #fff;
+}
+
+.banner-subcopy {
+  margin-top: 10px;
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 14px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
 }
 
 .course-section {
@@ -469,10 +549,10 @@ function handleLogout() {
 
 .section-head {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 18px;
-  padding-bottom: 16px;
+  padding-bottom: 14px;
   border-bottom: 1px solid #ebeef5;
 }
 
@@ -496,7 +576,15 @@ function handleLogout() {
 
 .course-card {
   border: 1px solid #dcdfe6;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.course-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(31, 45, 61, 0.08);
 }
 
 .course-cover {
@@ -575,14 +663,31 @@ function handleLogout() {
     padding-top: 18px;
   }
 
-  .category-content,
-  .banner-panel {
+  .hero-section {
     grid-template-columns: 1fr;
   }
 
-  .banner-stage,
-  .banner-placeholder {
-    min-height: 200px;
+  .category-content {
+    min-height: auto;
+  }
+
+  .category-menu-shell {
+    width: 100%;
+  }
+
+  .category-level2-float {
+    position: static;
+    width: 100%;
+    margin-top: 10px;
+  }
+
+  .category-panel,
+  .banner-panel {
+    min-height: auto;
+  }
+
+  .banner-surface {
+    min-height: 220px;
   }
 }
 
