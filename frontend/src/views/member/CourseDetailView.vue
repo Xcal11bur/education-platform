@@ -74,8 +74,7 @@
                   class="chapter-card"
                 >
                   <div class="chapter-head">
-                    <div class="chapter-index">章节 {{ chapterIndex + 1 }}</div>
-                    <h3>{{ chapter.title }}</h3>
+                    <h3>{{ displayChapterTitle(chapter, chapterIndex) }}</h3>
                   </div>
 
                   <div v-if="chapter.sections?.length" class="section-list">
@@ -86,7 +85,7 @@
                     >
                       <div class="section-main">
                         <span class="section-order">{{ chapterIndex + 1 }}.{{ sectionIndex + 1 }}</span>
-                        <span class="section-title">{{ section.title }}</span>
+                        <span class="section-title">{{ displaySectionTitle(section, chapterIndex, sectionIndex) }}</span>
                         <el-tag v-if="section.isFreeTrial === 1" size="small" effect="plain">
                           试看
                         </el-tag>
@@ -206,6 +205,30 @@ function formatDuration(duration) {
   const minutes = Math.floor(total / 60)
   const seconds = total % 60
   return `${minutes}分${String(seconds).padStart(2, '0')}秒`
+}
+
+function displayChapterTitle(chapter, chapterIndex) {
+  const title = String(chapter?.title || '').trim()
+  if (!title) {
+    return `第${chapterIndex + 1}章`
+  }
+  return title.replace(/^\s*章节\s*\d+\s*[:：-]?\s*/i, '')
+}
+
+function displaySectionTitle(section, chapterIndex, sectionIndex) {
+  const title = String(section?.title || '').trim()
+  if (!title) {
+    return `小节 ${chapterIndex + 1}.${sectionIndex + 1}`
+  }
+
+  const orderPatterns = [
+    new RegExp(`^${chapterIndex + 1}\\.${sectionIndex + 1}\\s*`),
+    new RegExp(`^${chapterIndex + 1}[-_.]${sectionIndex + 1}\\s*`),
+    /^\d+\.\d+\s*/,
+    /^第\s*\d+\s*节\s*[:：-]?\s*/
+  ]
+
+  return orderPatterns.reduce((value, pattern) => value.replace(pattern, '').trim(), title)
 }
 
 async function fetchCourseDetail() {
@@ -395,20 +418,15 @@ onMounted(fetchCourseDetail)
 }
 
 .chapter-head {
-  padding: 18px 20px 16px;
+  padding: 20px;
   background: #f8fafc;
   border-bottom: 1px solid #ebeef5;
-}
-
-.chapter-index {
-  color: #409eff;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
 }
 
 .chapter-head h3 {
-  margin: 8px 0 0;
+  margin: 0;
   font-size: 18px;
   color: #1f2d3d;
 }

@@ -26,6 +26,12 @@ const router = createRouter({
       meta: { title: '教育平台首页', roles: ['MEMBER'] }
     },
     {
+      path: '/member/courses',
+      name: 'MemberCourseList',
+      component: () => import('@/views/member/MemberCourseListView.vue'),
+      meta: { title: '课程学习', roles: ['MEMBER'] }
+    },
+    {
       path: '/member/courses/:id',
       name: 'MemberCourseDetail',
       component: () => import('@/views/member/CourseDetailView.vue'),

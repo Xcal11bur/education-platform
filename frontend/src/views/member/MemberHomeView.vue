@@ -142,7 +142,7 @@
       <section class="course-section">
         <div class="section-head">
           <h2>热门课程</h2>
-          <el-button plain>查看全部</el-button>
+          <el-button plain @click="router.push('/member/courses')">查看全部</el-button>
         </div>
 
         <div class="course-grid">
@@ -177,11 +177,12 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getPortalCategoryTree } from '@/api/category'
 import { getPortalCourseBanners, getPortalCourseList } from '@/api/course'
 
+const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -196,7 +197,6 @@ const navItems = [
 const categoryTree = ref([])
 const portalCourses = ref([])
 const bannerCourses = ref([])
-const activeNav = ref('home')
 const activeCategoryId = ref(null)
 const activeCourseCategoryId = ref(null)
 const activeBannerIndex = ref(0)
@@ -206,6 +206,13 @@ let bannerTimer = null
 const displayName = computed(
   () => authStore.profile?.displayName || authStore.profile?.username || '学员'
 )
+
+const activeNav = computed(() => {
+  if (route.path.startsWith('/member/courses')) {
+    return 'courses'
+  }
+  return 'home'
+})
 
 const activeSubcategories = computed(() => {
   return categoryTree.value.find((item) => item.id === activeCategoryId.value)?.children || []
@@ -266,7 +273,13 @@ const activeCourseMenuStyle = computed(() => {
 })
 
 function handleNavSelect(key) {
-  activeNav.value = key
+  const routeMap = {
+    home: '/member-home',
+    courses: '/member/courses'
+  }
+  if (routeMap[key]) {
+    router.push(routeMap[key])
+  }
 }
 
 function handleCategorySelect(id) {
