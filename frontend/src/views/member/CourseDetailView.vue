@@ -58,7 +58,7 @@
           </div>
 
           <div class="action-row">
-            <el-button type="primary" size="large">立即学习</el-button>
+            <el-button type="primary" size="large" @click="goLearnPage()">立即学习</el-button>
           </div>
         </div>
       </section>
@@ -82,6 +82,7 @@
                       v-for="(section, sectionIndex) in chapter.sections"
                       :key="section.id"
                       class="section-row"
+                      @click="goLearnPage(section.id)"
                     >
                       <div class="section-main">
                         <span class="section-order">{{ chapterIndex + 1 }}.{{ sectionIndex + 1 }}</span>
@@ -167,6 +168,7 @@ const course = ref({
 })
 
 const chapters = computed(() => course.value.chapters || [])
+const firstSectionId = computed(() => chapters.value.find((chapter) => chapter.sections?.length)?.sections?.[0]?.id || null)
 
 const categoryText = computed(() =>
   [course.value.categoryLevel1?.name, course.value.categoryLevel2?.name].filter(Boolean).join(' / ') || '-'
@@ -229,6 +231,14 @@ function displaySectionTitle(section, chapterIndex, sectionIndex) {
   ]
 
   return orderPatterns.reduce((value, pattern) => value.replace(pattern, '').trim(), title)
+}
+
+function goLearnPage(sectionId = null) {
+  if (sectionId) {
+    router.push(`/member/courses/${route.params.id}/learn/sections/${sectionId}`)
+    return
+  }
+  router.push(`/member/courses/${route.params.id}/learn`)
 }
 
 async function fetchCourseDetail() {
@@ -443,10 +453,16 @@ onMounted(fetchCourseDetail)
   gap: 18px;
   padding: 16px 20px;
   border-bottom: 1px solid #f1f4f8;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
 .section-row:last-child {
   border-bottom: 0;
+}
+
+.section-row:hover {
+  background: #fafcff;
 }
 
 .section-main {

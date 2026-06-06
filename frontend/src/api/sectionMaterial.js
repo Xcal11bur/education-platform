@@ -7,6 +7,13 @@ export function getSectionMaterialList(sectionId) {
   })
 }
 
+export function getPortalSectionMaterialList(sectionId) {
+  return request({
+    url: `/portal/sections/${sectionId}/materials`,
+    method: 'get'
+  })
+}
+
 export function getSectionMaterialDetail(id) {
   return request({
     url: `/admin/section-materials/${id}`,

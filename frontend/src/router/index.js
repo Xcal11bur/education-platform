@@ -32,6 +32,18 @@ const router = createRouter({
       meta: { title: '课程学习', roles: ['MEMBER'] }
     },
     {
+      path: '/member/courses/:id/learn',
+      name: 'MemberCourseLearn',
+      component: () => import('@/views/member/MemberCourseLearnView.vue'),
+      meta: { title: '课程学习', roles: ['MEMBER'] }
+    },
+    {
+      path: '/member/courses/:id/learn/sections/:sectionId',
+      name: 'MemberCourseSectionLearn',
+      component: () => import('@/views/member/MemberCourseSectionLearnView.vue'),
+      meta: { title: '章节详情', roles: ['MEMBER'] }
+    },
+    {
       path: '/member/courses/:id',
       name: 'MemberCourseDetail',
       component: () => import('@/views/member/CourseDetailView.vue'),

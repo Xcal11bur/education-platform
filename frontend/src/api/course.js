@@ -30,6 +30,13 @@ export function getPortalCourseDetail(id) {
   })
 }
 
+export function getPortalCourseMaterials(courseId) {
+  return request({
+    url: `/portal/courses/${courseId}/materials`,
+    method: 'get'
+  })
+}
+
 export function getCourseDetail(id) {
   return request({
     url: `/admin/courses/${id}`,
