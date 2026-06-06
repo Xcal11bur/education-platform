@@ -101,8 +101,20 @@
         <el-form-item label="价格">
           <el-input-number v-model="form.price" :min="0" :precision="2" />
         </el-form-item>
-        <el-form-item label="封面地址">
-          <el-input v-model="form.coverUrl" />
+        <el-form-item label="课程封面" prop="coverUpload">
+          <div class="upload-field">
+            <input
+              :key="coverFileInputKey"
+              type="file"
+              class="upload-input"
+              accept="image/*"
+              @change="handleCoverFileChange"
+            />
+            <p class="upload-tip">
+              {{ selectedCoverFileName || existingCoverFileName || '仅支持图片文件，保存时自动上传到 OSS' }}
+            </p>
+            <p v-if="coverUploadError" class="upload-error">{{ coverUploadError }}</p>
+          </div>
         </el-form-item>
         <el-form-item label="发布状态">
           <el-radio-group v-model="form.publishStatus">
@@ -136,6 +148,7 @@ import {
   createCourse,
   getCourseDetail,
   getCourseList,
+  uploadCourseCoverFile,
   updateCourse,
   updateCoursePublishStatus
 } from '@/api/course'
@@ -149,6 +162,10 @@ const dialogVisible = ref(false)
 const saving = ref(false)
 const editingId = ref(null)
 const formRef = ref()
+const selectedCoverFile = ref(null)
+const selectedCoverFileName = ref('')
+const coverUploadError = ref('')
+const coverFileInputKey = ref(0)
 
 const query = reactive({
   pageNum: 1,
@@ -179,7 +196,17 @@ const rules = {
   title: [{ required: true, message: '请输入课程标题', trigger: 'blur' }],
   teacherId: [{ required: true, message: '请选择教师', trigger: 'change' }],
   categoryLevel1Id: [{ required: true, message: '请选择一级分类', trigger: 'change' }],
-  categoryLevel2Id: [{ required: true, message: '请选择二级分类', trigger: 'change' }]
+  categoryLevel2Id: [{ required: true, message: '请选择二级分类', trigger: 'change' }],
+  coverUpload: [{
+    validator: (_rule, _value, callback) => {
+      if (form.coverUrl || selectedCoverFile.value) {
+        callback()
+        return
+      }
+      callback(new Error('请选择课程封面'))
+    },
+    trigger: 'change'
+  }]
 }
 
 const level1Categories = computed(() => categoryTree.value)
@@ -196,6 +223,14 @@ const level2CategoryOptions = computed(() =>
 const currentLevel2Options = computed(() => {
   const parent = categoryTree.value.find((item) => item.id === form.categoryLevel1Id)
   return parent?.children || []
+})
+
+const existingCoverFileName = computed(() => {
+  if (!form.coverUrl) {
+    return ''
+  }
+  const parts = form.coverUrl.split('/')
+  return parts[parts.length - 1] || form.coverUrl
 })
 
 function publishStatusText(value) {
@@ -236,6 +271,11 @@ async function fetchCategories() {
 
 function resetForm() {
   Object.assign(form, defaultForm())
+  selectedCoverFile.value = null
+  selectedCoverFileName.value = ''
+  coverUploadError.value = ''
+  coverFileInputKey.value += 1
+  formRef.value?.clearValidate()
 }
 
 function openCreate() {
@@ -276,6 +316,13 @@ async function submitForm() {
       ...form,
       price: Number(form.price || 0)
     }
+
+    if (selectedCoverFile.value) {
+      const { data } = await uploadCourseCoverFile(selectedCoverFile.value)
+      payload.coverUrl = data.url
+      coverUploadError.value = ''
+    }
+
     if (editingId.value) {
       await updateCourse(editingId.value, payload)
       ElMessage.success('课程已更新')
@@ -288,6 +335,49 @@ async function submitForm() {
   } finally {
     saving.value = false
   }
+}
+
+function validateCoverFile(file) {
+  const maxSize = 10 * 1024 * 1024
+  const isImage = typeof file.type === 'string' && file.type.startsWith('image/')
+
+  if (!isImage) {
+    coverUploadError.value = '仅支持上传图片格式的封面文件'
+    return false
+  }
+
+  if (file.size > maxSize) {
+    coverUploadError.value = '课程封面大小不能超过 10MB'
+    return false
+  }
+
+  return true
+}
+
+function handleCoverFileChange(event) {
+  const target = event.target
+  const file = target.files?.[0]
+
+  coverUploadError.value = ''
+
+  if (!file) {
+    selectedCoverFile.value = null
+    selectedCoverFileName.value = ''
+    formRef.value?.validateField('coverUpload')
+    return
+  }
+
+  if (!validateCoverFile(file)) {
+    selectedCoverFile.value = null
+    selectedCoverFileName.value = ''
+    coverFileInputKey.value += 1
+    formRef.value?.validateField('coverUpload')
+    return
+  }
+
+  selectedCoverFile.value = file
+  selectedCoverFileName.value = file.name
+  formRef.value?.validateField('coverUpload')
 }
 
 async function togglePublish(row) {
@@ -316,3 +406,40 @@ onMounted(async () => {
   await fetchCourses()
 })
 </script>
+
+<style scoped>
+.upload-field {
+  width: 100%;
+}
+
+.upload-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.upload-input::file-selector-button {
+  margin-right: 12px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(64, 158, 255, 0.12);
+  color: #409eff;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.upload-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.upload-error {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--el-color-danger);
+}
+</style>

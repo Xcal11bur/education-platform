@@ -152,9 +152,12 @@
             class="course-card"
             @click="goCourseDetail(course.id)"
           >
-            <div class="course-cover">
-              <el-tag size="small" effect="plain">{{ course.badge }}</el-tag>
-              <div class="course-index">{{ course.code }}</div>
+            <div class="course-cover" :style="buildCourseCoverStyle(course.coverUrl)">
+              <div class="course-cover-overlay"></div>
+              <div class="course-cover-top">
+                <el-tag size="small" effect="dark" class="course-badge">{{ course.badge }}</el-tag>
+                <div class="course-index">{{ course.code }}</div>
+              </div>
             </div>
             <div class="course-body">
               <div class="course-category">{{ course.category }}</div>
@@ -346,6 +349,17 @@ function buildBannerDotStyle(coverUrl) {
   }
   return {
     backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.12), rgba(15, 23, 42, 0.42)), url(${coverUrl})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center'
+  }
+}
+
+function buildCourseCoverStyle(coverUrl) {
+  if (!coverUrl) {
+    return {}
+  }
+  return {
+    backgroundImage: `url(${coverUrl})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center'
   }
@@ -854,18 +868,45 @@ onBeforeUnmount(() => {
 }
 
 .course-cover {
-  height: 68px;
+  position: relative;
+  height: 170px;
   padding: 16px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: space-between;
-  background: #f8fbff;
+  background:
+    linear-gradient(135deg, #eaf2ff 0%, #d9e8ff 100%);
   border-bottom: 1px solid #ebeef5;
 }
 
+.course-cover-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.08) 0%, rgba(15, 23, 42, 0.48) 100%);
+}
+
+.course-cover-top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.course-badge {
+  border: 0;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
+}
+
 .course-index {
+  position: relative;
+  z-index: 1;
   font-size: 12px;
-  color: #909399;
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 700;
+  letter-spacing: 0.06em;
 }
 
 .course-body {
@@ -889,8 +930,8 @@ onBeforeUnmount(() => {
 .course-body p {
   margin: 0;
   color: #606266;
-  line-height: 1.7;
-  min-height: 72px;
+  line-height: 1.6;
+  min-height: 66px;
 }
 
 .course-meta {

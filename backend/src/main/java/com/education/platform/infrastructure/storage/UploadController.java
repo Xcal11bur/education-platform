@@ -19,4 +19,9 @@ public class UploadController {
     public Result<UploadResult> uploadMaterial(@RequestParam("file") MultipartFile file) {
         return Result.success(ossUploadService.uploadMaterial(file));
     }
+
+    @PostMapping("/course-covers")
+    public Result<UploadResult> uploadCourseCover(@RequestParam("file") MultipartFile file) {
+        return Result.success(ossUploadService.uploadCourseCover(file));
+    }
 }
