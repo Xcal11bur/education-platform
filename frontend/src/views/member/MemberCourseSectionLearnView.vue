@@ -25,7 +25,6 @@
         </div>
         <div v-else class="video-placeholder">
           <el-icon><VideoPlay /></el-icon>
-          <span>当前小节暂无视频，以下为图文内容。</span>
         </div>
 
         <div class="section-content-block">

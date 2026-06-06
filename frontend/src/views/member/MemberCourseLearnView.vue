@@ -143,7 +143,6 @@
         <template v-else>
           <div class="content-card placeholder-card">
             <h2>{{ activeMenuLabel }}</h2>
-            <p>该功能后续实现，当前先预留页面结构。</p>
           </div>
         </template>
       </section>

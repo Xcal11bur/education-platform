@@ -155,17 +155,34 @@
           <el-input v-model="sectionForm.title" />
         </el-form-item>
         <el-form-item label="类型" prop="sectionType">
-          <el-select v-model="sectionForm.sectionType" style="width: 100%">
+          <el-select v-model="sectionForm.sectionType" style="width: 100%" @change="handleSectionTypeChange">
             <el-option label="视频" :value="1" />
             <el-option label="图文" :value="2" />
             <el-option label="直播回放" :value="3" />
           </el-select>
         </el-form-item>
-        <el-form-item label="视频地址">
+        <el-form-item v-if="supportsSectionVideo" label="视频地址">
           <el-input v-model="sectionForm.videoUrl" />
         </el-form-item>
+        <el-form-item v-if="supportsSectionVideo" label="视频上传">
+          <div class="upload-field">
+            <input
+              :key="sectionVideoFileInputKey"
+              type="file"
+              class="upload-input"
+              accept="video/*,.mp4,.mov,.m4v,.webm,.avi,.mkv"
+              @change="handleSectionVideoFileChange"
+            />
+            <p class="upload-tip">
+              {{ selectedSectionVideoFileName || existingSectionVideoFileName || '支持 mp4/mov/webm/avi/mkv，大小不超过 500MB' }}
+            </p>
+            <p v-if="sectionVideoUploadError" class="upload-error">{{ sectionVideoUploadError }}</p>
+          </div>
+        </el-form-item>
         <el-form-item label="时长">
-          <el-input-number v-model="sectionForm.duration" :min="0" style="width: 100%" />
+          <div class="readonly-field">
+            <span>{{ formatSectionDuration(sectionForm.duration) }}</span>
+          </div>
         </el-form-item>
         <el-form-item label="试看">
           <el-radio-group v-model="sectionForm.isFreeTrial">
@@ -304,6 +321,7 @@ import {
   deleteChapter,
   deleteSection,
   getChapterTree,
+  uploadSectionVideoFile,
   updateChapter,
   updateSection
 } from '@/api/chapter'
@@ -337,6 +355,10 @@ const sectionDialogVisible = ref(false)
 const sectionSaving = ref(false)
 const editingSectionId = ref(null)
 const sectionFormRef = ref()
+const selectedSectionVideoUploadFile = ref(null)
+const selectedSectionVideoFileName = ref('')
+const sectionVideoUploadError = ref('')
+const sectionVideoFileInputKey = ref(0)
 const sectionForm = reactive({
   title: '',
   sectionType: 1,
@@ -398,6 +420,16 @@ const currentChapter = computed(() =>
   chapters.value.find((item) => item.id === activeChapterId.value) || null
 )
 
+const supportsSectionVideo = computed(() => [1, 3].includes(sectionForm.sectionType))
+
+const existingSectionVideoFileName = computed(() => {
+  if (!sectionForm.videoUrl) {
+    return ''
+  }
+  const parts = sectionForm.videoUrl.split('/')
+  return parts[parts.length - 1] || sectionForm.videoUrl
+})
+
 const existingMaterialFileName = computed(() => {
   if (!materialForm.fileUrl) {
     return ''
@@ -425,6 +457,10 @@ function resetSectionForm() {
     isFreeTrial: 0,
     sort: 0
   })
+  selectedSectionVideoUploadFile.value = null
+  selectedSectionVideoFileName.value = ''
+  sectionVideoUploadError.value = ''
+  sectionVideoFileInputKey.value += 1
   editingSectionId.value = null
   sectionFormRef.value?.clearValidate()
 }
@@ -479,6 +515,16 @@ function downloadLimitText(value) {
 function formatFileSizeMb(value) {
   const size = Number(value || 0)
   return `${(size / 1024 / 1024).toFixed(2)} MB`
+}
+
+function formatSectionDuration(value) {
+  const total = Number(value || 0)
+  if (!total) {
+    return '--'
+  }
+  const minutes = Math.floor(total / 60)
+  const seconds = total % 60
+  return `${minutes}分${String(seconds).padStart(2, '0')}秒`
 }
 
 async function fetchCourseOptions() {
@@ -612,11 +658,21 @@ async function submitSection() {
   await sectionFormRef.value.validate()
   sectionSaving.value = true
   try {
+    const payload = {
+      ...sectionForm
+    }
+
+    if (selectedSectionVideoUploadFile.value) {
+      const { data } = await uploadSectionVideoFile(selectedSectionVideoUploadFile.value)
+      payload.videoUrl = data.url
+      sectionVideoUploadError.value = ''
+    }
+
     if (editingSectionId.value) {
-      await updateSection(editingSectionId.value, sectionForm)
+      await updateSection(editingSectionId.value, payload)
       ElMessage.success('小节已更新')
     } else {
-      await createSection(activeChapterId.value, sectionForm)
+      await createSection(activeChapterId.value, payload)
       ElMessage.success('小节已创建')
     }
     sectionDialogVisible.value = false
@@ -704,6 +760,93 @@ function validateMaterialFile(file) {
     return false
   }
   return true
+}
+
+function handleSectionTypeChange() {
+  if (supportsSectionVideo.value) {
+    return
+  }
+  selectedSectionVideoUploadFile.value = null
+  selectedSectionVideoFileName.value = ''
+  sectionVideoUploadError.value = ''
+  sectionVideoFileInputKey.value += 1
+}
+
+function readVideoDuration(file) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video')
+    const objectUrl = URL.createObjectURL(file)
+
+    const cleanup = () => {
+      URL.revokeObjectURL(objectUrl)
+      video.removeAttribute('src')
+      video.load()
+    }
+
+    video.preload = 'metadata'
+    video.onloadedmetadata = () => {
+      const duration = Number.isFinite(video.duration) ? Math.round(video.duration) : 0
+      cleanup()
+      resolve(duration)
+    }
+    video.onerror = () => {
+      cleanup()
+      reject(new Error('failed to read video metadata'))
+    }
+    video.src = objectUrl
+  })
+}
+
+function validateSectionVideoFile(file) {
+  const maxSize = 500 * 1024 * 1024
+  const isVideo = typeof file.type === 'string' && file.type.startsWith('video/')
+  const lowerName = file.name?.toLowerCase() || ''
+  const allowedExtensions = ['.mp4', '.mov', '.m4v', '.webm', '.avi', '.mkv']
+  const hasValidExtension = allowedExtensions.some((extension) => lowerName.endsWith(extension))
+
+  if (!isVideo && !hasValidExtension) {
+    sectionVideoUploadError.value = '仅支持上传常见视频格式文件'
+    return false
+  }
+
+  if (file.size > maxSize) {
+    sectionVideoUploadError.value = '视频文件大小不能超过 500MB'
+    return false
+  }
+
+  return true
+}
+
+function handleSectionVideoFileChange(event) {
+  const target = event.target
+  const file = target.files?.[0]
+
+  sectionVideoUploadError.value = ''
+
+  if (!file) {
+    selectedSectionVideoUploadFile.value = null
+    selectedSectionVideoFileName.value = ''
+    return
+  }
+
+  if (!validateSectionVideoFile(file)) {
+    selectedSectionVideoUploadFile.value = null
+    selectedSectionVideoFileName.value = ''
+    sectionVideoFileInputKey.value += 1
+    return
+  }
+
+  selectedSectionVideoUploadFile.value = file
+  selectedSectionVideoFileName.value = file.name
+  sectionForm.videoUrl = ''
+
+  readVideoDuration(file)
+    .then((duration) => {
+      sectionForm.duration = duration
+    })
+    .catch(() => {
+      sectionForm.duration = 0
+    })
 }
 
 function handleMaterialFileChange(event) {
@@ -906,6 +1049,22 @@ watch(
   font-size: 12px;
   color: var(--el-color-danger);
 }
+
+.readonly-field {
+  width: 100%;
+  min-height: 40px;
+  padding: 10px 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
+  background: #f8fafc;
+  box-sizing: border-box;
+  color: #303133;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 
 .empty-state {
   text-align: center;

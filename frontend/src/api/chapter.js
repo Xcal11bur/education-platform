@@ -38,6 +38,20 @@ export function createSection(chapterId, data) {
   })
 }
 
+export function uploadSectionVideoFile(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/admin/uploads/section-videos',
+    method: 'post',
+    timeout: 10 * 60 * 1000,
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
+
 export function updateSection(id, data) {
   return request({
     url: `/admin/sections/${id}`,

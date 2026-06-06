@@ -26,6 +26,15 @@ public class OssUploadService {
             "image/bmp",
             "image/svg+xml"
     );
+    private static final List<String> VIDEO_EXTENSIONS = List.of(
+            ".mp4",
+            ".mov",
+            ".m4v",
+            ".webm",
+            ".avi",
+            ".mkv"
+    );
+    private static final long SECTION_VIDEO_MAX_SIZE = 500L * 1024 * 1024;
 
     private final OssProperties ossProperties;
 
@@ -48,6 +57,15 @@ public class OssUploadService {
         }
         validateImageFile(file);
         return upload(file, "course-covers");
+    }
+
+    public UploadResult uploadSectionVideo(MultipartFile file) {
+        validateOssConfig();
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "upload file must not be empty");
+        }
+        validateSectionVideoFile(file);
+        return upload(file, "section-videos");
     }
 
     private void validateOssConfig() {
@@ -120,6 +138,23 @@ public class OssUploadService {
         String contentType = file.getContentType();
         if (!StringUtils.hasText(contentType) || !IMAGE_CONTENT_TYPES.contains(contentType.toLowerCase())) {
             throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "course cover must be an image");
+        }
+    }
+
+    private void validateSectionVideoFile(MultipartFile file) {
+        if (file.getSize() > SECTION_VIDEO_MAX_SIZE) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "section video must not exceed 500MB");
+        }
+
+        String contentType = StringUtils.trimWhitespace(file.getContentType());
+        if (StringUtils.hasText(contentType) && contentType.toLowerCase().startsWith("video/")) {
+            return;
+        }
+
+        String filename = Objects.requireNonNullElse(file.getOriginalFilename(), "").toLowerCase();
+        boolean validExtension = VIDEO_EXTENSIONS.stream().anyMatch(filename::endsWith);
+        if (!validExtension) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "section video must be a valid video file");
         }
     }
 
