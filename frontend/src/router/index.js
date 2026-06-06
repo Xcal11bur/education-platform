@@ -26,6 +26,12 @@ const router = createRouter({
       meta: { title: '教育平台首页', roles: ['MEMBER'] }
     },
     {
+      path: '/member/courses/:id',
+      name: 'MemberCourseDetail',
+      component: () => import('@/views/member/CourseDetailView.vue'),
+      meta: { title: '课程详情', roles: ['MEMBER'] }
+    },
+    {
       path: '/',
       component: () => import('@/layout/AppLayout.vue'),
       redirect: '/dashboard',
@@ -42,6 +48,12 @@ const router = createRouter({
           name: 'Teachers',
           component: () => import('@/views/teachers/TeacherListView.vue'),
           meta: { title: '教师管理', roles: ['ADMIN'] }
+        },
+        {
+          path: 'banners',
+          name: 'CourseBanners',
+          component: () => import('@/views/banners/CourseBannerView.vue'),
+          meta: { title: '轮播图管理', roles: ['ADMIN'] }
         },
         {
           path: 'categories',

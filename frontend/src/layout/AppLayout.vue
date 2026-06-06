@@ -26,6 +26,10 @@
           <el-icon><UserFilled /></el-icon>
           <span>教师管理</span>
         </el-menu-item>
+        <el-menu-item index="/banners">
+          <el-icon><Picture /></el-icon>
+          <span>轮播图管理</span>
+        </el-menu-item>
         <el-menu-item index="/categories">
           <el-icon><Grid /></el-icon>
           <span>课程分类</span>

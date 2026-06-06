@@ -7,6 +7,13 @@ export function getCategoryTree() {
   })
 }
 
+export function getPortalCategoryTree() {
+  return request({
+    url: '/portal/course-categories/tree',
+    method: 'get'
+  })
+}
+
 export function getCategoryDetail(id) {
   return request({
     url: `/admin/course-categories/${id}`,
