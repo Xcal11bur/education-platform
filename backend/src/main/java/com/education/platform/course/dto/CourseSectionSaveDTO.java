@@ -10,5 +10,4 @@ public class CourseSectionSaveDTO {
     private String title;
 
     private Integer isFreeTrial;
-    private Integer sort;
 }

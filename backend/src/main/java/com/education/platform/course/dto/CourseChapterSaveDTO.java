@@ -8,6 +8,4 @@ public class CourseChapterSaveDTO {
 
     @NotBlank(message = "title must not be blank")
     private String title;
-
-    private Integer sort;
 }

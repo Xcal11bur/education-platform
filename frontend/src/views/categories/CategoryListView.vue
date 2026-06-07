@@ -31,7 +31,6 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="排序" width="90" align="center" prop="sort" />
         <el-table-column label="操作" width="170" align="center">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row.id)">编辑</el-button>
@@ -61,9 +60,6 @@
               :value="item.id"
             />
           </el-select>
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="form.sort" :min="0" style="width: 100%" />
         </el-form-item>
         <el-form-item label="状态">
           <el-radio-group v-model="form.status">
@@ -105,7 +101,6 @@ const formRef = ref()
 const defaultForm = () => ({
   name: '',
   parentId: null,
-  sort: 0,
   status: 1
 })
 
@@ -126,7 +121,6 @@ function flattenTree(nodes, result = []) {
       parentId: node.parentId,
       name: node.name,
       level: node.level,
-      sort: node.sort,
       status: node.status
     })
     if (node.children?.length) {
@@ -164,7 +158,6 @@ async function handleEdit(id) {
   Object.assign(form, {
     name: data.name,
     parentId: data.parentId === 0 ? null : data.parentId,
-    sort: data.sort ?? 0,
     status: data.status ?? 1
   })
   dialogVisible.value = true
@@ -186,7 +179,6 @@ async function submitForm() {
       name: form.name,
       parentId,
       level: parentId === 0 ? 1 : 2,
-      sort: form.sort,
       status: form.status
     }
 

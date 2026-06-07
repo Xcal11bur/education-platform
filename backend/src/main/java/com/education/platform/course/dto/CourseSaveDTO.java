@@ -27,5 +27,4 @@ public class CourseSaveDTO {
     private Integer difficulty;
     private BigDecimal price;
     private Integer publishStatus;
-    private Integer sort;
 }

@@ -20,6 +20,5 @@ public class CourseSectionContentSaveDTO {
     private String mimeType;
     private Long fileSize;
     private Integer duration;
-    private Integer sort;
     private Integer status;
 }

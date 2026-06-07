@@ -21,7 +21,9 @@
     </div>
 
     <el-table :data="banners" border>
-      <el-table-column prop="id" label="ID" width="80" />
+      <el-table-column label="ID" width="80">
+        <template #default="{ $index }">{{ rowIndex($index) }}</template>
+      </el-table-column>
       <el-table-column label="封面" width="150">
         <template #default="{ row }">
           <img v-if="row.coverUrl" :src="row.coverUrl" alt="cover" class="banner-cover-preview" />
@@ -41,7 +43,6 @@
       </el-table-column>
       <el-table-column prop="teacherName" label="讲师" min-width="120" />
       <el-table-column prop="studyCount" label="学习人数" width="110" />
-      <el-table-column prop="sort" label="排序" width="90" />
       <el-table-column label="状态" width="100">
         <template #default="{ row }">
           <span class="status-dot" :class="{ 'is-disabled': row.status !== 1 }">
@@ -88,9 +89,6 @@
         </el-form-item>
         <el-form-item label="副标题">
           <el-input v-model="form.subTitle" placeholder="留空则默认使用课程副标题" />
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="form.sort" :min="0" style="width: 100%" />
         </el-form-item>
         <el-form-item label="状态">
           <el-radio-group v-model="form.status">
@@ -139,7 +137,6 @@ const defaultForm = () => ({
   courseId: null,
   title: '',
   subTitle: '',
-  sort: 0,
   status: 1
 })
 
@@ -182,7 +179,6 @@ async function openEdit(id) {
     courseId: data.courseId,
     title: data.title || '',
     subTitle: data.subTitle || '',
-    sort: data.sort ?? 0,
     status: data.status ?? 1
   })
   dialogVisible.value = true
@@ -204,6 +200,10 @@ async function submitForm() {
   } finally {
     saving.value = false
   }
+}
+
+function rowIndex(index) {
+  return (query.pageNum - 1) * query.pageSize + index + 1
 }
 
 async function toggleStatus(row) {

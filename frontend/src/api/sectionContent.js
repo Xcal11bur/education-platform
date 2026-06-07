@@ -52,14 +52,3 @@ export function deleteSectionContent(id) {
     method: 'delete'
   })
 }
-
-export function reorderSectionContents(sectionId, items) {
-  return Promise.all(
-    items.map((item, index) =>
-      updateSectionContent(item.id, {
-        ...item,
-        sort: index + 1
-      })
-    )
-  )
-}

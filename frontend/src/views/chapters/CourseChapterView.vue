@@ -13,7 +13,7 @@
             <el-option
               v-for="item in courseOptions"
               :key="item.id"
-              :label="`${item.title} (ID:${item.id})`"
+              :label="item.title"
               :value="item.id"
             />
           </el-select>
@@ -34,7 +34,6 @@
       >
         <el-table-column type="index" label="#" width="56" align="center" />
         <el-table-column label="章节标题" min-width="280" prop="title" />
-        <el-table-column label="排序" width="90" align="center" prop="sort" />
         <el-table-column label="小节数" width="90" align="center">
           <template #default="{ row }">
             {{ row.sections?.length || 0 }}
@@ -89,7 +88,6 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="排序" width="90" align="center" prop="sort" />
         <el-table-column label="操作" width="220" align="center">
           <template #default="{ row }">
             <el-button link type="primary" @click="openSectionContents(row)">内容</el-button>
@@ -115,9 +113,6 @@
       <el-form ref="chapterFormRef" :model="chapterForm" :rules="chapterRules" label-width="70px">
         <el-form-item label="标题" prop="title">
           <el-input v-model="chapterForm.title" />
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="chapterForm.sort" :min="0" style="width: 100%" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -168,7 +163,6 @@
             {{ row.fileName || row.fileUrl || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="排序" width="90" align="center" prop="sort" />
         <el-table-column label="状态" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'">
@@ -176,17 +170,8 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="260" align="center" fixed="right">
-          <template #default="{ row, $index }">
-            <el-button link type="primary" :disabled="$index === 0" @click="moveContent(row, -1)">上移</el-button>
-            <el-button
-              link
-              type="primary"
-              :disabled="$index === sectionContents.length - 1"
-              @click="moveContent(row, 1)"
-            >
-              下移
-            </el-button>
+        <el-table-column label="操作" width="160" align="center" fixed="right">
+          <template #default="{ row }">
             <el-button link type="primary" @click="openContentEdit(row.id)">编辑</el-button>
             <el-button link type="danger" @click="handleDeleteContent(row.id)">删除</el-button>
           </template>
@@ -254,9 +239,6 @@
             <editor-content :editor="editor" class="tiptap-surface" />
           </div>
         </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="contentForm.sort" :min="0" style="width: 100%" />
-        </el-form-item>
         <el-form-item label="状态">
           <el-radio-group v-model="contentForm.status">
             <el-radio :value="1">启用</el-radio>
@@ -288,9 +270,6 @@
             <el-radio :value="1">是</el-radio>
             <el-radio :value="0">否</el-radio>
           </el-radio-group>
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="sectionForm.sort" :min="0" style="width: 100%" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -329,7 +308,6 @@ import {
   deleteSectionContent,
   getSectionContentDetail,
   getSectionContentList,
-  reorderSectionContents,
   updateSectionContent
 } from '@/api/sectionContent'
 
@@ -347,8 +325,7 @@ const chapterSaving = ref(false)
 const editingChapterId = ref(null)
 const chapterFormRef = ref()
 const chapterForm = reactive({
-  title: '',
-  sort: 0
+  title: ''
 })
 
 const sectionDialogVisible = ref(false)
@@ -357,8 +334,7 @@ const editingSectionId = ref(null)
 const sectionFormRef = ref()
 const sectionForm = reactive({
   title: '',
-  isFreeTrial: 0,
-  sort: 0
+  isFreeTrial: 0
 })
 
 const sectionContentDialogVisible = ref(false)
@@ -387,7 +363,6 @@ const contentForm = reactive({
   mimeType: '',
   fileSize: 0,
   duration: 0,
-  sort: 0,
   status: 1
 })
 
@@ -495,8 +470,7 @@ const contentUploadTip = computed(() => {
 
 function resetChapterForm() {
   Object.assign(chapterForm, {
-    title: '',
-    sort: 0
+    title: ''
   })
   editingChapterId.value = null
   chapterFormRef.value?.clearValidate()
@@ -505,8 +479,7 @@ function resetChapterForm() {
 function resetSectionForm() {
   Object.assign(sectionForm, {
     title: '',
-    isFreeTrial: 0,
-    sort: 0
+    isFreeTrial: 0
   })
   editingSectionId.value = null
   sectionFormRef.value?.clearValidate()
@@ -524,7 +497,6 @@ function resetContentForm() {
     mimeType: '',
     fileSize: 0,
     duration: 0,
-    sort: 0,
     status: 1
   })
   editingContentId.value = null
@@ -594,15 +566,13 @@ async function handleCourseChange(value) {
 
 function openChapterCreate() {
   resetChapterForm()
-  chapterForm.sort = chapters.value.length + 1
   chapterDialogVisible.value = true
 }
 
 function openChapterEdit(chapter) {
   editingChapterId.value = chapter.id
   Object.assign(chapterForm, {
-    title: chapter.title,
-    sort: chapter.sort ?? 0
+    title: chapter.title
   })
   chapterDialogVisible.value = true
 }
@@ -616,7 +586,6 @@ function openSectionCreate() {
     return
   }
   resetSectionForm()
-  sectionForm.sort = (currentChapter.value.sections?.length || 0) + 1
   sectionDialogVisible.value = true
 }
 
@@ -625,8 +594,7 @@ function openSectionEdit(section) {
   editingSectionId.value = section.id
   Object.assign(sectionForm, {
     title: section.title,
-    isFreeTrial: section.isFreeTrial,
-    sort: section.sort
+    isFreeTrial: section.isFreeTrial
   })
   sectionDialogVisible.value = true
 }
@@ -643,7 +611,6 @@ function openContentCreate() {
     return
   }
   resetContentForm()
-  contentForm.sort = (sectionContents.value.length || 0) + 1
   contentDialogVisible.value = true
 }
 
@@ -662,7 +629,6 @@ async function openContentEdit(id) {
     mimeType: data.mimeType || '',
     fileSize: data.fileSize || 0,
     duration: data.duration || 0,
-    sort: data.sort || 0,
     status: data.status ?? 1
   })
   contentDialogVisible.value = true
@@ -694,8 +660,7 @@ async function submitSection() {
   try {
     const payload = {
       title: sectionForm.title,
-      isFreeTrial: sectionForm.isFreeTrial,
-      sort: sectionForm.sort
+      isFreeTrial: sectionForm.isFreeTrial
     }
 
     if (editingSectionId.value) {
@@ -791,36 +756,6 @@ async function handleDeleteContent(id) {
   await deleteSectionContent(id)
   ElMessage.success('内容项已删除')
   await fetchSectionContents(currentContentSection.value?.id)
-}
-
-async function moveContent(row, direction) {
-  const currentIndex = sectionContents.value.findIndex((item) => item.id === row.id)
-  const targetIndex = currentIndex + direction
-  if (currentIndex < 0 || targetIndex < 0 || targetIndex >= sectionContents.value.length) {
-    return
-  }
-  const nextItems = [...sectionContents.value]
-  const [currentItem] = nextItems.splice(currentIndex, 1)
-  nextItems.splice(targetIndex, 0, currentItem)
-  await reorderSectionContents(
-    currentContentSection.value.id,
-    nextItems.map((item) => ({
-      title: item.title,
-      contentType: item.contentType,
-      contentHtml: item.contentHtml,
-      contentJson: item.contentJson,
-      fileUrl: item.fileUrl,
-      objectKey: item.objectKey,
-      fileName: item.fileName,
-      mimeType: item.mimeType,
-      fileSize: item.fileSize,
-      duration: item.duration,
-      status: item.status,
-      id: item.id
-    }))
-  )
-  sectionContents.value = nextItems.map((item, index) => ({ ...item, sort: index + 1 }))
-  ElMessage.success('排序已更新')
 }
 
 function readVideoDuration(file) {

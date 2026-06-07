@@ -160,8 +160,20 @@ public class CourseBannerServiceImpl extends ServiceImpl<CourseBannerMapper, Cou
         banner.setCourseId(request.getCourseId());
         banner.setTitle(request.getTitle());
         banner.setSubTitle(request.getSubTitle());
-        banner.setSort(request.getSort() == null ? 0 : request.getSort());
+        if (banner.getId() == null) {
+            banner.setSort(nextSort());
+        }
         banner.setStatus(request.getStatus() == null ? StatusEnum.ENABLED.getCode() : request.getStatus());
+    }
+
+    private int nextSort() {
+        CourseBanner last = getOne(
+                Wrappers.<CourseBanner>lambdaQuery()
+                        .orderByDesc(CourseBanner::getSort, CourseBanner::getId)
+                        .last("LIMIT 1"),
+                false
+        );
+        return last == null || last.getSort() == null ? 1 : last.getSort() + 1;
     }
 
     private Course validateCourseForBanner(Long courseId) {

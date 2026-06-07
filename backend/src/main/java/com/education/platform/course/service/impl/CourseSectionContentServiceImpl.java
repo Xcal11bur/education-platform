@@ -85,6 +85,7 @@ public class CourseSectionContentServiceImpl extends ServiceImpl<CourseSectionCo
         content.setChapterId(section.getChapterId());
         content.setSectionId(section.getId());
         fillContent(content, request);
+        content.setSort(nextContentSort(sectionId));
         save(content);
     }
 
@@ -138,7 +139,6 @@ public class CourseSectionContentServiceImpl extends ServiceImpl<CourseSectionCo
         content.setMimeType(TYPE_RICH_TEXT.equals(contentType) ? null : request.getMimeType());
         content.setFileSize(request.getFileSize() == null ? 0L : request.getFileSize());
         content.setDuration(TYPE_VIDEO.equals(contentType) && request.getDuration() != null ? request.getDuration() : 0);
-        content.setSort(request.getSort() == null ? 0 : request.getSort());
         content.setStatus(request.getStatus() == null ? 1 : request.getStatus());
     }
 
@@ -222,6 +222,17 @@ public class CourseSectionContentServiceImpl extends ServiceImpl<CourseSectionCo
             throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "section content not found");
         }
         return content;
+    }
+
+    private int nextContentSort(Long sectionId) {
+        CourseSectionContent last = getOne(
+                Wrappers.<CourseSectionContent>lambdaQuery()
+                        .eq(CourseSectionContent::getSectionId, sectionId)
+                        .orderByDesc(CourseSectionContent::getSort, CourseSectionContent::getId)
+                        .last("LIMIT 1"),
+                false
+        );
+        return last == null || last.getSort() == null ? 1 : last.getSort() + 1;
     }
 
     private List<CourseSectionContentVO> fillContentVOs(List<CourseSectionContent> contents) {

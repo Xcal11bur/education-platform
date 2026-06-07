@@ -26,7 +26,9 @@
     </div>
 
     <el-table :data="courses" border>
-      <el-table-column prop="id" label="ID" width="90" />
+      <el-table-column label="ID" width="90">
+        <template #default="{ $index }">{{ rowIndex($index) }}</template>
+      </el-table-column>
       <el-table-column prop="title" label="课程标题" min-width="200" />
       <el-table-column prop="teacherName" label="教师" min-width="120" />
       <el-table-column label="分类" min-width="180">
@@ -123,9 +125,6 @@
             <el-radio :value="2">已下架</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="form.sort" :min="0" />
-        </el-form-item>
         <el-form-item label="课程详情">
           <el-input v-model="form.description" type="textarea" :rows="5" />
         </el-form-item>
@@ -186,8 +185,7 @@ const defaultForm = () => ({
   description: '',
   difficulty: 1,
   price: 0,
-  publishStatus: 0,
-  sort: 0
+  publishStatus: 0
 })
 
 const form = reactive(defaultForm())
@@ -298,8 +296,7 @@ async function openEdit(id) {
     description: data.description,
     difficulty: data.difficulty,
     price: Number(data.price || 0),
-    publishStatus: data.publishStatus,
-    sort: data.sort
+    publishStatus: data.publishStatus
   })
   dialogVisible.value = true
 }
@@ -385,6 +382,10 @@ async function togglePublish(row) {
   await updateCoursePublishStatus(row.id, { publishStatus })
   ElMessage.success(publishStatus === 1 ? '课程已上架' : '课程已下架')
   fetchCourses()
+}
+
+function rowIndex(index) {
+  return (query.pageNum - 1) * query.pageSize + index + 1
 }
 
 function goChapters(id) {

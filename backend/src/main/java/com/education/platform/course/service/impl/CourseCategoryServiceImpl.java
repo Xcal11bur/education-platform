@@ -1,6 +1,7 @@
 package com.education.platform.course.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.education.platform.common.enums.StatusEnum;
 import com.education.platform.common.exception.BusinessException;
 import com.education.platform.common.result.ResultCode;
@@ -60,9 +61,7 @@ public class CourseCategoryServiceImpl extends ServiceImpl<CourseCategoryMapper,
         validateCategoryRequest(request, null);
         CourseCategory category = new CourseCategory();
         BeanUtils.copyProperties(request, category);
-        if (category.getSort() == null) {
-            category.setSort(0);
-        }
+        category.setSort(nextSort(request.getParentId()));
         if (category.getStatus() == null) {
             category.setStatus(StatusEnum.ENABLED.getCode());
         }
@@ -77,7 +76,6 @@ public class CourseCategoryServiceImpl extends ServiceImpl<CourseCategoryMapper,
         category.setParentId(request.getParentId());
         category.setName(request.getName());
         category.setLevel(request.getLevel());
-        category.setSort(request.getSort() == null ? 0 : request.getSort());
         category.setStatus(request.getStatus() == null ? category.getStatus() : request.getStatus());
         updateById(category);
     }
@@ -151,6 +149,17 @@ public class CourseCategoryServiceImpl extends ServiceImpl<CourseCategoryMapper,
             throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "course category not found");
         }
         return category;
+    }
+
+    private int nextSort(Long parentId) {
+        CourseCategory last = getOne(
+                Wrappers.<CourseCategory>lambdaQuery()
+                        .eq(CourseCategory::getParentId, parentId)
+                        .orderByDesc(CourseCategory::getSort, CourseCategory::getId)
+                        .last("LIMIT 1"),
+                false
+        );
+        return last == null || last.getSort() == null ? 1 : last.getSort() + 1;
     }
 
     private CourseCategoryVO buildTree(CourseCategory category, Map<Long, List<CourseCategory>> childrenMap) {

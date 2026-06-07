@@ -92,9 +92,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         if (course.getPublishStatus() == null) {
             course.setPublishStatus(PUBLISH_STATUS_DRAFT);
         }
-        if (course.getSort() == null) {
-            course.setSort(0);
-        }
+        course.setSort(nextSort());
         course.setStudyCount(0);
         save(course);
     }
@@ -104,15 +102,12 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     public void updateCourse(Long id, CourseSaveDTO request) {
         Course course = getCourseOrThrow(id);
         validateCourseRequest(request);
-        BeanUtils.copyProperties(request, course, "id", "studyCount");
+        BeanUtils.copyProperties(request, course, "id", "studyCount", "sort");
         if (course.getDifficulty() == null) {
             course.setDifficulty(1);
         }
         if (course.getPrice() == null) {
             course.setPrice(BigDecimal.ZERO);
-        }
-        if (course.getSort() == null) {
-            course.setSort(0);
         }
         updateById(course);
     }
@@ -199,6 +194,16 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
             throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "course not found");
         }
         return course;
+    }
+
+    private int nextSort() {
+        Course last = getOne(
+                Wrappers.<Course>lambdaQuery()
+                        .orderByDesc(Course::getSort, Course::getId)
+                        .last("LIMIT 1"),
+                false
+        );
+        return last == null || last.getSort() == null ? 1 : last.getSort() + 1;
     }
 
     private void validateCourseRequest(CourseSaveDTO request) {

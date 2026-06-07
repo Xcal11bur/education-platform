@@ -43,7 +43,7 @@ public class CourseChapterServiceImpl extends ServiceImpl<CourseChapterMapper, C
         CourseChapter chapter = new CourseChapter();
         chapter.setCourseId(courseId);
         chapter.setTitle(request.getTitle());
-        chapter.setSort(request.getSort() == null ? 0 : request.getSort());
+        chapter.setSort(nextChapterSort(courseId));
         save(chapter);
     }
 
@@ -52,7 +52,6 @@ public class CourseChapterServiceImpl extends ServiceImpl<CourseChapterMapper, C
     public void updateChapter(Long id, CourseChapterSaveDTO request) {
         CourseChapter chapter = getChapterOrThrow(id);
         chapter.setTitle(request.getTitle());
-        chapter.setSort(request.getSort() == null ? 0 : request.getSort());
         updateById(chapter);
     }
 
@@ -121,6 +120,17 @@ public class CourseChapterServiceImpl extends ServiceImpl<CourseChapterMapper, C
             throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "chapter not found");
         }
         return chapter;
+    }
+
+    private int nextChapterSort(Long courseId) {
+        CourseChapter last = getOne(
+                Wrappers.<CourseChapter>lambdaQuery()
+                        .eq(CourseChapter::getCourseId, courseId)
+                        .orderByDesc(CourseChapter::getSort, CourseChapter::getId)
+                        .last("LIMIT 1"),
+                false
+        );
+        return last == null || last.getSort() == null ? 1 : last.getSort() + 1;
     }
 
     private CourseSectionVO toSectionVO(CourseSection section) {

@@ -16,6 +16,5 @@ public class CourseCategorySaveDTO {
     @NotNull(message = "level must not be null")
     private Integer level;
 
-    private Integer sort;
     private Integer status;
 }

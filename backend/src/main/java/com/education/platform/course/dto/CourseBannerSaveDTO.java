@@ -11,6 +11,5 @@ public class CourseBannerSaveDTO {
 
     private String title;
     private String subTitle;
-    private Integer sort;
     private Integer status;
 }

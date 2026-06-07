@@ -15,7 +15,9 @@
     </div>
 
     <el-table :data="teachers" border>
-      <el-table-column prop="id" label="ID" width="90" />
+      <el-table-column label="ID" width="90">
+        <template #default="{ $index }">{{ rowIndex($index) }}</template>
+      </el-table-column>
       <el-table-column prop="name" label="姓名" min-width="140" />
       <el-table-column prop="loginName" label="登录账号" min-width="150" />
       <el-table-column prop="title" label="职称" min-width="140" />
@@ -176,6 +178,10 @@ async function submitForm() {
   } finally {
     saving.value = false
   }
+}
+
+function rowIndex(index) {
+  return (query.pageNum - 1) * query.pageSize + index + 1
 }
 
 async function toggleStatus(row) {

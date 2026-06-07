@@ -13,7 +13,7 @@
             <el-option
               v-for="item in courseOptions"
               :key="item.id"
-              :label="`${item.title} (ID:${item.id})`"
+              :label="item.title"
               :value="item.id"
             />
           </el-select>

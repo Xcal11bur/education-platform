@@ -21,5 +21,4 @@ public class CourseMaterialSaveDTO {
 
     private Long fileSize;
     private Integer downloadLimit;
-    private Integer sort;
 }

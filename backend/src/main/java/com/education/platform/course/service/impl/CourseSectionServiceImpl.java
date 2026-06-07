@@ -37,6 +37,7 @@ public class CourseSectionServiceImpl extends ServiceImpl<CourseSectionMapper, C
         section.setCourseId(chapter.getCourseId());
         section.setChapterId(chapterId);
         fillSection(section, request);
+        section.setSort(nextSectionSort(chapterId));
         save(section);
     }
 
@@ -64,7 +65,17 @@ public class CourseSectionServiceImpl extends ServiceImpl<CourseSectionMapper, C
     private void fillSection(CourseSection section, CourseSectionSaveDTO request) {
         section.setTitle(request.getTitle());
         section.setIsFreeTrial(request.getIsFreeTrial() == null ? 0 : request.getIsFreeTrial());
-        section.setSort(request.getSort() == null ? 0 : request.getSort());
+    }
+
+    private int nextSectionSort(Long chapterId) {
+        CourseSection last = getOne(
+                Wrappers.<CourseSection>lambdaQuery()
+                        .eq(CourseSection::getChapterId, chapterId)
+                        .orderByDesc(CourseSection::getSort, CourseSection::getId)
+                        .last("LIMIT 1"),
+                false
+        );
+        return last == null || last.getSort() == null ? 1 : last.getSort() + 1;
     }
 
     private CourseChapter getChapterOrThrow(Long chapterId) {

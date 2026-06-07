@@ -74,9 +74,7 @@ public class CourseMaterialServiceImpl extends ServiceImpl<CourseMaterialMapper,
         if (material.getDownloadLimit() == null) {
             material.setDownloadLimit(1);
         }
-        if (material.getSort() == null) {
-            material.setSort(0);
-        }
+        material.setSort(nextSort(request.getCourseId()));
         save(material);
     }
 
@@ -85,15 +83,12 @@ public class CourseMaterialServiceImpl extends ServiceImpl<CourseMaterialMapper,
     public void updateMaterial(Long id, CourseMaterialSaveDTO request) {
         CourseMaterial material = getMaterialOrThrow(id);
         getCourseOrThrow(request.getCourseId(), false);
-        BeanUtils.copyProperties(request, material, "id");
+        BeanUtils.copyProperties(request, material, "id", "sort");
         if (material.getFileSize() == null) {
             material.setFileSize(0L);
         }
         if (material.getDownloadLimit() == null) {
             material.setDownloadLimit(1);
-        }
-        if (material.getSort() == null) {
-            material.setSort(0);
         }
         updateById(material);
     }
@@ -135,6 +130,17 @@ public class CourseMaterialServiceImpl extends ServiceImpl<CourseMaterialMapper,
             throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "course material not found");
         }
         return material;
+    }
+
+    private int nextSort(Long courseId) {
+        CourseMaterial last = getOne(
+                Wrappers.<CourseMaterial>lambdaQuery()
+                        .eq(CourseMaterial::getCourseId, courseId)
+                        .orderByDesc(CourseMaterial::getSort, CourseMaterial::getId)
+                        .last("LIMIT 1"),
+                false
+        );
+        return last == null || last.getSort() == null ? 1 : last.getSort() + 1;
     }
 
     private List<CourseMaterialVO> fillMaterialVOs(List<CourseMaterial> materials) {
