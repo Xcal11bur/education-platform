@@ -50,6 +50,12 @@ const router = createRouter({
       meta: { title: '课程详情', roles: ['MEMBER'] }
     },
     {
+      path: '/member/profile',
+      name: 'MemberProfile',
+      component: () => import('@/views/member/MemberProfileView.vue'),
+      meta: { title: '个人中心', roles: ['MEMBER'] }
+    },
+    {
       path: '/',
       component: () => import('@/layout/AppLayout.vue'),
       redirect: '/dashboard',

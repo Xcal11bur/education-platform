@@ -11,4 +11,5 @@ public class UserProfileResponse {
     private String username;
     private String role;
     private String displayName;
+    private String avatar;
 }

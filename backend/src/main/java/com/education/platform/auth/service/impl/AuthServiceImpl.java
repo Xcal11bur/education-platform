@@ -97,6 +97,18 @@ public class AuthServiceImpl implements AuthService {
     public UserProfileResponse getCurrentProfile() {
         LoginUser loginUser = SecurityUtils.getLoginUser()
                 .orElseThrow(() -> new BusinessException(ResultCode.UNAUTHORIZED));
+        if (ROLE_MEMBER.equals(loginUser.getRole()) && loginUser.getUserId() != null) {
+            Member member = memberService.getById(loginUser.getUserId());
+            if (member != null) {
+                return UserProfileResponse.builder()
+                        .userId(member.getId())
+                        .username(member.getMobile())
+                        .role(ROLE_MEMBER)
+                        .displayName(member.getNickname())
+                        .avatar(member.getAvatar())
+                        .build();
+            }
+        }
         return UserProfileResponse.builder()
                 .userId(loginUser.getUserId())
                 .username(loginUser.getUsername())

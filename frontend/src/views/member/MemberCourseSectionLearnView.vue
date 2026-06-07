@@ -7,17 +7,16 @@
       <div class="topbar-title">章节详情</div>
       <el-dropdown trigger="click" placement="bottom-end">
         <button class="profile-entry" type="button">
-          <el-avatar class="profile-avatar" :size="34">
+          <el-avatar class="profile-avatar" :size="34" :src="avatarUrl">
             {{ displayName.slice(0, 1).toUpperCase() }}
           </el-avatar>
           <div class="profile-copy">
             <strong>{{ displayName }}</strong>
-            <span>学员端</span>
           </div>
         </button>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item>个人中心</el-dropdown-item>
+            <el-dropdown-item @click="goProfile">个人中心</el-dropdown-item>
             <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
           </el-dropdown-menu>
         </template>
@@ -154,6 +153,8 @@ const displayName = computed(
   () => authStore.profile?.displayName || authStore.profile?.username || '学员'
 )
 
+const avatarUrl = computed(() => authStore.profile?.avatar || '')
+
 const flattenedSections = computed(() =>
   chapters.value.flatMap((chapter, chapterIndex) =>
     (chapter.sections || []).map((section, sectionIndex) => ({
@@ -261,6 +262,10 @@ function selectSection(sectionId) {
 function handleLogout() {
   authStore.logout()
   router.push('/login')
+}
+
+function goProfile() {
+  router.push('/member/profile')
 }
 
 async function fetchCourseDetail() {
@@ -372,9 +377,8 @@ onBeforeUnmount(() => {
 
 .profile-copy {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  line-height: 1.2;
+  align-items: center;
+  line-height: 1;
 }
 
 .profile-copy strong {
@@ -384,11 +388,6 @@ onBeforeUnmount(() => {
   white-space: nowrap;
   color: #fff;
   font-size: 14px;
-}
-
-.profile-copy span {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 12px;
 }
 
 .section-shell {

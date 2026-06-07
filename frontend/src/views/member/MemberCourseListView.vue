@@ -22,17 +22,16 @@
 
       <el-dropdown trigger="click" placement="bottom-end">
         <button class="profile-entry" type="button">
-          <el-avatar class="profile-avatar" :size="34">
+          <el-avatar class="profile-avatar" :size="34" :src="avatarUrl">
             {{ displayName.slice(0, 1).toUpperCase() }}
           </el-avatar>
           <div class="profile-copy">
             <strong>{{ displayName }}</strong>
-            <span>学员端</span>
           </div>
         </button>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item>个人中心</el-dropdown-item>
+            <el-dropdown-item @click="goProfile">个人中心</el-dropdown-item>
             <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
           </el-dropdown-menu>
         </template>
@@ -199,6 +198,8 @@ const displayName = computed(
   () => authStore.profile?.displayName || authStore.profile?.username || '学员'
 )
 
+const avatarUrl = computed(() => authStore.profile?.avatar || '')
+
 const currentPanelTitle = computed(() => {
   if (selectedLevel2Id.value) {
     for (const item of categoryTree.value) {
@@ -268,6 +269,10 @@ function handleNavSelect(key) {
 function handleLogout() {
   authStore.logout()
   router.push('/login')
+}
+
+function goProfile() {
+  router.push('/member/profile')
 }
 
 function goCourseDetail(id) {
@@ -458,9 +463,8 @@ watch(filteredCourses, (courses) => {
 
 .profile-copy {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  line-height: 1.2;
+  align-items: center;
+  line-height: 1;
 }
 
 .profile-copy strong {
@@ -470,11 +474,6 @@ watch(filteredCourses, (courses) => {
   white-space: nowrap;
   color: #303133;
   font-size: 14px;
-}
-
-.profile-copy span {
-  color: #909399;
-  font-size: 12px;
 }
 
 .course-main {

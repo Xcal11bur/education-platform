@@ -22,17 +22,16 @@
 
       <el-dropdown trigger="click" placement="bottom-end">
         <button class="profile-entry" type="button">
-          <el-avatar class="profile-avatar" :size="34">
+          <el-avatar class="profile-avatar" :size="34" :src="avatarUrl">
             {{ displayName.slice(0, 1).toUpperCase() }}
           </el-avatar>
           <div class="profile-copy">
             <strong>{{ displayName }}</strong>
-            <span>学员端</span>
           </div>
         </button>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item>个人中心</el-dropdown-item>
+            <el-dropdown-item @click="goProfile">个人中心</el-dropdown-item>
             <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
           </el-dropdown-menu>
         </template>
@@ -212,6 +211,8 @@ let categoryScrollTimer = null
 const displayName = computed(
   () => authStore.profile?.displayName || authStore.profile?.username || '学员'
 )
+
+const avatarUrl = computed(() => authStore.profile?.avatar || '')
 
 const activeNav = computed(() => {
   if (route.path.startsWith('/member/courses')) {
@@ -426,7 +427,12 @@ function handleSubcategorySelect(id) {
 }
 
 async function initPortalHome() {
-  await Promise.all([fetchPortalCategories(), fetchPortalCourses(), fetchBannerCourses()])
+  await Promise.all([
+    authStore.fetchProfile(),
+    fetchPortalCategories(),
+    fetchPortalCourses(),
+    fetchBannerCourses()
+  ])
   if (!bannerCourses.value.length) {
     bannerCourses.value = hotCourses.value.slice(0, 4)
     activeBannerIndex.value = 0
@@ -437,6 +443,10 @@ async function initPortalHome() {
 function handleLogout() {
   authStore.logout()
   router.push('/login')
+}
+
+function goProfile() {
+  router.push('/member/profile')
 }
 
 onMounted(() => {
@@ -509,9 +519,8 @@ onBeforeUnmount(() => {
 
 .profile-copy {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  line-height: 1.2;
+  align-items: center;
+  line-height: 1;
 }
 
 .profile-copy strong {
@@ -521,11 +530,6 @@ onBeforeUnmount(() => {
   white-space: nowrap;
   color: #303133;
   font-size: 14px;
-}
-
-.profile-copy span {
-  color: #909399;
-  font-size: 12px;
 }
 
 .member-main {

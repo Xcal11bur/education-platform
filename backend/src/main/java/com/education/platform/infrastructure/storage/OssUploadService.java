@@ -63,6 +63,15 @@ public class OssUploadService {
         return upload(file, "course-covers");
     }
 
+    public UploadResult uploadMemberAvatar(MultipartFile file) {
+        validateOssConfig();
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "upload file must not be empty");
+        }
+        validateImageFile(file);
+        return upload(file, "member-avatars");
+    }
+
     public UploadResult uploadSectionVideo(MultipartFile file) {
         validateOssConfig();
         if (file == null || file.isEmpty()) {
