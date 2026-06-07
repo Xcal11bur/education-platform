@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="page-card">
     <div class="search-card">
       <el-form :inline="true">
@@ -82,16 +82,6 @@
       >
         <el-table-column type="index" label="#" width="56" align="center" />
         <el-table-column label="小节标题" min-width="220" prop="title" />
-        <el-table-column label="类型" width="110" align="center">
-          <template #default="{ row }">
-            {{ sectionTypeText(row.sectionType) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="时长" width="100" align="center">
-          <template #default="{ row }">
-            {{ row.duration || 0 }}
-          </template>
-        </el-table-column>
         <el-table-column label="试看" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="row.isFreeTrial === 1 ? 'success' : 'info'">
@@ -99,15 +89,10 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="资料数" width="90" align="center">
-          <template #default="{ row }">
-            {{ row.materialCount || 0 }}
-          </template>
-        </el-table-column>
         <el-table-column label="排序" width="90" align="center" prop="sort" />
         <el-table-column label="操作" width="220" align="center">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openSectionMaterials(row)">资料</el-button>
+            <el-button link type="primary" @click="openSectionContents(row)">内容</el-button>
             <el-button link type="primary" @click="openSectionEdit(row)">编辑</el-button>
             <el-button link type="danger" @click="handleDeleteSection(row)">删除</el-button>
           </template>
@@ -144,6 +129,150 @@
     </el-dialog>
 
     <el-dialog
+      v-model="sectionContentDialogVisible"
+      title="小节内容项"
+      width="1080px"
+      top="6vh"
+      @closed="handleSectionContentDialogClosed"
+    >
+      <div v-if="currentContentSection" class="section-material-toolbar">
+        <div class="section-material-context">
+          <div class="section-material-title">{{ currentContentSection.title }}</div>
+          <div class="section-material-meta">
+            {{ currentContentChapter?.title || '-' }}
+          </div>
+        </div>
+        <el-button type="primary" @click="openContentCreate">新增内容项</el-button>
+      </div>
+
+      <el-table
+        v-loading="sectionContentLoading"
+        :data="sectionContents"
+        :header-cell-style="{ background: '#fafbfc', color: '#5e6d82', fontWeight: '600' }"
+        row-class-name="table-row"
+      >
+        <el-table-column type="index" label="#" width="56" align="center" />
+        <el-table-column label="内容标题" min-width="180" prop="title" />
+        <el-table-column label="类型" width="120" align="center">
+          <template #default="{ row }">
+            {{ sectionContentTypeText(row.contentType) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="时长" width="100" align="center">
+          <template #default="{ row }">
+            {{ formatSectionDuration(row.duration) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="文件名称" min-width="180" prop="fileName" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.fileName || row.fileUrl || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="排序" width="90" align="center" prop="sort" />
+        <el-table-column label="状态" width="90" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 1 ? 'success' : 'info'">
+              {{ row.status === 1 ? '启用' : '停用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="260" align="center" fixed="right">
+          <template #default="{ row, $index }">
+            <el-button link type="primary" :disabled="$index === 0" @click="moveContent(row, -1)">上移</el-button>
+            <el-button
+              link
+              type="primary"
+              :disabled="$index === sectionContents.length - 1"
+              @click="moveContent(row, 1)"
+            >
+              下移
+            </el-button>
+            <el-button link type="primary" @click="openContentEdit(row.id)">编辑</el-button>
+            <el-button link type="danger" @click="handleDeleteContent(row.id)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
+
+    <el-dialog
+      v-model="contentDialogVisible"
+      :title="editingContentId ? '编辑内容项' : '新增内容项'"
+      width="820px"
+      top="6vh"
+      @closed="resetContentForm"
+    >
+      <el-form ref="contentFormRef" :model="contentForm" :rules="contentRules" label-width="92px">
+        <el-form-item label="内容标题" prop="title">
+          <el-input v-model="contentForm.title" />
+        </el-form-item>
+        <el-form-item label="内容类型" prop="contentType">
+          <el-select v-model="contentForm.contentType" style="width: 100%" @change="handleContentTypeChange">
+            <el-option label="富文本" value="RICH_TEXT" />
+            <el-option label="视频" value="VIDEO" />
+            <el-option label="图片" value="IMAGE" />
+            <el-option label="PDF" value="PDF" />
+            <el-option label="PPT" value="PPT" />
+            <el-option label="附件" value="FILE" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="supportsContentFile" label="文件上传">
+          <div class="upload-field">
+            <input
+              :key="contentFileInputKey"
+              type="file"
+              class="upload-input"
+              :accept="contentFileAccept"
+              @change="handleContentFileChange"
+            />
+            <p class="upload-tip">
+              {{ selectedContentFileName || existingContentFileName || contentUploadTip }}
+            </p>
+            <p v-if="contentUploadError" class="upload-error">{{ contentUploadError }}</p>
+          </div>
+        </el-form-item>
+        <el-form-item v-if="supportsContentFile" label="文件地址">
+          <el-input v-model="contentForm.fileUrl" />
+        </el-form-item>
+        <el-form-item v-if="contentForm.contentType === 'VIDEO'" label="时长">
+          <div class="readonly-field">
+            <span>{{ formatSectionDuration(contentForm.duration) }}</span>
+          </div>
+        </el-form-item>
+        <el-form-item v-if="contentForm.contentType === 'RICH_TEXT'" label="正文内容">
+          <div class="tiptap-editor">
+            <div v-if="editor" class="tiptap-toolbar">
+              <el-button size="small" :type="editor.isActive('bold') ? 'primary' : 'default'" @click="editor.chain().focus().toggleBold().run()">B</el-button>
+              <el-button size="small" :type="editor.isActive('italic') ? 'primary' : 'default'" @click="editor.chain().focus().toggleItalic().run()">I</el-button>
+              <el-button size="small" :type="editor.isActive('heading', { level: 2 }) ? 'primary' : 'default'" @click="editor.chain().focus().toggleHeading({ level: 2 }).run()">H2</el-button>
+              <el-button size="small" :type="editor.isActive('bulletList') ? 'primary' : 'default'" @click="editor.chain().focus().toggleBulletList().run()">列表</el-button>
+              <el-button size="small" :type="editor.isActive('orderedList') ? 'primary' : 'default'" @click="editor.chain().focus().toggleOrderedList().run()">编号</el-button>
+              <el-button size="small" :type="editor.isActive('blockquote') ? 'primary' : 'default'" @click="editor.chain().focus().toggleBlockquote().run()">引用</el-button>
+              <el-button size="small" @click="setEditorLink">链接</el-button>
+              <el-button size="small" @click="insertEditorImage">图片</el-button>
+              <el-button size="small" @click="editor.chain().focus().unsetAllMarks().clearNodes().run()">清除</el-button>
+            </div>
+            <editor-content :editor="editor" class="tiptap-surface" />
+          </div>
+        </el-form-item>
+        <el-form-item label="排序">
+          <el-input-number v-model="contentForm.sort" :min="0" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-radio-group v-model="contentForm.status">
+            <el-radio :value="1">启用</el-radio>
+            <el-radio :value="0">停用</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="contentDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="contentSaving" @click="submitContentForm">
+          保存
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
       v-model="sectionDialogVisible"
       :title="editingSectionId ? '编辑小节' : '新增小节'"
       width="560px"
@@ -154,36 +283,6 @@
         <el-form-item label="标题" prop="title">
           <el-input v-model="sectionForm.title" />
         </el-form-item>
-        <el-form-item label="类型" prop="sectionType">
-          <el-select v-model="sectionForm.sectionType" style="width: 100%" @change="handleSectionTypeChange">
-            <el-option label="视频" :value="1" />
-            <el-option label="图文" :value="2" />
-            <el-option label="直播回放" :value="3" />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="supportsSectionVideo" label="视频地址">
-          <el-input v-model="sectionForm.videoUrl" />
-        </el-form-item>
-        <el-form-item v-if="supportsSectionVideo" label="视频上传">
-          <div class="upload-field">
-            <input
-              :key="sectionVideoFileInputKey"
-              type="file"
-              class="upload-input"
-              accept="video/*,.mp4,.mov,.m4v,.webm,.avi,.mkv"
-              @change="handleSectionVideoFileChange"
-            />
-            <p class="upload-tip">
-              {{ selectedSectionVideoFileName || existingSectionVideoFileName || '支持 mp4/mov/webm/avi/mkv，大小不超过 500MB' }}
-            </p>
-            <p v-if="sectionVideoUploadError" class="upload-error">{{ sectionVideoUploadError }}</p>
-          </div>
-        </el-form-item>
-        <el-form-item label="时长">
-          <div class="readonly-field">
-            <span>{{ formatSectionDuration(sectionForm.duration) }}</span>
-          </div>
-        </el-form-item>
         <el-form-item label="试看">
           <el-radio-group v-model="sectionForm.isFreeTrial">
             <el-radio :value="1">是</el-radio>
@@ -192,9 +291,6 @@
         </el-form-item>
         <el-form-item label="排序">
           <el-input-number v-model="sectionForm.sort" :min="0" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="内容">
-          <el-input v-model="sectionForm.content" type="textarea" :rows="4" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -205,133 +301,37 @@
       </template>
     </el-dialog>
 
-    <el-dialog
-      v-model="sectionMaterialDialogVisible"
-      title="小节资料"
-      width="980px"
-      top="6vh"
-      @closed="handleSectionMaterialDialogClosed"
-    >
-      <div v-if="currentMaterialSection" class="section-material-toolbar">
-        <div class="section-material-context">
-          <div class="section-material-title">{{ currentMaterialSection.title }}</div>
-          <div class="section-material-meta">
-            {{ currentMaterialChapter?.title || '-' }}
-          </div>
-        </div>
-        <el-button type="primary" @click="openMaterialCreate">上传资料</el-button>
-      </div>
-
-      <el-table
-        v-loading="sectionMaterialLoading"
-        :data="sectionMaterials"
-        :header-cell-style="{ background: '#fafbfc', color: '#5e6d82', fontWeight: '600' }"
-        row-class-name="table-row"
-      >
-        <el-table-column type="index" label="#" width="56" align="center" />
-        <el-table-column label="资料名称" min-width="180" prop="materialName" />
-        <el-table-column label="资料类型" width="110" align="center">
-          <template #default="{ row }">
-            {{ materialTypeText(row.materialType) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="文件地址" min-width="240" prop="fileUrl" show-overflow-tooltip />
-        <el-table-column label="大小(MB)" width="110" align="center">
-          <template #default="{ row }">
-            {{ formatFileSizeMb(row.fileSize) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="下载权限" width="120" align="center">
-          <template #default="{ row }">
-            {{ downloadLimitText(row.downloadLimit) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="排序" width="90" align="center" prop="sort" />
-        <el-table-column label="操作" width="150" align="center" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="openMaterialEdit(row.id)">编辑</el-button>
-            <el-button link type="danger" @click="handleDeleteMaterial(row.id)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-dialog>
-
-    <el-dialog
-      v-model="materialDialogVisible"
-      :title="editingMaterialId ? '编辑资料' : '上传资料'"
-      width="680px"
-      top="8vh"
-      @closed="resetMaterialForm"
-    >
-      <el-form ref="materialFormRef" :model="materialForm" :rules="materialRules" label-width="100px">
-        <el-form-item label="资料名称" prop="materialName">
-          <el-input v-model="materialForm.materialName" />
-        </el-form-item>
-        <el-form-item label="资料类型" prop="materialType">
-          <el-select v-model="materialForm.materialType">
-            <el-option label="文档" :value="1" />
-            <el-option label="压缩包" :value="2" />
-            <el-option label="图片" :value="3" />
-            <el-option label="其他" :value="4" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="文件上传" prop="uploadFile">
-          <div class="upload-field">
-            <input
-              :key="materialFileInputKey"
-              type="file"
-              class="upload-input"
-              @change="handleMaterialFileChange"
-            />
-            <p class="upload-tip">
-              {{ selectedMaterialFileName || existingMaterialFileName || '支持单个文件，大小不超过 100MB' }}
-            </p>
-            <p v-if="materialUploadError" class="upload-error">{{ materialUploadError }}</p>
-          </div>
-        </el-form-item>
-        <el-form-item label="下载权限">
-          <el-radio-group v-model="materialForm.downloadLimit">
-            <el-radio :value="0">全部学员</el-radio>
-            <el-radio :value="1">已报名学员</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="materialForm.sort" :min="0" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="materialDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="materialSaving" @click="submitMaterialForm">
-          保存
-        </el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { EditorContent, useEditor } from '@tiptap/vue-3'
+import StarterKit from '@tiptap/starter-kit'
+import Link from '@tiptap/extension-link'
+import Image from '@tiptap/extension-image'
+import Placeholder from '@tiptap/extension-placeholder'
 import { getCourseList } from '@/api/course'
-import { uploadMaterialFile } from '@/api/material'
 import {
   createChapter,
   createSection,
   deleteChapter,
   deleteSection,
   getChapterTree,
-  uploadSectionVideoFile,
+  uploadSectionContentFile,
   updateChapter,
   updateSection
 } from '@/api/chapter'
 import {
-  createSectionMaterial,
-  deleteSectionMaterial,
-  getSectionMaterialDetail,
-  getSectionMaterialList,
-  updateSectionMaterial
-} from '@/api/sectionMaterial'
+  createSectionContent,
+  deleteSectionContent,
+  getSectionContentDetail,
+  getSectionContentList,
+  reorderSectionContents,
+  updateSectionContent
+} from '@/api/sectionContent'
 
 const route = useRoute()
 const router = useRouter()
@@ -355,10 +355,6 @@ const sectionDialogVisible = ref(false)
 const sectionSaving = ref(false)
 const editingSectionId = ref(null)
 const sectionFormRef = ref()
-const selectedSectionVideoUploadFile = ref(null)
-const selectedSectionVideoFileName = ref('')
-const sectionVideoUploadError = ref('')
-const sectionVideoFileInputKey = ref(0)
 const sectionForm = reactive({
   title: '',
   sectionType: 1,
@@ -369,27 +365,76 @@ const sectionForm = reactive({
   sort: 0
 })
 
-const sectionMaterialDialogVisible = ref(false)
-const sectionMaterialLoading = ref(false)
-const currentMaterialSection = ref(null)
-const currentMaterialChapter = ref(null)
-const sectionMaterials = ref([])
+const sectionContentDialogVisible = ref(false)
+const sectionContentLoading = ref(false)
+const currentContentSection = ref(null)
+const currentContentChapter = ref(null)
+const sectionContents = ref([])
 
-const materialDialogVisible = ref(false)
-const materialSaving = ref(false)
-const editingMaterialId = ref(null)
-const materialFormRef = ref()
-const selectedMaterialUploadFile = ref(null)
-const selectedMaterialFileName = ref('')
-const materialUploadError = ref('')
-const materialFileInputKey = ref(0)
-const materialForm = reactive({
-  materialName: '',
-  materialType: 1,
+const contentDialogVisible = ref(false)
+const contentSaving = ref(false)
+const editingContentId = ref(null)
+const contentFormRef = ref()
+const selectedContentUploadFile = ref(null)
+const selectedContentFileName = ref('')
+const contentUploadError = ref('')
+const contentFileInputKey = ref(0)
+const contentForm = reactive({
+  title: '',
+  contentType: 'RICH_TEXT',
+  contentHtml: '',
+  contentJson: '',
   fileUrl: '',
+  objectKey: '',
+  fileName: '',
+  mimeType: '',
   fileSize: 0,
-  downloadLimit: 1,
-  sort: 0
+  duration: 0,
+  sort: 0,
+  status: 1
+})
+
+const editor = useEditor({
+  content: '',
+  extensions: [
+    StarterKit,
+    Link.configure({
+      openOnClick: false,
+      autolink: true,
+      defaultProtocol: 'https'
+    }),
+    Image.configure({
+      allowBase64: false
+    }),
+    Placeholder.configure({
+      placeholder: '输入正文内容，可插入图片、链接、标题、列表等'
+    })
+  ],
+  editorProps: {
+    handlePaste(_view, event) {
+      const files = Array.from(event.clipboardData?.files || [])
+      const imageFiles = files.filter((file) => file.type.startsWith('image/'))
+      if (!imageFiles.length) {
+        return false
+      }
+      event.preventDefault()
+      imageFiles.forEach((file) => uploadAndInsertEditorImage(file))
+      return true
+    },
+    handleDrop(_view, event) {
+      const files = Array.from(event.dataTransfer?.files || [])
+      const imageFiles = files.filter((file) => file.type.startsWith('image/'))
+      if (!imageFiles.length) {
+        return false
+      }
+      event.preventDefault()
+      imageFiles.forEach((file) => uploadAndInsertEditorImage(file))
+      return true
+    }
+  },
+  onUpdate: ({ editor }) => {
+    syncEditorContent(editor)
+  }
 })
 
 const chapterRules = {
@@ -397,45 +442,58 @@ const chapterRules = {
 }
 
 const sectionRules = {
-  title: [{ required: true, message: '请输入小节标题', trigger: 'blur' }],
-  sectionType: [{ required: true, message: '请选择小节类型', trigger: 'change' }]
+  title: [{ required: true, message: '请输入小节标题', trigger: 'blur' }]
 }
 
-const materialRules = {
-  materialName: [{ required: true, message: '请输入资料名称', trigger: 'blur' }],
-  materialType: [{ required: true, message: '请选择资料类型', trigger: 'change' }],
-  uploadFile: [{
-    validator: (_rule, _value, callback) => {
-      if (materialForm.fileUrl || selectedMaterialUploadFile.value) {
-        callback()
-        return
-      }
-      callback(new Error('请选择上传文件'))
-    },
-    trigger: 'change'
-  }]
+const contentRules = {
+  title: [{ required: true, message: '请输入内容标题', trigger: 'blur' }],
+  contentType: [{ required: true, message: '请选择内容类型', trigger: 'change' }]
 }
 
 const currentChapter = computed(() =>
   chapters.value.find((item) => item.id === activeChapterId.value) || null
 )
 
-const supportsSectionVideo = computed(() => [1, 3].includes(sectionForm.sectionType))
+const supportsContentFile = computed(() => ['VIDEO', 'PDF', 'IMAGE', 'PPT', 'FILE'].includes(contentForm.contentType))
 
-const existingSectionVideoFileName = computed(() => {
-  if (!sectionForm.videoUrl) {
+const existingContentFileName = computed(() => {
+  if (!contentForm.fileUrl) {
     return ''
   }
-  const parts = sectionForm.videoUrl.split('/')
-  return parts[parts.length - 1] || sectionForm.videoUrl
+  const parts = contentForm.fileUrl.split('/')
+  return parts[parts.length - 1] || contentForm.fileUrl
 })
 
-const existingMaterialFileName = computed(() => {
-  if (!materialForm.fileUrl) {
-    return ''
+const contentFileAccept = computed(() => {
+  if (contentForm.contentType === 'VIDEO') {
+    return 'video/*,.mp4,.mov,.m4v,.webm,.avi,.mkv'
   }
-  const parts = materialForm.fileUrl.split('/')
-  return parts[parts.length - 1] || materialForm.fileUrl
+  if (contentForm.contentType === 'IMAGE') {
+    return 'image/*,.jpg,.jpeg,.png,.gif,.webp,.bmp,.svg'
+  }
+  if (contentForm.contentType === 'PDF') {
+    return '.pdf,application/pdf'
+  }
+  if (contentForm.contentType === 'PPT') {
+    return '.ppt,.pptx,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation'
+  }
+  return '*'
+})
+
+const contentUploadTip = computed(() => {
+  if (contentForm.contentType === 'VIDEO') {
+    return '支持 mp4/mov/webm/avi/mkv，大小不超过 500MB'
+  }
+  if (contentForm.contentType === 'PDF') {
+    return '支持 PDF 文件'
+  }
+  if (contentForm.contentType === 'IMAGE') {
+    return '支持 jpg/png/webp/gif 等图片文件'
+  }
+  if (contentForm.contentType === 'PPT') {
+    return '支持 PPT/PPTX 文件'
+  }
+  return '支持上传单个附件文件'
 })
 
 function resetChapterForm() {
@@ -457,64 +515,45 @@ function resetSectionForm() {
     isFreeTrial: 0,
     sort: 0
   })
-  selectedSectionVideoUploadFile.value = null
-  selectedSectionVideoFileName.value = ''
-  sectionVideoUploadError.value = ''
-  sectionVideoFileInputKey.value += 1
   editingSectionId.value = null
   sectionFormRef.value?.clearValidate()
 }
 
-function resetMaterialForm() {
-  Object.assign(materialForm, {
-    materialName: '',
-    materialType: 1,
+function resetContentForm() {
+  Object.assign(contentForm, {
+    title: '',
+    contentType: 'RICH_TEXT',
+    contentHtml: '',
+    contentJson: '',
     fileUrl: '',
+    objectKey: '',
+    fileName: '',
+    mimeType: '',
     fileSize: 0,
-    downloadLimit: 1,
-    sort: 0
+    duration: 0,
+    sort: 0,
+    status: 1
   })
-  editingMaterialId.value = null
-  selectedMaterialUploadFile.value = null
-  selectedMaterialFileName.value = ''
-  materialUploadError.value = ''
-  materialFileInputKey.value += 1
-  materialFormRef.value?.clearValidate()
+  editingContentId.value = null
+  selectedContentUploadFile.value = null
+  selectedContentFileName.value = ''
+  contentUploadError.value = ''
+  contentFileInputKey.value += 1
+  editor.value?.commands.setContent('')
+  contentFormRef.value?.clearValidate()
 }
 
-function sectionTypeText(value) {
+function sectionContentTypeText(value) {
   return (
     {
-      1: '视频',
-      2: '图文',
-      3: '直播回放'
+      VIDEO: '视频',
+      RICH_TEXT: '富文本',
+      IMAGE: '图片',
+      PDF: 'PDF',
+      PPT: 'PPT',
+      FILE: '附件'
     }[value] || '未知'
   )
-}
-
-function materialTypeText(value) {
-  return (
-    {
-      1: '文档',
-      2: '压缩包',
-      3: '图片',
-      4: '其他'
-    }[value] || '未知'
-  )
-}
-
-function downloadLimitText(value) {
-  return (
-    {
-      0: '全部学员',
-      1: '已报名学员'
-    }[value] || '未知'
-  )
-}
-
-function formatFileSizeMb(value) {
-  const size = Number(value || 0)
-  return `${(size / 1024 / 1024).toFixed(2)} MB`
 }
 
 function formatSectionDuration(value) {
@@ -536,7 +575,6 @@ async function fetchChapterTree() {
   if (!courseId.value) {
     chapters.value = []
     activeChapterId.value = null
-    syncCurrentMaterialSection()
     return
   }
   chapterLoading.value = true
@@ -549,12 +587,9 @@ async function fetchChapterTree() {
   } finally {
     chapterLoading.value = false
   }
-  syncCurrentMaterialSection()
 }
 
 async function handleCourseChange(value) {
-  sectionMaterialDialogVisible.value = false
-  materialDialogVisible.value = false
   router.replace({
     path: '/course-management/chapters',
     query: { courseId: value }
@@ -592,48 +627,57 @@ function openSectionCreate() {
 }
 
 function openSectionEdit(section) {
+  resetSectionForm()
   editingSectionId.value = section.id
   Object.assign(sectionForm, {
     title: section.title,
-    sectionType: section.sectionType,
-    content: section.content,
-    videoUrl: section.videoUrl,
-    duration: section.duration,
+    sectionType: section.sectionType || 1,
+    content: section.content || '',
+    videoUrl: section.videoUrl || '',
+    duration: section.duration || 0,
     isFreeTrial: section.isFreeTrial,
     sort: section.sort
   })
   sectionDialogVisible.value = true
 }
 
-async function openSectionMaterials(section) {
-  currentMaterialSection.value = section
-  currentMaterialChapter.value = currentChapter.value
-  sectionMaterialDialogVisible.value = true
-  await fetchSectionMaterials(section.id)
+async function openSectionContents(section) {
+  currentContentSection.value = section
+  currentContentChapter.value = currentChapter.value
+  sectionContentDialogVisible.value = true
+  await fetchSectionContents(section.id)
 }
 
-function openMaterialCreate() {
-  if (!currentMaterialSection.value) {
+function openContentCreate() {
+  if (!currentContentSection.value) {
     return
   }
-  resetMaterialForm()
-  materialForm.sort = (sectionMaterials.value.length || 0) + 1
-  materialDialogVisible.value = true
+  resetContentForm()
+  contentForm.sort = (sectionContents.value.length || 0) + 1
+  contentDialogVisible.value = true
 }
 
-async function openMaterialEdit(id) {
-  const { data } = await getSectionMaterialDetail(id)
-  resetMaterialForm()
-  editingMaterialId.value = id
-  Object.assign(materialForm, {
-    materialName: data.materialName,
-    materialType: data.materialType,
-    fileUrl: data.fileUrl,
-    fileSize: data.fileSize,
-    downloadLimit: data.downloadLimit,
-    sort: data.sort
+async function openContentEdit(id) {
+  const { data } = await getSectionContentDetail(id)
+  resetContentForm()
+  editingContentId.value = id
+  Object.assign(contentForm, {
+    title: data.title,
+    contentType: data.contentType,
+    contentHtml: data.contentHtml || '',
+    contentJson: data.contentJson || '',
+    fileUrl: data.fileUrl || '',
+    objectKey: data.objectKey || '',
+    fileName: data.fileName || '',
+    mimeType: data.mimeType || '',
+    fileSize: data.fileSize || 0,
+    duration: data.duration || 0,
+    sort: data.sort || 0,
+    status: data.status ?? 1
   })
-  materialDialogVisible.value = true
+  contentDialogVisible.value = true
+  await nextTick()
+  setEditorContentFromForm()
 }
 
 async function submitChapter() {
@@ -659,13 +703,13 @@ async function submitSection() {
   sectionSaving.value = true
   try {
     const payload = {
-      ...sectionForm
-    }
-
-    if (selectedSectionVideoUploadFile.value) {
-      const { data } = await uploadSectionVideoFile(selectedSectionVideoUploadFile.value)
-      payload.videoUrl = data.url
-      sectionVideoUploadError.value = ''
+      title: sectionForm.title,
+      sectionType: sectionForm.sectionType || 1,
+      content: sectionForm.content || '',
+      videoUrl: sectionForm.videoUrl || '',
+      duration: sectionForm.duration || 0,
+      isFreeTrial: sectionForm.isFreeTrial,
+      sort: sectionForm.sort
     }
 
     if (editingSectionId.value) {
@@ -682,50 +726,55 @@ async function submitSection() {
   }
 }
 
-async function fetchSectionMaterials(sectionId = currentMaterialSection.value?.id) {
+async function fetchSectionContents(sectionId = currentContentSection.value?.id) {
   if (!sectionId) {
-    sectionMaterials.value = []
+    sectionContents.value = []
     return
   }
-  sectionMaterialLoading.value = true
+  sectionContentLoading.value = true
   try {
-    const { data } = await getSectionMaterialList(sectionId)
-    sectionMaterials.value = data || []
+    const { data } = await getSectionContentList(sectionId)
+    sectionContents.value = data || []
   } finally {
-    sectionMaterialLoading.value = false
+    sectionContentLoading.value = false
   }
 }
 
-async function submitMaterialForm() {
-  if (!currentMaterialSection.value) {
+async function submitContentForm() {
+  if (!currentContentSection.value) {
     return
   }
-  await materialFormRef.value.validate()
-  materialSaving.value = true
+  await contentFormRef.value.validate()
+  contentSaving.value = true
   try {
     const payload = {
-      ...materialForm
+      ...contentForm,
+      contentHtml: contentForm.contentType === 'RICH_TEXT' ? contentForm.contentHtml : '',
+      contentJson: contentForm.contentType === 'RICH_TEXT' ? contentForm.contentJson : ''
     }
 
-    if (selectedMaterialUploadFile.value) {
-      const { data } = await uploadMaterialFile(selectedMaterialUploadFile.value)
+    if (selectedContentUploadFile.value) {
+      const { data } = await uploadSectionContentFile(selectedContentUploadFile.value, contentForm.contentType)
       payload.fileUrl = data.url
+      payload.objectKey = data.objectKey
+      payload.fileName = data.originalFilename
+      payload.mimeType = data.contentType
       payload.fileSize = data.size
-      materialUploadError.value = ''
+      contentUploadError.value = ''
     }
 
-    if (editingMaterialId.value) {
-      await updateSectionMaterial(editingMaterialId.value, payload)
-      ElMessage.success('资料已更新')
+    if (editingContentId.value) {
+      await updateSectionContent(editingContentId.value, payload)
+      ElMessage.success('内容项已更新')
     } else {
-      await createSectionMaterial(currentMaterialSection.value.id, payload)
-      ElMessage.success('资料已上传')
+      await createSectionContent(currentContentSection.value.id, payload)
+      ElMessage.success('内容项已创建')
     }
 
-    materialDialogVisible.value = false
-    await refreshSectionMaterialsState()
+    contentDialogVisible.value = false
+    await fetchSectionContents(currentContentSection.value.id)
   } finally {
-    materialSaving.value = false
+    contentSaving.value = false
   }
 }
 
@@ -746,30 +795,41 @@ async function handleDeleteSection(section) {
   await fetchChapterTree()
 }
 
-async function handleDeleteMaterial(id) {
-  await ElMessageBox.confirm('确定删除该小节资料吗？', '删除资料', { type: 'warning' })
-  await deleteSectionMaterial(id)
-  ElMessage.success('资料已删除')
-  await refreshSectionMaterialsState()
+async function handleDeleteContent(id) {
+  await ElMessageBox.confirm('确定删除该内容项吗？', '删除内容项', { type: 'warning' })
+  await deleteSectionContent(id)
+  ElMessage.success('内容项已删除')
+  await fetchSectionContents(currentContentSection.value?.id)
 }
 
-function validateMaterialFile(file) {
-  const maxSize = 100 * 1024 * 1024
-  if (file.size > maxSize) {
-    materialUploadError.value = '单个文件大小不能超过 100MB'
-    return false
-  }
-  return true
-}
-
-function handleSectionTypeChange() {
-  if (supportsSectionVideo.value) {
+async function moveContent(row, direction) {
+  const currentIndex = sectionContents.value.findIndex((item) => item.id === row.id)
+  const targetIndex = currentIndex + direction
+  if (currentIndex < 0 || targetIndex < 0 || targetIndex >= sectionContents.value.length) {
     return
   }
-  selectedSectionVideoUploadFile.value = null
-  selectedSectionVideoFileName.value = ''
-  sectionVideoUploadError.value = ''
-  sectionVideoFileInputKey.value += 1
+  const nextItems = [...sectionContents.value]
+  const [currentItem] = nextItems.splice(currentIndex, 1)
+  nextItems.splice(targetIndex, 0, currentItem)
+  await reorderSectionContents(
+    currentContentSection.value.id,
+    nextItems.map((item) => ({
+      title: item.title,
+      contentType: item.contentType,
+      contentHtml: item.contentHtml,
+      contentJson: item.contentJson,
+      fileUrl: item.fileUrl,
+      objectKey: item.objectKey,
+      fileName: item.fileName,
+      mimeType: item.mimeType,
+      fileSize: item.fileSize,
+      duration: item.duration,
+      status: item.status,
+      id: item.id
+    }))
+  )
+  sectionContents.value = nextItems.map((item, index) => ({ ...item, sort: index + 1 }))
+  ElMessage.success('排序已更新')
 }
 
 function readVideoDuration(file) {
@@ -805,114 +865,185 @@ function validateSectionVideoFile(file) {
   const hasValidExtension = allowedExtensions.some((extension) => lowerName.endsWith(extension))
 
   if (!isVideo && !hasValidExtension) {
-    sectionVideoUploadError.value = '仅支持上传常见视频格式文件'
+    contentUploadError.value = '仅支持上传常见视频格式文件'
     return false
   }
 
   if (file.size > maxSize) {
-    sectionVideoUploadError.value = '视频文件大小不能超过 500MB'
+    contentUploadError.value = '视频文件大小不能超过 500MB'
     return false
   }
 
   return true
 }
 
-function handleSectionVideoFileChange(event) {
-  const target = event.target
-  const file = target.files?.[0]
-
-  sectionVideoUploadError.value = ''
-
-  if (!file) {
-    selectedSectionVideoUploadFile.value = null
-    selectedSectionVideoFileName.value = ''
-    return
+function handleContentTypeChange() {
+  selectedContentUploadFile.value = null
+  selectedContentFileName.value = ''
+  contentUploadError.value = ''
+  contentFileInputKey.value += 1
+  contentForm.fileUrl = ''
+  contentForm.objectKey = ''
+  contentForm.fileName = ''
+  contentForm.mimeType = ''
+  contentForm.fileSize = 0
+  contentForm.duration = 0
+  if (contentForm.contentType !== 'RICH_TEXT') {
+    contentForm.contentHtml = ''
+    contentForm.contentJson = ''
+    editor.value?.commands.setContent('')
   }
-
-  if (!validateSectionVideoFile(file)) {
-    selectedSectionVideoUploadFile.value = null
-    selectedSectionVideoFileName.value = ''
-    sectionVideoFileInputKey.value += 1
-    return
-  }
-
-  selectedSectionVideoUploadFile.value = file
-  selectedSectionVideoFileName.value = file.name
-  sectionForm.videoUrl = ''
-
-  readVideoDuration(file)
-    .then((duration) => {
-      sectionForm.duration = duration
-    })
-    .catch(() => {
-      sectionForm.duration = 0
-    })
 }
 
-function handleMaterialFileChange(event) {
-  const target = event.target
-  const file = target.files?.[0]
-
-  materialUploadError.value = ''
-
-  if (!file) {
-    selectedMaterialUploadFile.value = null
-    selectedMaterialFileName.value = ''
-    materialFormRef.value?.validateField('uploadFile')
+function syncEditorContent(currentEditor = editor.value) {
+  if (!currentEditor || contentForm.contentType !== 'RICH_TEXT') {
     return
   }
-
-  if (!validateMaterialFile(file)) {
-    selectedMaterialUploadFile.value = null
-    selectedMaterialFileName.value = ''
-    materialFileInputKey.value += 1
-    materialFormRef.value?.validateField('uploadFile')
-    return
-  }
-
-  selectedMaterialUploadFile.value = file
-  selectedMaterialFileName.value = file.name
-  if (!materialForm.materialName) {
-    materialForm.materialName = file.name
-  }
-  materialFormRef.value?.validateField('uploadFile')
+  contentForm.contentHtml = currentEditor.getHTML()
+  contentForm.contentJson = JSON.stringify(currentEditor.getJSON())
 }
 
-function syncCurrentMaterialSection() {
-  if (!currentMaterialSection.value) {
-    currentMaterialChapter.value = currentChapter.value
+function setEditorContentFromForm() {
+  if (!editor.value) {
     return
   }
-
-  for (const chapter of chapters.value) {
-    const section = chapter.sections?.find((item) => item.id === currentMaterialSection.value.id)
-    if (section) {
-      currentMaterialSection.value = section
-      currentMaterialChapter.value = chapter
+  if (contentForm.contentJson) {
+    try {
+      editor.value.commands.setContent(JSON.parse(contentForm.contentJson))
+      syncEditorContent()
       return
+    } catch (_error) {
+      // Fall back to HTML for legacy rich text content.
     }
   }
-
-  currentMaterialSection.value = null
-  currentMaterialChapter.value = null
-  sectionMaterials.value = []
-  sectionMaterialDialogVisible.value = false
-  materialDialogVisible.value = false
+  editor.value.commands.setContent(contentForm.contentHtml || '')
+  syncEditorContent()
 }
 
-async function refreshSectionMaterialsState() {
-  const sectionId = currentMaterialSection.value?.id
-  await fetchChapterTree()
-  if (sectionId && currentMaterialSection.value) {
-    await fetchSectionMaterials(sectionId)
+function setEditorLink() {
+  if (!editor.value) {
+    return
+  }
+  const previousUrl = editor.value.getAttributes('link').href || ''
+  const url = window.prompt('请输入链接地址', previousUrl)
+  if (url === null) {
+    return
+  }
+  if (!url) {
+    editor.value.chain().focus().extendMarkRange('link').unsetLink().run()
+    return
+  }
+  editor.value.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+}
+
+function insertEditorImage() {
+  if (!editor.value) {
+    return
+  }
+  const url = window.prompt('请输入图片地址')
+  if (!url) {
+    return
+  }
+  editor.value.chain().focus().setImage({ src: url }).run()
+}
+
+async function uploadAndInsertEditorImage(file) {
+  if (!editor.value) {
+    return
+  }
+  try {
+    const { data } = await uploadSectionContentFile(file, 'IMAGE')
+    editor.value.chain().focus().setImage({
+      src: data.url,
+      alt: data.originalFilename || ''
+    }).run()
+    ElMessage.success('图片已上传')
+  } catch (_error) {
+    ElMessage.error('图片上传失败')
   }
 }
 
-function handleSectionMaterialDialogClosed() {
-  currentMaterialSection.value = null
-  currentMaterialChapter.value = null
-  sectionMaterials.value = []
-  materialDialogVisible.value = false
+function validateContentFile(file) {
+  if (contentForm.contentType === 'VIDEO') {
+    return validateSectionVideoFile(file)
+  }
+  if (contentForm.contentType === 'PDF') {
+    const isPdf = file.type === 'application/pdf' || file.name?.toLowerCase().endsWith('.pdf')
+    if (!isPdf) {
+      contentUploadError.value = '仅支持上传 PDF 文件'
+      return false
+    }
+  }
+  if (contentForm.contentType === 'IMAGE') {
+    const isImage = typeof file.type === 'string' && file.type.startsWith('image/')
+    if (!isImage) {
+      contentUploadError.value = '仅支持上传图片文件'
+      return false
+    }
+  }
+  if (contentForm.contentType === 'PPT') {
+    const lowerName = file.name?.toLowerCase() || ''
+    if (!lowerName.endsWith('.ppt') && !lowerName.endsWith('.pptx')) {
+      contentUploadError.value = '仅支持上传 PPT/PPTX 文件'
+      return false
+    }
+  }
+  const maxSize = 100 * 1024 * 1024
+  if (contentForm.contentType !== 'VIDEO' && file.size > maxSize) {
+    contentUploadError.value = '单个文件大小不能超过 100MB'
+    return false
+  }
+  return true
+}
+
+function handleContentFileChange(event) {
+  const target = event.target
+  const file = target.files?.[0]
+
+  contentUploadError.value = ''
+
+  if (!file) {
+    selectedContentUploadFile.value = null
+    selectedContentFileName.value = ''
+    return
+  }
+
+  if (!validateContentFile(file)) {
+    selectedContentUploadFile.value = null
+    selectedContentFileName.value = ''
+    contentFileInputKey.value += 1
+    return
+  }
+
+  selectedContentUploadFile.value = file
+  selectedContentFileName.value = file.name
+  contentForm.fileUrl = ''
+  contentForm.objectKey = ''
+  contentForm.fileName = file.name
+  contentForm.mimeType = file.type || ''
+
+  if (contentForm.contentType === 'VIDEO') {
+    readVideoDuration(file)
+      .then((duration) => {
+        contentForm.duration = duration
+      })
+      .catch(() => {
+        contentForm.duration = 0
+      })
+  } else {
+    contentForm.fileSize = file.size
+  }
+}
+
+onBeforeUnmount(() => {
+  editor.value?.destroy()
+})
+
+function handleSectionContentDialogClosed() {
+  currentContentSection.value = null
+  currentContentChapter.value = null
+  sectionContents.value = []
+  contentDialogVisible.value = false
 }
 
 onMounted(async () => {
@@ -941,8 +1072,6 @@ watch(
     }
     courseId.value = nextId
     activeChapterId.value = null
-    sectionMaterialDialogVisible.value = false
-    materialDialogVisible.value = false
     await fetchChapterTree()
   }
 )
@@ -1063,6 +1192,72 @@ watch(
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.tiptap-editor {
+  width: 100%;
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.tiptap-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #ebeef5;
+  background: #f8fafc;
+}
+
+.tiptap-surface {
+  min-height: 220px;
+}
+
+.tiptap-surface :deep(.ProseMirror) {
+  min-height: 220px;
+  padding: 14px 16px;
+  outline: none;
+  color: #303133;
+  line-height: 1.8;
+}
+
+.tiptap-surface :deep(.ProseMirror p.is-editor-empty:first-child::before) {
+  color: #a8abb2;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.tiptap-surface :deep(.ProseMirror h1),
+.tiptap-surface :deep(.ProseMirror h2),
+.tiptap-surface :deep(.ProseMirror h3) {
+  margin: 14px 0 8px;
+}
+
+.tiptap-surface :deep(.ProseMirror p) {
+  margin: 8px 0;
+}
+
+.tiptap-surface :deep(.ProseMirror ul),
+.tiptap-surface :deep(.ProseMirror ol) {
+  margin: 8px 0;
+  padding-left: 22px;
+}
+
+.tiptap-surface :deep(.ProseMirror blockquote) {
+  margin: 12px 0;
+  padding: 8px 12px;
+  border-left: 4px solid #bfdbfe;
+  background: #f8fbff;
+  color: #475569;
+}
+
+.tiptap-surface :deep(.ProseMirror img) {
+  max-width: 100%;
+  border-radius: 6px;
 }
 
 

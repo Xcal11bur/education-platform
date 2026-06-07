@@ -44,7 +44,6 @@
         <div>
           <div class="page-kicker">Course Library</div>
           <h1>课程学习</h1>
-          <p>按分类浏览平台课程，直接进入课程详情页开始学习。</p>
         </div>
 
         <div class="page-toolbar">
@@ -444,12 +443,6 @@ onMounted(async () => {
   margin: 10px 0 0;
   font-size: clamp(32px, 5vw, 44px);
   color: #fff;
-}
-
-.page-hero p {
-  margin: 12px 0 0;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 15px;
 }
 
 .page-toolbar {

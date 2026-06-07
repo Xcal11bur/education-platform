@@ -7,16 +7,22 @@ import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("section_material")
-public class SectionMaterial extends BaseEntity {
+@TableName("course_section_content")
+public class CourseSectionContent extends BaseEntity {
 
     private Long courseId;
     private Long chapterId;
     private Long sectionId;
-    private String materialName;
-    private Integer materialType;
+    private String title;
+    private String contentType;
+    private String contentHtml;
+    private String contentJson;
     private String fileUrl;
+    private String objectKey;
+    private String fileName;
+    private String mimeType;
     private Long fileSize;
-    private Integer downloadLimit;
+    private Integer duration;
     private Integer sort;
+    private Integer status;
 }

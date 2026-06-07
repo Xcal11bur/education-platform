@@ -20,44 +20,63 @@
           </div>
         </div>
 
-        <div v-if="currentSection?.videoUrl" class="video-panel">
-          <video class="section-video" :src="currentSection.videoUrl" controls preload="metadata"></video>
-        </div>
-        <div v-else class="video-placeholder">
-          <el-icon><VideoPlay /></el-icon>
-        </div>
-
         <div class="section-content-block">
           <h2>小节内容</h2>
-          <p>{{ currentSection?.content || '当前小节内容建设中。' }}</p>
-        </div>
 
-        <div class="section-content-block">
-          <div class="block-head">
-            <h2>小节资料</h2>
-            <span>{{ sectionMaterials.length }} 个附件</span>
-          </div>
-
-          <div v-if="sectionMaterials.length" class="material-list">
-            <a
-              v-for="material in sectionMaterials"
-              :key="material.id"
-              class="material-card"
-              :href="material.fileUrl"
-              target="_blank"
-              rel="noreferrer"
+          <div v-if="renderedContentItems.length" class="content-item-list">
+            <section
+              v-for="item in renderedContentItems"
+              :key="item.id"
+              class="content-item-card"
             >
-              <div>
-                <div class="material-title">{{ material.materialName }}</div>
-                <div class="material-sub">{{ materialTypeText(material.materialType) }}</div>
+              <div class="content-item-head">
+                <h3>{{ item.title }}</h3>
+                <span>{{ item.contentType }}</span>
               </div>
-              <div class="material-size">{{ formatFileSize(material.fileSize) }}</div>
-            </a>
+
+              <div v-if="item.contentType === 'VIDEO' && item.fileUrl" class="video-panel">
+                <video class="section-video" :src="item.fileUrl" controls preload="metadata"></video>
+              </div>
+
+              <iframe
+                v-else-if="item.contentType === 'PDF' && item.fileUrl"
+                class="pdf-frame"
+                :src="pdfPreviewUrls[item.id]"
+                title="PDF 预览"
+              ></iframe>
+
+              <img
+                v-else-if="item.contentType === 'IMAGE' && item.fileUrl"
+                class="image-content"
+                :src="item.fileUrl"
+                :alt="item.title"
+              />
+
+              <div
+                v-else-if="item.contentType === 'RICH_TEXT' && item.contentHtml"
+                class="rich-content"
+                v-html="item.contentHtml"
+              ></div>
+
+              <a
+                v-else-if="item.fileUrl"
+                class="material-card inline-file-card"
+                :href="item.fileUrl"
+                target="_blank"
+                rel="noreferrer"
+              >
+                <div>
+                  <div class="material-title">{{ item.title }}</div>
+                  <div class="material-sub">{{ item.contentType }}</div>
+                </div>
+                <div class="material-size">{{ formatFileSize(item.fileSize) }}</div>
+              </a>
+            </section>
           </div>
 
           <el-empty
             v-else
-            description="当前小节暂无资料"
+            description="暂无内容"
             :image-size="72"
           />
         </div>
@@ -100,11 +119,10 @@
 </template>
 
 <script setup>
-import { VideoPlay } from '@element-plus/icons-vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getPortalCourseDetail } from '@/api/course'
-import { getPortalSectionMaterialList } from '@/api/sectionMaterial'
+import { getPortalSectionContentList, getPortalSectionContentPreview } from '@/api/sectionContent'
 
 const route = useRoute()
 const router = useRouter()
@@ -114,7 +132,8 @@ const course = ref({
   title: '',
   chapters: []
 })
-const sectionMaterials = ref([])
+const sectionContents = ref([])
+const pdfPreviewUrls = ref({})
 
 const chapters = computed(() => course.value.chapters || [])
 
@@ -170,21 +189,42 @@ const currentSectionTitle = computed(() => {
   )
 })
 
+const renderedContentItems = computed(() => {
+  if (sectionContents.value.length) {
+    return sectionContents.value
+  }
+
+  if (!currentSection.value) {
+    return []
+  }
+
+  const fallbackItems = []
+  if (currentSection.value.videoUrl) {
+    fallbackItems.push({
+      id: `video-${currentSection.value.id}`,
+      title: currentSectionTitle.value,
+      contentType: 'VIDEO',
+      fileUrl: currentSection.value.videoUrl,
+      fileSize: 0
+    })
+  }
+  if (currentSection.value.content) {
+    fallbackItems.push({
+      id: `text-${currentSection.value.id}`,
+      title: '图文内容',
+      contentType: 'RICH_TEXT',
+      contentHtml: currentSection.value.content,
+      fileSize: 0
+    })
+  }
+  return fallbackItems
+})
+
 function sectionTypeText(type) {
   return {
     1: '视频',
-    2: '图文',
-    3: '直播回放'
+    2: '图文'
   }[type] || '课程内容'
-}
-
-function materialTypeText(type) {
-  return {
-    1: '文档',
-    2: '压缩包',
-    3: '图片',
-    4: '其他'
-  }[type] || '资料'
 }
 
 function formatDuration(duration) {
@@ -252,25 +292,52 @@ async function fetchCourseDetail() {
   }
 }
 
-async function fetchSectionMaterials() {
+async function fetchSectionContents() {
   if (!currentSectionId.value) {
-    sectionMaterials.value = []
+    sectionContents.value = []
+    revokePdfPreviewUrls()
     return
   }
-  const { data } = await getPortalSectionMaterialList(currentSectionId.value)
-  sectionMaterials.value = data || []
+  const { data } = await getPortalSectionContentList(currentSectionId.value)
+  sectionContents.value = data || []
+  await loadPdfPreviews(sectionContents.value)
+}
+
+function revokePdfPreviewUrls() {
+  Object.values(pdfPreviewUrls.value).forEach((url) => {
+    if (url) {
+      URL.revokeObjectURL(url)
+    }
+  })
+  pdfPreviewUrls.value = {}
+}
+
+async function loadPdfPreviews(items) {
+  revokePdfPreviewUrls()
+  const pdfItems = items.filter((item) => item.contentType === 'PDF' && item.fileUrl && item.id)
+  const entries = await Promise.all(
+    pdfItems.map(async (item) => {
+      const blob = await getPortalSectionContentPreview(item.id)
+      return [item.id, `${URL.createObjectURL(blob)}#toolbar=1&navpanes=0&view=FitH`]
+    })
+  )
+  pdfPreviewUrls.value = Object.fromEntries(entries)
 }
 
 watch(
   () => route.params.sectionId,
   () => {
-    fetchSectionMaterials()
+    fetchSectionContents()
   }
 )
 
 onMounted(async () => {
   await fetchCourseDetail()
-  await fetchSectionMaterials()
+  await fetchSectionContents()
+})
+
+onBeforeUnmount(() => {
+  revokePdfPreviewUrls()
 })
 </script>
 
@@ -350,10 +417,6 @@ onMounted(async () => {
   white-space: nowrap;
 }
 
-.video-panel {
-  margin-top: 26px;
-}
-
 .section-video {
   width: 100%;
   max-height: 520px;
@@ -361,32 +424,92 @@ onMounted(async () => {
   background: #111827;
 }
 
-.video-placeholder {
-  margin-top: 26px;
-  min-height: 280px;
-  border-radius: 12px;
-  background: #fafafa;
-  border: 1px dashed #e5e7eb;
-  color: #909399;
-  display: grid;
-  place-items: center;
-  text-align: center;
-}
-
-.video-placeholder .el-icon {
-  font-size: 40px;
-  margin-bottom: 10px;
-}
-
 .section-content-block {
   margin-top: 26px;
 }
 
-.section-content-block p {
-  margin: 14px 0 0;
-  color: #606266;
-  line-height: 1.85;
-  white-space: pre-wrap;
+.content-item-list {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.content-item-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 18px;
+  background: #fff;
+}
+
+.content-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.content-item-head h3 {
+  margin: 0;
+  color: #1f2d3d;
+  font-size: 18px;
+}
+
+.content-item-head span {
+  color: #909399;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.pdf-frame {
+  width: 100%;
+  min-height: 560px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.image-content {
+  display: block;
+  max-width: 100%;
+  border-radius: 12px;
+}
+
+.rich-content {
+  margin-top: 14px;
+  color: #303133;
+  line-height: 1.9;
+}
+
+.rich-content :deep(h1),
+.rich-content :deep(h2),
+.rich-content :deep(h3) {
+  margin: 18px 0 10px;
+  color: #1f2d3d;
+}
+
+.rich-content :deep(p) {
+  margin: 10px 0;
+}
+
+.rich-content :deep(ul),
+.rich-content :deep(ol) {
+  margin: 10px 0;
+  padding-left: 22px;
+}
+
+.rich-content :deep(blockquote) {
+  margin: 14px 0;
+  padding: 10px 14px;
+  border-left: 4px solid #bfdbfe;
+  background: #f8fbff;
+  color: #475569;
+}
+
+.rich-content :deep(img) {
+  max-width: 100%;
+  border-radius: 10px;
 }
 
 .material-list {

@@ -52,6 +52,21 @@ export function uploadSectionVideoFile(file) {
   })
 }
 
+export function uploadSectionContentFile(file, contentType = 'FILE') {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('contentType', contentType)
+  return request({
+    url: '/admin/uploads/section-contents',
+    method: 'post',
+    timeout: 10 * 60 * 1000,
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
+
 export function updateSection(id, data) {
   return request({
     url: `/admin/sections/${id}`,

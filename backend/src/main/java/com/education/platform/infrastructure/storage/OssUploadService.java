@@ -34,6 +34,10 @@ public class OssUploadService {
             ".avi",
             ".mkv"
     );
+    private static final List<String> PPT_EXTENSIONS = List.of(
+            ".ppt",
+            ".pptx"
+    );
     private static final long SECTION_VIDEO_MAX_SIZE = 500L * 1024 * 1024;
 
     private final OssProperties ossProperties;
@@ -68,6 +72,34 @@ public class OssUploadService {
         return upload(file, "section-videos");
     }
 
+    public UploadResult uploadSectionContent(MultipartFile file, String contentType) {
+        validateOssConfig();
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "upload file must not be empty");
+        }
+        String normalizedType = StringUtils.hasText(contentType) ? contentType.trim().toUpperCase() : "FILE";
+        return switch (normalizedType) {
+            case "VIDEO" -> {
+                validateSectionVideoFile(file);
+                yield upload(file, "section-contents/videos", false);
+            }
+            case "PDF" -> {
+                validatePdfFile(file);
+                yield upload(file, "section-contents/pdf", true);
+            }
+            case "IMAGE" -> {
+                validateImageFile(file);
+                yield upload(file, "section-contents/images", true);
+            }
+            case "PPT" -> {
+                validatePptFile(file);
+                yield upload(file, "section-contents/ppt", false);
+            }
+            case "FILE" -> upload(file, "section-contents/files", false);
+            default -> throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "invalid section content type");
+        };
+    }
+
     private void validateOssConfig() {
         if (!StringUtils.hasText(ossProperties.getEndpoint())
                 || !StringUtils.hasText(ossProperties.getBucketName())
@@ -78,6 +110,10 @@ public class OssUploadService {
     }
 
     private UploadResult upload(MultipartFile file, String categoryPath) {
+        return upload(file, categoryPath, false);
+    }
+
+    private UploadResult upload(MultipartFile file, String categoryPath, boolean inlineDisposition) {
         String originalFilename = Objects.requireNonNullElse(file.getOriginalFilename(), "unknown");
         String extension = "";
         int dotIndex = originalFilename.lastIndexOf('.');
@@ -96,6 +132,9 @@ public class OssUploadService {
             metadata.setContentLength(file.getSize());
             if (StringUtils.hasText(file.getContentType())) {
                 metadata.setContentType(file.getContentType());
+            }
+            if (inlineDisposition) {
+                metadata.setContentDisposition("inline");
             }
             ossClient.putObject(ossProperties.getBucketName(), objectKey, inputStream, metadata);
         } catch (IOException ex) {
@@ -138,6 +177,22 @@ public class OssUploadService {
         String contentType = file.getContentType();
         if (!StringUtils.hasText(contentType) || !IMAGE_CONTENT_TYPES.contains(contentType.toLowerCase())) {
             throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "course cover must be an image");
+        }
+    }
+
+    private void validatePdfFile(MultipartFile file) {
+        String contentType = StringUtils.trimWhitespace(file.getContentType());
+        String filename = Objects.requireNonNullElse(file.getOriginalFilename(), "").toLowerCase();
+        if (!"application/pdf".equalsIgnoreCase(contentType) && !filename.endsWith(".pdf")) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "section content must be a PDF file");
+        }
+    }
+
+    private void validatePptFile(MultipartFile file) {
+        String filename = Objects.requireNonNullElse(file.getOriginalFilename(), "").toLowerCase();
+        boolean validExtension = PPT_EXTENSIONS.stream().anyMatch(filename::endsWith);
+        if (!validExtension) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "section content must be a PPT file");
         }
     }
 

@@ -9,4 +9,5 @@ public class SecurityProperties {
 
     private String jwtSecret;
     private Long tokenExpireSeconds;
+    private Boolean loginCaptchaEnabled = false;
 }

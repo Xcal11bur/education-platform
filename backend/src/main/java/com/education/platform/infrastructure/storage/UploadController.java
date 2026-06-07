@@ -29,4 +29,11 @@ public class UploadController {
     public Result<UploadResult> uploadSectionVideo(@RequestParam("file") MultipartFile file) {
         return Result.success(ossUploadService.uploadSectionVideo(file));
     }
+
+    @PostMapping("/section-contents")
+    public Result<UploadResult> uploadSectionContent(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "contentType", required = false) String contentType) {
+        return Result.success(ossUploadService.uploadSectionContent(file, contentType));
+    }
 }

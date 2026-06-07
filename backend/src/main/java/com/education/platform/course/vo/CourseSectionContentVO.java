@@ -3,7 +3,7 @@ package com.education.platform.course.vo;
 import lombok.Data;
 
 @Data
-public class SectionMaterialVO {
+public class CourseSectionContentVO {
 
     private Long id;
     private Long courseId;
@@ -12,10 +12,16 @@ public class SectionMaterialVO {
     private String chapterTitle;
     private Long sectionId;
     private String sectionTitle;
-    private String materialName;
-    private Integer materialType;
+    private String title;
+    private String contentType;
+    private String contentHtml;
+    private String contentJson;
     private String fileUrl;
+    private String objectKey;
+    private String fileName;
+    private String mimeType;
     private Long fileSize;
-    private Integer downloadLimit;
+    private Integer duration;
     private Integer sort;
+    private Integer status;
 }

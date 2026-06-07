@@ -205,8 +205,7 @@ const courseCoverStyle = computed(() => {
 function sectionTypeText(type) {
   return {
     1: '视频',
-    2: '图文',
-    3: '直播回放'
+    2: '图文'
   }[type] || '课程内容'
 }
 

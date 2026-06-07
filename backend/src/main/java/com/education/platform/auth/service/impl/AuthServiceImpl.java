@@ -2,6 +2,7 @@ package com.education.platform.auth.service.impl;
 
 import com.education.platform.admin.entity.AdminUser;
 import com.education.platform.admin.service.AdminUserService;
+import com.education.platform.auth.config.SecurityProperties;
 import com.education.platform.auth.dto.MemberRegisterRequest;
 import com.education.platform.auth.dto.LoginRequest;
 import com.education.platform.auth.model.LoginUser;
@@ -34,6 +35,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final TokenService tokenService;
     private final CaptchaService captchaService;
+    private final SecurityProperties securityProperties;
     private final PasswordEncoder passwordEncoder;
     private final AdminUserService adminUserService;
     private final TeacherService teacherService;
@@ -46,7 +48,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginResponse adminLogin(LoginRequest request) {
-        validateCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
+        validateLoginCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
         AdminUser adminUser = adminUserService.findByUsername(request.getUsername())
                 .orElseThrow(() -> new BusinessException(ResultCode.UNAUTHORIZED.getCode(), "username or password is incorrect"));
         validatePasswordAndStatus(request.getPassword(), adminUser.getPassword(), adminUser.getStatus());
@@ -55,7 +57,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginResponse teacherLogin(LoginRequest request) {
-        validateCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
+        validateLoginCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
         Teacher teacher = teacherService.findByLoginName(request.getUsername())
                 .orElseThrow(() -> new BusinessException(ResultCode.UNAUTHORIZED.getCode(), "username or password is incorrect"));
         validatePasswordAndStatus(request.getPassword(), teacher.getPassword(), teacher.getStatus());
@@ -64,7 +66,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginResponse memberLogin(LoginRequest request) {
-        validateCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
+        validateLoginCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
         Member member = memberService.findByMobile(request.getUsername())
                 .orElseThrow(() -> new BusinessException(ResultCode.UNAUTHORIZED.getCode(), "username or password is incorrect"));
         validatePasswordAndStatus(request.getPassword(), member.getPassword(), member.getStatus());
@@ -73,7 +75,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void memberRegister(MemberRegisterRequest request) {
-        validateCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
+        captchaService.validateCaptcha(request.getCaptchaKey(), request.getCaptchaCode());
         if (!request.getPassword().equals(request.getConfirmPassword())) {
             throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "password confirmation does not match");
         }
@@ -103,7 +105,10 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
-    private void validateCaptcha(String captchaKey, String captchaCode) {
+    private void validateLoginCaptcha(String captchaKey, String captchaCode) {
+        if (!Boolean.TRUE.equals(securityProperties.getLoginCaptchaEnabled())) {
+            return;
+        }
         captchaService.validateCaptcha(captchaKey, captchaCode);
     }
 

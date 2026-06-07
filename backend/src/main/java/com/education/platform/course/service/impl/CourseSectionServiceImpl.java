@@ -7,10 +7,10 @@ import com.education.platform.common.result.ResultCode;
 import com.education.platform.course.dto.CourseSectionSaveDTO;
 import com.education.platform.course.entity.CourseChapter;
 import com.education.platform.course.entity.CourseSection;
-import com.education.platform.course.entity.SectionMaterial;
+import com.education.platform.course.entity.CourseSectionContent;
 import com.education.platform.course.mapper.CourseChapterMapper;
+import com.education.platform.course.mapper.CourseSectionContentMapper;
 import com.education.platform.course.mapper.CourseSectionMapper;
-import com.education.platform.course.mapper.SectionMaterialMapper;
 import com.education.platform.course.service.CourseSectionService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
@@ -20,11 +20,13 @@ public class CourseSectionServiceImpl extends ServiceImpl<CourseSectionMapper, C
         implements CourseSectionService {
 
     private final CourseChapterMapper courseChapterMapper;
-    private final SectionMaterialMapper sectionMaterialMapper;
+    private final CourseSectionContentMapper courseSectionContentMapper;
 
-    public CourseSectionServiceImpl(CourseChapterMapper courseChapterMapper, SectionMaterialMapper sectionMaterialMapper) {
+    public CourseSectionServiceImpl(
+            CourseChapterMapper courseChapterMapper,
+            CourseSectionContentMapper courseSectionContentMapper) {
         this.courseChapterMapper = courseChapterMapper;
-        this.sectionMaterialMapper = sectionMaterialMapper;
+        this.courseSectionContentMapper = courseSectionContentMapper;
     }
 
     @Override
@@ -50,21 +52,21 @@ public class CourseSectionServiceImpl extends ServiceImpl<CourseSectionMapper, C
     @Transactional(rollbackFor = Exception.class)
     public void deleteSection(Long id) {
         getSectionOrThrow(id);
-        boolean hasMaterials = sectionMaterialMapper.selectCount(
-                Wrappers.<SectionMaterial>lambdaQuery().eq(SectionMaterial::getSectionId, id)
+        boolean hasContents = courseSectionContentMapper.selectCount(
+                Wrappers.<CourseSectionContent>lambdaQuery().eq(CourseSectionContent::getSectionId, id)
         ) > 0;
-        if (hasMaterials) {
-            throw new BusinessException(ResultCode.CONFLICT.getCode(), "section has materials and cannot be deleted");
+        if (hasContents) {
+            throw new BusinessException(ResultCode.CONFLICT.getCode(), "section has content items and cannot be deleted");
         }
         removeById(id);
     }
 
     private void fillSection(CourseSection section, CourseSectionSaveDTO request) {
         section.setTitle(request.getTitle());
-        section.setSectionType(request.getSectionType());
-        section.setContent(request.getContent());
-        section.setVideoUrl(request.getVideoUrl());
-        section.setDuration(request.getDuration() == null ? 0 : request.getDuration());
+        section.setSectionType(0);
+        section.setContent(null);
+        section.setVideoUrl(null);
+        section.setDuration(0);
         section.setIsFreeTrial(request.getIsFreeTrial() == null ? 0 : request.getIsFreeTrial());
         section.setSort(request.getSort() == null ? 0 : request.getSort());
     }

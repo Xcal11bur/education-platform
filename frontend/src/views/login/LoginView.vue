@@ -41,19 +41,6 @@
             />
           </el-form-item>
 
-          <el-form-item label="验证码" prop="captchaCode">
-            <div class="captcha-row">
-              <el-input
-                v-model="loginForm.captchaCode"
-                placeholder="请输入验证码"
-                maxlength="4"
-              />
-              <button type="button" class="captcha-image" @click="refreshCaptcha">
-                <img v-if="captcha.imageBase64" :src="captcha.imageBase64" alt="captcha" />
-              </button>
-            </div>
-          </el-form-item>
-
           <el-button
             type="primary"
             class="login-submit"
@@ -196,13 +183,6 @@ const loginRules = computed(() => ({
       message: '请输入密码',
       trigger: 'blur'
     }
-  ],
-  captchaCode: [
-    {
-      required: true,
-      message: '请输入验证码',
-      trigger: 'blur'
-    }
   ]
 }))
 
@@ -239,7 +219,6 @@ const registerRules = {
 watch(loginMode, (mode) => {
   Object.assign(loginForm, defaults[mode])
   loginFormRef.value?.clearValidate()
-  refreshCaptcha()
 })
 
 watch(panelMode, () => {
@@ -247,7 +226,9 @@ watch(panelMode, () => {
   registerFormRef.value?.clearValidate()
   loginForm.captchaCode = ''
   registerForm.captchaCode = ''
-  refreshCaptcha()
+  if (panelMode.value === 'register') {
+    refreshCaptcha()
+  }
 })
 
 async function refreshCaptcha() {
@@ -262,16 +243,13 @@ async function handleLogin() {
   try {
     await authStore.login(loginMode.value, {
       username: loginForm.username,
-      password: loginForm.password,
-      captchaKey: captcha.captchaKey,
-      captchaCode: loginForm.captchaCode
+      password: loginForm.password
     })
     ElMessage.success('登录成功')
     router.push(authStore.getDefaultRoute())
   } finally {
     submitting.value = false
     loginForm.captchaCode = ''
-    await refreshCaptcha()
   }
 }
 
@@ -310,7 +288,6 @@ async function handleRegister() {
   }
 }
 
-refreshCaptcha()
 </script>
 
 <style scoped>
