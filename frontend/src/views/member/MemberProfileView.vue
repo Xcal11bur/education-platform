@@ -42,7 +42,6 @@
       <section class="profile-content">
         <div class="content-head">
           <h1>{{ activeMenuLabel }}</h1>
-          <p>{{ activeMenuDescription }}</p>
         </div>
 
         <div v-if="activeMenu === 'courses'" class="placeholder-panel">
@@ -62,15 +61,16 @@
               <el-avatar class="editable-avatar" :size="96" :src="profileForm.avatar">
                 {{ profileForm.nickname.slice(0, 1).toUpperCase() || '学' }}
               </el-avatar>
-              <input
-                :key="avatarInputKey"
-                type="file"
-                class="avatar-input"
-                accept="image/*"
-                @change="handleAvatarChange"
-              />
-              <div class="avatar-tip">支持 jpg、png、webp 等图片，保存前会自动上传</div>
-              <div v-if="avatarError" class="form-error">{{ avatarError }}</div>
+              <div class="avatar-actions">
+                <input
+                  :key="avatarInputKey"
+                  type="file"
+                  class="avatar-input"
+                  accept="image/*"
+                  @change="handleAvatarChange"
+                />
+                <div v-if="avatarError" class="form-error">{{ avatarError }}</div>
+              </div>
             </div>
           </el-form-item>
 
@@ -194,9 +194,9 @@ const passwordForm = reactive({
 })
 
 const menuItems = [
-  { key: 'courses', label: '我的课程', icon: Collection, description: '查看已经加入和正在学习的课程。' },
-  { key: 'info', label: '个人信息', icon: User, description: '查看当前账号的基础信息。' },
-  { key: 'inbox', label: '收件箱', icon: Message, description: '查看课程通知和站内消息。' }
+  { key: 'courses', label: '我的课程', icon: Collection },
+  { key: 'info', label: '个人信息', icon: User },
+  { key: 'inbox', label: '收件箱', icon: Message }
 ]
 
 const displayName = computed(
@@ -208,7 +208,6 @@ const activeMenuItem = computed(() =>
 )
 
 const activeMenuLabel = computed(() => activeMenuItem.value.label)
-const activeMenuDescription = computed(() => activeMenuItem.value.description)
 
 const profileRules = {
   nickname: [{ required: true, message: '请输入昵称', trigger: 'blur' }]
@@ -497,12 +496,6 @@ function revokeAvatarPreview() {
   font-size: 24px;
 }
 
-.content-head p {
-  margin: 8px 0 0;
-  color: #909399;
-  font-size: 14px;
-}
-
 .placeholder-panel {
   padding: 80px 0;
 }
@@ -514,9 +507,8 @@ function revokeAvatarPreview() {
 
 .avatar-editor {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 20px;
 }
 
 .editable-avatar {
@@ -534,6 +526,12 @@ function revokeAvatarPreview() {
   box-sizing: border-box;
 }
 
+.avatar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .avatar-input::file-selector-button {
   margin-right: 10px;
   border: 0;
@@ -544,13 +542,8 @@ function revokeAvatarPreview() {
   cursor: pointer;
 }
 
-.avatar-tip,
 .form-error {
   font-size: 12px;
-}
-
-.avatar-tip {
-  color: #909399;
 }
 
 .form-error {
@@ -572,6 +565,11 @@ function revokeAvatarPreview() {
 
   .profile-header {
     padding: 0 18px;
+  }
+
+  .avatar-editor {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>
