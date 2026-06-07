@@ -1,14 +1,34 @@
 <template>
   <div class="course-detail-page">
     <div class="detail-shell">
-      <div class="breadcrumb-row">
-        <button type="button" class="breadcrumb-link" @click="router.push('/member-home')">
-          首页
-        </button>
-        <span class="breadcrumb-separator">></span>
-        <span>{{ course.categoryLevel1?.name || '课程详情' }}</span>
-        <span class="breadcrumb-separator">></span>
-        <span class="is-current">{{ course.title || '课程详情' }}</span>
+      <div class="detail-topbar">
+        <div class="breadcrumb-row">
+          <button type="button" class="breadcrumb-link" @click="router.push('/member-home')">
+            首页
+          </button>
+          <span class="breadcrumb-separator">></span>
+          <span>{{ course.categoryLevel1?.name || '课程详情' }}</span>
+          <span class="breadcrumb-separator">></span>
+          <span class="is-current">{{ course.title || '课程详情' }}</span>
+        </div>
+
+        <el-dropdown trigger="click" placement="bottom-end">
+          <button class="profile-entry" type="button">
+            <el-avatar class="profile-avatar" :size="34">
+              {{ displayName.slice(0, 1).toUpperCase() }}
+            </el-avatar>
+            <div class="profile-copy">
+              <strong>{{ displayName }}</strong>
+              <span>学员端</span>
+            </div>
+          </button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item>个人中心</el-dropdown-item>
+              <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
 
       <section class="hero-card" v-loading="loading">
@@ -91,10 +111,6 @@
                           试看
                         </el-tag>
                       </div>
-                      <div class="section-side">
-                        <span>{{ sectionTypeText(section.sectionType) }}</span>
-                        <span>{{ formatDuration(section.duration) }}</span>
-                      </div>
                     </div>
                   </div>
 
@@ -154,9 +170,11 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getPortalCourseDetail } from '@/api/course'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const loading = ref(false)
 const activeTab = ref('chapters')
@@ -169,6 +187,10 @@ const course = ref({
 
 const chapters = computed(() => course.value.chapters || [])
 const firstSectionId = computed(() => chapters.value.find((chapter) => chapter.sections?.length)?.sections?.[0]?.id || null)
+
+const displayName = computed(
+  () => authStore.profile?.displayName || authStore.profile?.username || '学员'
+)
 
 const categoryText = computed(() =>
   [course.value.categoryLevel1?.name, course.value.categoryLevel2?.name].filter(Boolean).join(' / ') || '-'
@@ -190,23 +212,6 @@ const priceText = computed(() => {
   const price = Number(course.value.price || 0)
   return price > 0 ? `¥ ${price.toFixed(2)}` : '免费'
 })
-
-function sectionTypeText(type) {
-  return {
-    1: '视频',
-    2: '图文'
-  }[type] || '课程内容'
-}
-
-function formatDuration(duration) {
-  const total = Number(duration || 0)
-  if (!total) {
-    return '--'
-  }
-  const minutes = Math.floor(total / 60)
-  const seconds = total % 60
-  return `${minutes}分${String(seconds).padStart(2, '0')}秒`
-}
 
 function displayChapterTitle(chapter, chapterIndex) {
   const title = String(chapter?.title || '').trim()
@@ -238,6 +243,11 @@ function goLearnPage(sectionId = null) {
     return
   }
   router.push(`/member/courses/${route.params.id}/learn`)
+}
+
+function handleLogout() {
+  authStore.logout()
+  router.push('/login')
 }
 
 async function fetchCourseDetail() {
@@ -272,11 +282,19 @@ onMounted(fetchCourseDetail)
   margin: 0 auto;
 }
 
+.detail-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
 .breadcrumb-row {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 18px;
   font-size: 14px;
   color: #606266;
 }
@@ -295,6 +313,43 @@ onMounted(fetchCourseDetail)
 
 .breadcrumb-row .is-current {
   color: #409eff;
+}
+
+.profile-entry {
+  border: 1px solid #dcdfe6;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 10px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.profile-avatar {
+  background: #409eff;
+  color: #fff;
+}
+
+.profile-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+
+.profile-copy strong {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #303133;
+  font-size: 14px;
+}
+
+.profile-copy span {
+  color: #909399;
+  font-size: 12px;
 }
 
 .hero-card,
@@ -448,8 +503,6 @@ onMounted(fetchCourseDetail)
 .section-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 18px;
   padding: 16px 20px;
   border-bottom: 1px solid #f1f4f8;
   cursor: pointer;
@@ -480,15 +533,6 @@ onMounted(fetchCourseDetail)
   color: #303133;
   font-size: 15px;
   font-weight: 500;
-}
-
-.section-side {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  color: #909399;
-  font-size: 13px;
-  white-space: nowrap;
 }
 
 .side-panel {
@@ -579,9 +623,5 @@ onMounted(fetchCourseDetail)
     align-items: flex-start;
   }
 
-  .section-side {
-    width: 100%;
-    justify-content: space-between;
-  }
 }
 </style>

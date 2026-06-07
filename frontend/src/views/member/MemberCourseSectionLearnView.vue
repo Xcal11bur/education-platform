@@ -5,6 +5,23 @@
         返回课程
       </button>
       <div class="topbar-title">章节详情</div>
+      <el-dropdown trigger="click" placement="bottom-end">
+        <button class="profile-entry" type="button">
+          <el-avatar class="profile-avatar" :size="34">
+            {{ displayName.slice(0, 1).toUpperCase() }}
+          </el-avatar>
+          <div class="profile-copy">
+            <strong>{{ displayName }}</strong>
+            <span>学员端</span>
+          </div>
+        </button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item>个人中心</el-dropdown-item>
+            <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
     </header>
 
     <main class="section-shell" v-loading="loading">
@@ -13,10 +30,6 @@
           <div>
             <div class="section-kicker">{{ currentChapterTitle }}</div>
             <h1>{{ currentSectionTitle }}</h1>
-          </div>
-          <div class="section-meta">
-            <span>{{ sectionTypeText(currentSection?.sectionType) }}</span>
-            <span>{{ formatDuration(currentSection?.duration) }}</span>
           </div>
         </div>
 
@@ -123,9 +136,11 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getPortalCourseDetail } from '@/api/course'
 import { getPortalSectionContentList, getPortalSectionContentPreview } from '@/api/sectionContent'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const loading = ref(false)
 const course = ref({
@@ -136,6 +151,10 @@ const sectionContents = ref([])
 const pdfPreviewUrls = ref({})
 
 const chapters = computed(() => course.value.chapters || [])
+
+const displayName = computed(
+  () => authStore.profile?.displayName || authStore.profile?.username || '学员'
+)
 
 const flattenedSections = computed(() =>
   chapters.value.flatMap((chapter, chapterIndex) =>
@@ -193,49 +212,8 @@ const renderedContentItems = computed(() => {
   if (sectionContents.value.length) {
     return sectionContents.value
   }
-
-  if (!currentSection.value) {
-    return []
-  }
-
-  const fallbackItems = []
-  if (currentSection.value.videoUrl) {
-    fallbackItems.push({
-      id: `video-${currentSection.value.id}`,
-      title: currentSectionTitle.value,
-      contentType: 'VIDEO',
-      fileUrl: currentSection.value.videoUrl,
-      fileSize: 0
-    })
-  }
-  if (currentSection.value.content) {
-    fallbackItems.push({
-      id: `text-${currentSection.value.id}`,
-      title: '图文内容',
-      contentType: 'RICH_TEXT',
-      contentHtml: currentSection.value.content,
-      fileSize: 0
-    })
-  }
-  return fallbackItems
+  return []
 })
-
-function sectionTypeText(type) {
-  return {
-    1: '视频',
-    2: '图文'
-  }[type] || '课程内容'
-}
-
-function formatDuration(duration) {
-  const total = Number(duration || 0)
-  if (!total) {
-    return '--'
-  }
-  const minutes = Math.floor(total / 60)
-  const seconds = total % 60
-  return `${minutes}分${String(seconds).padStart(2, '0')}秒`
-}
 
 function formatFileSize(size) {
   const total = Number(size || 0)
@@ -280,6 +258,11 @@ function selectSection(sectionId) {
     return
   }
   router.push(`/member/courses/${route.params.id}/learn/sections/${sectionId}`)
+}
+
+function handleLogout() {
+  authStore.logout()
+  router.push('/login')
 }
 
 async function fetchCourseDetail() {
@@ -372,6 +355,44 @@ onBeforeUnmount(() => {
   font-size: 14px;
 }
 
+.profile-entry {
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 5px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  cursor: pointer;
+}
+
+.profile-avatar {
+  background: #409eff;
+  color: #fff;
+}
+
+.profile-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+
+.profile-copy strong {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #fff;
+  font-size: 14px;
+}
+
+.profile-copy span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+}
+
 .section-shell {
   min-height: calc(100vh - 44px);
   display: grid;
@@ -406,15 +427,6 @@ onBeforeUnmount(() => {
 
 .section-stage-head h1 {
   font-size: 24px;
-}
-
-.section-meta {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  color: #909399;
-  font-size: 13px;
-  white-space: nowrap;
 }
 
 .section-video {

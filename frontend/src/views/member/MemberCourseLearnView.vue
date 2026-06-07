@@ -85,10 +85,6 @@
                         试看
                       </el-tag>
                     </div>
-                    <div class="section-side">
-                      <span>{{ sectionTypeText(section.sectionType) }}</span>
-                      <span>{{ formatDuration(section.duration) }}</span>
-                    </div>
                   </button>
                 </div>
 
@@ -202,13 +198,6 @@ const courseCoverStyle = computed(() => {
   }
 })
 
-function sectionTypeText(type) {
-  return {
-    1: '视频',
-    2: '图文'
-  }[type] || '课程内容'
-}
-
 function materialTypeText(type) {
   return {
     1: '文档',
@@ -216,16 +205,6 @@ function materialTypeText(type) {
     3: '图片',
     4: '其他'
   }[type] || '资料'
-}
-
-function formatDuration(duration) {
-  const total = Number(duration || 0)
-  if (!total) {
-    return '--'
-  }
-  const minutes = Math.floor(total / 60)
-  const seconds = total % 60
-  return `${minutes}分${String(seconds).padStart(2, '0')}秒`
 }
 
 function formatFileSize(size) {
@@ -513,8 +492,6 @@ onMounted(async () => {
   background: #fff;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
   padding: 11px 16px;
   border-bottom: 1px solid #f1f4f8;
   cursor: pointer;
@@ -545,15 +522,6 @@ onMounted(async () => {
   color: #303133;
   font-size: 14px;
   font-weight: 500;
-}
-
-.section-side {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: #909399;
-  font-size: 12px;
-  white-space: nowrap;
 }
 
 .material-list {

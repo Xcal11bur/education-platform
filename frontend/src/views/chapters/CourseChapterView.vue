@@ -357,10 +357,6 @@ const editingSectionId = ref(null)
 const sectionFormRef = ref()
 const sectionForm = reactive({
   title: '',
-  sectionType: 1,
-  content: '',
-  videoUrl: '',
-  duration: 0,
   isFreeTrial: 0,
   sort: 0
 })
@@ -508,10 +504,6 @@ function resetChapterForm() {
 function resetSectionForm() {
   Object.assign(sectionForm, {
     title: '',
-    sectionType: 1,
-    content: '',
-    videoUrl: '',
-    duration: 0,
     isFreeTrial: 0,
     sort: 0
   })
@@ -631,10 +623,6 @@ function openSectionEdit(section) {
   editingSectionId.value = section.id
   Object.assign(sectionForm, {
     title: section.title,
-    sectionType: section.sectionType || 1,
-    content: section.content || '',
-    videoUrl: section.videoUrl || '',
-    duration: section.duration || 0,
     isFreeTrial: section.isFreeTrial,
     sort: section.sort
   })
@@ -704,10 +692,6 @@ async function submitSection() {
   try {
     const payload = {
       title: sectionForm.title,
-      sectionType: sectionForm.sectionType || 1,
-      content: sectionForm.content || '',
-      videoUrl: sectionForm.videoUrl || '',
-      duration: sectionForm.duration || 0,
       isFreeTrial: sectionForm.isFreeTrial,
       sort: sectionForm.sort
     }

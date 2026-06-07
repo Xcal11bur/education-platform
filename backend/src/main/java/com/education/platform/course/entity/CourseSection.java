@@ -13,10 +13,6 @@ public class CourseSection extends BaseEntity {
     private Long courseId;
     private Long chapterId;
     private String title;
-    private Integer sectionType;
-    private String content;
-    private String videoUrl;
-    private Integer duration;
     private Integer isFreeTrial;
     private Integer sort;
 }

@@ -63,10 +63,6 @@ public class CourseSectionServiceImpl extends ServiceImpl<CourseSectionMapper, C
 
     private void fillSection(CourseSection section, CourseSectionSaveDTO request) {
         section.setTitle(request.getTitle());
-        section.setSectionType(0);
-        section.setContent(null);
-        section.setVideoUrl(null);
-        section.setDuration(0);
         section.setIsFreeTrial(request.getIsFreeTrial() == null ? 0 : request.getIsFreeTrial());
         section.setSort(request.getSort() == null ? 0 : request.getSort());
     }
