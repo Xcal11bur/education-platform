@@ -117,7 +117,7 @@
 
           <div v-if="filteredCourses.length" class="course-grid">
             <article
-              v-for="course in filteredCourses"
+              v-for="course in pagedCourses"
               :key="course.id"
               class="course-card"
               @click="goCourseDetail(course.id)"
@@ -139,6 +139,18 @@
                 </div>
               </div>
             </article>
+          </div>
+
+          <div v-if="filteredCourses.length" class="course-pagination">
+            <el-pagination
+              v-model:current-page="pageNum"
+              v-model:page-size="pageSize"
+              :total="filteredCourses.length"
+              :page-sizes="[8, 12, 16, 24]"
+              layout="total, sizes, prev, pager, next, jumper"
+              background
+              @size-change="handlePageSizeChange"
+            />
           </div>
 
           <el-empty
@@ -178,6 +190,8 @@ const selectedLevel1Id = ref(null)
 const selectedLevel2Id = ref(null)
 const keyword = ref('')
 const sortMode = ref('hot')
+const pageNum = ref(1)
+const pageSize = ref(8)
 
 const activeNav = computed(() => 'courses')
 
@@ -234,6 +248,11 @@ const filteredCourses = computed(() => {
   }
 
   return list
+})
+
+const pagedCourses = computed(() => {
+  const start = (pageNum.value - 1) * pageSize.value
+  return filteredCourses.value.slice(start, start + pageSize.value)
 })
 
 function handleNavSelect(key) {
@@ -309,6 +328,10 @@ function resetFilters() {
   syncCategoryQuery()
 }
 
+function handlePageSizeChange() {
+  pageNum.value = 1
+}
+
 function countCoursesByLevel1(level1Id) {
   return portalCourses.value.filter((course) => course.categoryLevel1Id === level1Id).length
 }
@@ -364,6 +387,17 @@ watch(
     applyCategoryQuery()
   }
 )
+
+watch([selectedLevel1Id, selectedLevel2Id, keyword, sortMode], () => {
+  pageNum.value = 1
+})
+
+watch(filteredCourses, (courses) => {
+  const maxPage = Math.max(1, Math.ceil(courses.length / pageSize.value))
+  if (pageNum.value > maxPage) {
+    pageNum.value = maxPage
+  }
+})
 </script>
 
 <style scoped>
@@ -629,10 +663,10 @@ watch(
 }
 
 .course-grid {
-  margin-top: 22px;
+  margin-top: 18px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .course-card {
@@ -651,8 +685,8 @@ watch(
 
 .course-cover {
   position: relative;
-  height: 170px;
-  padding: 16px;
+  height: 128px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -690,7 +724,7 @@ watch(
 }
 
 .course-body {
-  padding: 18px;
+  padding: 14px;
 }
 
 .course-category {
@@ -701,8 +735,8 @@ watch(
 }
 
 .course-body h3 {
-  margin: 10px 0 10px;
-  font-size: 18px;
+  margin: 8px 0;
+  font-size: 16px;
   line-height: 1.3;
   color: #303133;
 }
@@ -710,18 +744,25 @@ watch(
 .course-body p {
   margin: 0;
   color: #606266;
-  line-height: 1.6;
-  min-height: 66px;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 42px;
 }
 
 .course-meta {
-  margin-top: 16px;
+  margin-top: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   color: #909399;
-  font-size: 13px;
+  font-size: 12px;
+}
+
+.course-pagination {
+  margin-top: 22px;
+  display: flex;
+  justify-content: flex-end;
 }
 
 @media (max-width: 1180px) {
@@ -731,6 +772,10 @@ watch(
 
   .course-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .course-cover {
+    height: 150px;
   }
 }
 
@@ -780,6 +825,12 @@ watch(
 
   .course-body p {
     min-height: 0;
+  }
+
+  .course-pagination {
+    justify-content: center;
+    overflow-x: auto;
+    padding-bottom: 2px;
   }
 }
 </style>
