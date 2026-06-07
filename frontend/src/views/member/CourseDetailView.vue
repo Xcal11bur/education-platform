@@ -85,7 +85,9 @@
           </div>
 
           <div class="action-row">
-            <el-button type="primary" size="large" @click="goLearnPage()">立即学习</el-button>
+            <el-button type="primary" size="large" :loading="enrolling" @click="handlePrimaryAction">
+              {{ course.enrolled ? '进入学习' : '报名课程' }}
+            </el-button>
           </div>
         </div>
       </section>
@@ -109,7 +111,8 @@
                       v-for="(section, sectionIndex) in chapter.sections"
                       :key="section.id"
                       class="section-row"
-                      @click="goLearnPage(section.id)"
+                      :class="{ 'is-disabled': section.isFreeTrial !== 1 }"
+                      @click="goPreviewSection(section)"
                     >
                       <div class="section-main">
                         <span class="section-order">{{ chapterIndex + 1 }}.{{ sectionIndex + 1 }}</span>
@@ -117,6 +120,7 @@
                         <el-tag v-if="section.isFreeTrial === 1" size="small" effect="plain">
                           试看
                         </el-tag>
+                        <el-icon v-else class="section-lock"><Lock /></el-icon>
                       </div>
                     </div>
                   </div>
@@ -174,9 +178,11 @@
 </template>
 
 <script setup>
+import { Lock } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getPortalCourseDetail } from '@/api/course'
+import { enrollCourse, getPortalCourseDetail } from '@/api/course'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
@@ -184,16 +190,18 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const loading = ref(false)
+const enrolling = ref(false)
 const activeTab = ref('chapters')
 const course = ref({
   teacher: null,
   categoryLevel1: null,
   categoryLevel2: null,
-  chapters: []
+  chapters: [],
+  enrolled: false,
+  lastStudySectionId: null
 })
 
 const chapters = computed(() => course.value.chapters || [])
-const firstSectionId = computed(() => chapters.value.find((chapter) => chapter.sections?.length)?.sections?.[0]?.id || null)
 
 const displayName = computed(
   () => authStore.profile?.displayName || authStore.profile?.username || '学员'
@@ -251,7 +259,43 @@ function goLearnPage(sectionId = null) {
     router.push(`/member/courses/${route.params.id}/learn/sections/${sectionId}`)
     return
   }
+  if (course.value.lastStudySectionId) {
+    router.push(`/member/courses/${route.params.id}/learn/sections/${course.value.lastStudySectionId}`)
+    return
+  }
   router.push(`/member/courses/${route.params.id}/learn`)
+}
+
+function goPreviewSection(section) {
+  if (section?.isFreeTrial !== 1) {
+    return
+  }
+  goLearnPage(section.id)
+}
+
+async function handlePrimaryAction() {
+  if (course.value.enrolled) {
+    goLearnPage()
+    return
+  }
+  await ElMessageBox.confirm(
+    `确认报名《${course.value.title || '当前课程'}》吗？`,
+    '报名确认',
+    {
+      type: 'warning',
+      confirmButtonText: '确认报名',
+      cancelButtonText: '取消'
+    }
+  )
+  enrolling.value = true
+  try {
+    const { data } = await enrollCourse(route.params.id)
+    course.value.enrolled = true
+    course.value.studyCount = Number(course.value.studyCount || 0) + (data ? 1 : 0)
+    ElMessage.success(data ? '报名成功' : '您已报名该课程')
+  } finally {
+    enrolling.value = false
+  }
 }
 
 function goCategoryCourses() {
@@ -525,7 +569,7 @@ onMounted(fetchCourseDetail)
 .section-row {
   display: flex;
   align-items: center;
-  padding: 16px 20px;
+  padding: 12px 16px;
   border-bottom: 1px solid #f1f4f8;
   cursor: pointer;
   transition: background-color 0.2s ease;
@@ -537,6 +581,14 @@ onMounted(fetchCourseDetail)
 
 .section-row:hover {
   background: #fafcff;
+}
+
+.section-row.is-disabled {
+  cursor: default;
+}
+
+.section-row.is-disabled:hover {
+  background: #fff;
 }
 
 .section-main {
@@ -555,6 +607,11 @@ onMounted(fetchCourseDetail)
   color: #303133;
   font-size: 15px;
   font-weight: 500;
+}
+
+.section-lock {
+  color: #c0c4cc;
+  font-size: 14px;
 }
 
 .side-panel {

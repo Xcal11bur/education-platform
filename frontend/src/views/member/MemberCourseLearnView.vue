@@ -150,6 +150,7 @@
 
 <script setup>
 import { Collection, Document, EditPen, Reading } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -269,6 +270,12 @@ async function fetchCourseDetail() {
   try {
     const { data } = await getPortalCourseDetail(route.params.id)
     course.value = data || { title: '', coverUrl: '', chapters: [] }
+    if (!course.value.enrolled) {
+      ElMessage.warning('请先报名课程后再开始学习')
+      router.replace(`/member/courses/${route.params.id}`)
+      return false
+    }
+    return true
   } finally {
     loading.value = false
   }
@@ -289,7 +296,10 @@ function goProfile() {
 }
 
 onMounted(async () => {
-  await Promise.all([fetchCourseDetail(), fetchCourseMaterials()])
+  const allowed = await fetchCourseDetail()
+  if (allowed) {
+    await fetchCourseMaterials()
+  }
 })
 </script>
 

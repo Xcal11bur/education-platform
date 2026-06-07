@@ -45,7 +45,37 @@
         </div>
 
         <div v-if="activeMenu === 'courses'" class="placeholder-panel">
-          <el-empty description="我的课程内容后续完善" :image-size="90" />
+          <div v-loading="courseLoading">
+            <div v-if="memberCourses.length" class="my-course-grid">
+              <article
+                v-for="course in memberCourses"
+                :key="course.id"
+                class="my-course-card"
+              >
+                <div class="my-course-cover" :style="buildCourseCoverStyle(course.coverUrl)">
+                  <div class="my-course-overlay"></div>
+                  <span class="my-course-category">{{ course.category }}</span>
+                </div>
+                <div class="my-course-body">
+                  <h3>{{ course.title }}</h3>
+                  <p>{{ course.summary }}</p>
+                  <div class="my-course-meta">
+                    <span>{{ course.teacherName || '平台课程' }}</span>
+                    <span>{{ course.learners }} 人学习</span>
+                  </div>
+                  <el-button type="primary" plain @click="goMyCourse(course)">
+                    进入学习
+                  </el-button>
+                </div>
+              </article>
+            </div>
+
+            <el-empty
+              v-else
+              description="暂无已报名课程"
+              :image-size="90"
+            />
+          </div>
         </div>
 
         <el-form
@@ -150,6 +180,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { getMemberCourseList } from '@/api/course'
 import {
   getMemberProfile,
   updateMemberMobile,
@@ -167,6 +198,8 @@ const avatarInputKey = ref(0)
 const selectedAvatarFile = ref(null)
 const avatarError = ref('')
 const avatarPreviewUrl = ref('')
+const courseLoading = ref(false)
+const memberCourses = ref([])
 const mobileDialogVisible = ref(false)
 const passwordDialogVisible = ref(false)
 const mobileSaving = ref(false)
@@ -250,6 +283,48 @@ async function fetchProfile() {
     avatar: data?.avatar || '',
     gender: data?.gender ?? 1
   })
+}
+
+function mapMemberCourse(course) {
+  return {
+    id: course.id,
+    category: [course.categoryLevel1Name, course.categoryLevel2Name].filter(Boolean).join(' / '),
+    title: course.title,
+    summary: course.subTitle || course.description || '课程内容建设中',
+    teacherName: course.teacherName || '',
+    learners: course.studyCount || 0,
+    coverUrl: course.coverUrl || '',
+    lastStudySectionId: course.lastStudySectionId
+  }
+}
+
+async function fetchMemberCourses() {
+  courseLoading.value = true
+  try {
+    const { data } = await getMemberCourseList()
+    memberCourses.value = (data || []).map(mapMemberCourse)
+  } finally {
+    courseLoading.value = false
+  }
+}
+
+function buildCourseCoverStyle(coverUrl) {
+  if (!coverUrl) {
+    return {}
+  }
+  return {
+    backgroundImage: `url(${coverUrl})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center'
+  }
+}
+
+function goMyCourse(course) {
+  if (course.lastStudySectionId) {
+    router.push(`/member/courses/${course.id}/learn/sections/${course.lastStudySectionId}`)
+    return
+  }
+  router.push(`/member/courses/${course.id}/learn`)
 }
 
 function validateAvatar(file) {
@@ -350,7 +425,9 @@ async function submitPassword() {
   }
 }
 
-onMounted(fetchProfile)
+onMounted(async () => {
+  await Promise.all([fetchProfile(), fetchMemberCourses()])
+})
 
 onBeforeUnmount(() => {
   revokeAvatarPreview()
@@ -497,7 +574,81 @@ function revokeAvatarPreview() {
 }
 
 .placeholder-panel {
-  padding: 80px 0;
+  padding: 28px 0 0;
+}
+
+.my-course-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.my-course-card {
+  overflow: hidden;
+  border: 1px solid #dcdfe6;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 10px 24px rgba(31, 45, 61, 0.05);
+}
+
+.my-course-cover {
+  position: relative;
+  height: 128px;
+  padding: 12px;
+  display: flex;
+  align-items: flex-start;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+}
+
+.my-course-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.05) 0%, rgba(15, 23, 42, 0.42) 100%);
+}
+
+.my-course-category {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.my-course-body {
+  padding: 14px;
+}
+
+.my-course-body h3 {
+  margin: 0;
+  color: #1f2d3d;
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.my-course-body p {
+  margin: 8px 0 0;
+  min-height: 42px;
+  color: #606266;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.my-course-meta {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #909399;
+  font-size: 12px;
+}
+
+.my-course-body .el-button {
+  margin-top: 14px;
 }
 
 .profile-form {
@@ -570,6 +721,16 @@ function revokeAvatarPreview() {
   .avatar-editor {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .my-course-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .my-course-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

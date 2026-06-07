@@ -113,12 +113,17 @@
                 v-for="(section, sectionIndex) in chapter.sections || []"
                 :key="section.id"
                 class="directory-section"
-                :class="{ 'is-active': currentSection?.id === section.id }"
+                :class="{
+                  'is-active': currentSection?.id === section.id,
+                  'is-locked': !canAccessSection(section)
+                }"
                 type="button"
+                :disabled="!canAccessSection(section)"
                 @click="selectSection(section.id)"
               >
                 <span class="directory-order">{{ chapterIndex + 1 }}.{{ sectionIndex + 1 }}</span>
                 <span class="directory-title">{{ displaySectionTitle(section, chapterIndex, sectionIndex) }}</span>
+                <el-icon v-if="!canAccessSection(section)" class="directory-lock"><Lock /></el-icon>
               </button>
             </div>
           </div>
@@ -129,6 +134,8 @@
 </template>
 
 <script setup>
+import { Lock } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getPortalCourseDetail } from '@/api/course'
@@ -142,7 +149,8 @@ const authStore = useAuthStore()
 const loading = ref(false)
 const course = ref({
   title: '',
-  chapters: []
+  chapters: [],
+  enrolled: false
 })
 const sectionContents = ref([])
 const pdfPreviewUrls = ref({})
@@ -166,6 +174,10 @@ const flattenedSections = computed(() =>
   )
 )
 
+const accessibleSections = computed(() =>
+  flattenedSections.value.filter((section) => canAccessSection(section))
+)
+
 const currentSectionId = computed(() => Number(route.params.sectionId) || null)
 
 const currentSection = computed(
@@ -173,16 +185,16 @@ const currentSection = computed(
 )
 
 const currentIndex = computed(() =>
-  flattenedSections.value.findIndex((section) => section.id === currentSectionId.value)
+  accessibleSections.value.findIndex((section) => section.id === currentSectionId.value)
 )
 
 const prevSection = computed(() =>
-  currentIndex.value > 0 ? flattenedSections.value[currentIndex.value - 1] : null
+  currentIndex.value > 0 ? accessibleSections.value[currentIndex.value - 1] : null
 )
 
 const nextSection = computed(() =>
-  currentIndex.value >= 0 && currentIndex.value < flattenedSections.value.length - 1
-    ? flattenedSections.value[currentIndex.value + 1]
+  currentIndex.value >= 0 && currentIndex.value < accessibleSections.value.length - 1
+    ? accessibleSections.value[currentIndex.value + 1]
     : null
 )
 
@@ -256,7 +268,19 @@ function selectSection(sectionId) {
   if (!sectionId) {
     return
   }
+  const section = flattenedSections.value.find((item) => item.id === sectionId)
+  if (!canAccessSection(section)) {
+    ElMessage.warning('请先报名课程后再学习该章节')
+    return
+  }
   router.push(`/member/courses/${route.params.id}/learn/sections/${sectionId}`)
+}
+
+function canAccessSection(section) {
+  if (!section) {
+    return false
+  }
+  return course.value.enrolled === true || section.isFreeTrial === 1
 }
 
 function handleLogout() {
@@ -273,13 +297,25 @@ async function fetchCourseDetail() {
   try {
     const { data } = await getPortalCourseDetail(route.params.id)
     course.value = data || { title: '', chapters: [] }
+    const targetSection = flattenedSections.value.find((section) => section.id === currentSectionId.value)
+    if (!targetSection) {
+      ElMessage.warning('当前章节不存在')
+      router.replace(`/member/courses/${route.params.id}`)
+      return false
+    }
+    if (!canAccessSection(targetSection)) {
+      ElMessage.warning('请先报名课程后再学习该章节')
+      router.replace(`/member/courses/${route.params.id}`)
+      return false
+    }
+    return true
   } finally {
     loading.value = false
   }
 }
 
 async function fetchSectionContents() {
-  if (!currentSectionId.value) {
+  if (!currentSectionId.value || !canAccessSection(currentSection.value)) {
     sectionContents.value = []
     revokePdfPreviewUrls()
     return
@@ -318,8 +354,10 @@ watch(
 )
 
 onMounted(async () => {
-  await fetchCourseDetail()
-  await fetchSectionContents()
+  const allowed = await fetchCourseDetail()
+  if (allowed) {
+    await fetchSectionContents()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -578,7 +616,7 @@ onBeforeUnmount(() => {
 .directory-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   max-height: calc(100vh - 120px);
   overflow: auto;
 }
@@ -588,7 +626,7 @@ onBeforeUnmount(() => {
 }
 
 .directory-chapter-title {
-  padding: 8px 10px;
+  padding: 6px 10px;
   color: #303133;
   font-size: 15px;
   font-weight: 700;
@@ -596,7 +634,7 @@ onBeforeUnmount(() => {
 
 .directory-section {
   width: 100%;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border: 0;
   border-radius: 10px;
   background: transparent;
@@ -614,6 +652,16 @@ onBeforeUnmount(() => {
   color: #1d4ed8;
 }
 
+.directory-section.is-locked {
+  color: #a8abb2;
+  cursor: not-allowed;
+}
+
+.directory-section.is-locked:hover {
+  background: transparent;
+  color: #a8abb2;
+}
+
 .directory-order {
   min-width: 34px;
   font-size: 13px;
@@ -621,6 +669,12 @@ onBeforeUnmount(() => {
 
 .directory-title {
   line-height: 1.55;
+  flex: 1;
+}
+
+.directory-lock {
+  margin-top: 2px;
+  font-size: 13px;
 }
 
 @media (max-width: 1080px) {

@@ -22,4 +22,7 @@ public class CourseVO {
     private Integer publishStatus;
     private Integer studyCount;
     private Integer sort;
+    private Boolean enrolled;
+    private BigDecimal studyProgress;
+    private Long lastStudySectionId;
 }

@@ -37,6 +37,20 @@ export function getPortalCourseMaterials(courseId) {
   })
 }
 
+export function enrollCourse(courseId) {
+  return request({
+    url: `/member/courses/${courseId}/enroll`,
+    method: 'post'
+  })
+}
+
+export function getMemberCourseList() {
+  return request({
+    url: '/member/courses',
+    method: 'get'
+  })
+}
+
 export function getCourseDetail(id) {
   return request({
     url: `/admin/courses/${id}`,

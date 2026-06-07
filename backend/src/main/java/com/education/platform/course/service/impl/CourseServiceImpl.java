@@ -15,14 +15,17 @@ import com.education.platform.course.dto.CourseQueryDTO;
 import com.education.platform.course.dto.CourseSaveDTO;
 import com.education.platform.course.entity.Course;
 import com.education.platform.course.entity.CourseCategory;
+import com.education.platform.course.entity.CourseEnrollment;
 import com.education.platform.course.mapper.CourseMapper;
 import com.education.platform.course.service.CourseChapterService;
+import com.education.platform.course.service.CourseEnrollmentService;
 import com.education.platform.course.service.CourseService;
 import com.education.platform.course.vo.CourseVO;
 import com.education.platform.teacher.entity.Teacher;
 import com.education.platform.teacher.mapper.TeacherMapper;
 import java.math.BigDecimal;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -44,13 +47,16 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     private final TeacherMapper teacherMapper;
     private final com.education.platform.course.mapper.CourseCategoryMapper courseCategoryMapper;
     private final CourseChapterService courseChapterService;
+    private final CourseEnrollmentService courseEnrollmentService;
 
     public CourseServiceImpl(TeacherMapper teacherMapper,
                              com.education.platform.course.mapper.CourseCategoryMapper courseCategoryMapper,
-                             CourseChapterService courseChapterService) {
+                             CourseChapterService courseChapterService,
+                             CourseEnrollmentService courseEnrollmentService) {
         this.teacherMapper = teacherMapper;
         this.courseCategoryMapper = courseCategoryMapper;
         this.courseChapterService = courseChapterService;
+        this.courseEnrollmentService = courseEnrollmentService;
     }
 
     @Override
@@ -140,7 +146,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
                 .pageNum(page.getCurrent())
                 .pageSize(page.getSize())
                 .total(page.getTotal())
-                .list(list)
+                .list(fillEnrollmentFields(list))
                 .build();
     }
 
@@ -151,6 +157,31 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
             throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "course not found");
         }
         return buildCourseDetail(course, true);
+    }
+
+    @Override
+    public List<CourseVO> listCurrentMemberCourses() {
+        List<CourseEnrollment> enrollments = courseEnrollmentService.listCurrentMemberActiveEnrollments();
+        if (enrollments.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, CourseEnrollment> enrollmentMap = enrollments.stream()
+                .collect(Collectors.toMap(CourseEnrollment::getCourseId, Function.identity()));
+        List<Long> courseIds = enrollments.stream()
+                .map(CourseEnrollment::getCourseId)
+                .distinct()
+                .toList();
+        Map<Long, Integer> orderMap = java.util.stream.IntStream.range(0, courseIds.size())
+                .boxed()
+                .collect(Collectors.toMap(courseIds::get, Function.identity()));
+        List<Course> courses = lambdaQuery()
+                .in(Course::getId, courseIds)
+                .eq(Course::getPublishStatus, PUBLISH_STATUS_PUBLISHED)
+                .list()
+                .stream()
+                .sorted(Comparator.comparingInt(course -> orderMap.getOrDefault(course.getId(), Integer.MAX_VALUE)))
+                .toList();
+        return fillEnrollmentFields(fillCourseVOs(courses), enrollmentMap);
     }
 
     private CourseDetailVO buildCourseDetail(Course course, boolean portalOnly) {
@@ -185,6 +216,9 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
 
         List<CourseChapterVO> chapters = courseChapterService.getChapterTree(course.getId(), portalOnly);
         detailVO.setChapters(chapters);
+        if (portalOnly) {
+            applyEnrollmentFields(detailVO, courseEnrollmentService.getCurrentMemberEnrollmentMap(List.of(course.getId())).get(course.getId()));
+        }
         return detailVO;
     }
 
@@ -276,6 +310,37 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
                     return vo;
                 })
                 .toList();
+    }
+
+    private List<CourseVO> fillEnrollmentFields(List<CourseVO> courses) {
+        if (courses.isEmpty()) {
+            return courses;
+        }
+        Map<Long, CourseEnrollment> enrollmentMap = courseEnrollmentService.getCurrentMemberEnrollmentMap(
+                courses.stream().map(CourseVO::getId).toList()
+        );
+        return fillEnrollmentFields(courses, enrollmentMap);
+    }
+
+    private List<CourseVO> fillEnrollmentFields(List<CourseVO> courses, Map<Long, CourseEnrollment> enrollmentMap) {
+        courses.forEach(course -> applyEnrollmentFields(course, enrollmentMap.get(course.getId())));
+        return courses;
+    }
+
+    private void applyEnrollmentFields(CourseVO course, CourseEnrollment enrollment) {
+        course.setEnrolled(enrollment != null);
+        if (enrollment != null) {
+            course.setStudyProgress(enrollment.getStudyProgress());
+            course.setLastStudySectionId(enrollment.getLastStudySectionId());
+        }
+    }
+
+    private void applyEnrollmentFields(CourseDetailVO course, CourseEnrollment enrollment) {
+        course.setEnrolled(enrollment != null);
+        if (enrollment != null) {
+            course.setStudyProgress(enrollment.getStudyProgress());
+            course.setLastStudySectionId(enrollment.getLastStudySectionId());
+        }
     }
 
     private Map<Long, Teacher> listTeachersByIds(Collection<Long> ids) {

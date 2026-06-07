@@ -13,6 +13,7 @@ import com.education.platform.course.mapper.CourseChapterMapper;
 import com.education.platform.course.mapper.CourseMapper;
 import com.education.platform.course.mapper.CourseSectionContentMapper;
 import com.education.platform.course.mapper.CourseSectionMapper;
+import com.education.platform.course.service.CourseEnrollmentService;
 import com.education.platform.course.service.CourseSectionContentService;
 import com.education.platform.course.vo.CourseSectionContentVO;
 import java.util.Collection;
@@ -48,14 +49,17 @@ public class CourseSectionContentServiceImpl extends ServiceImpl<CourseSectionCo
     private final CourseMapper courseMapper;
     private final CourseChapterMapper courseChapterMapper;
     private final CourseSectionMapper courseSectionMapper;
+    private final CourseEnrollmentService courseEnrollmentService;
 
     public CourseSectionContentServiceImpl(
             CourseMapper courseMapper,
             CourseChapterMapper courseChapterMapper,
-            CourseSectionMapper courseSectionMapper) {
+            CourseSectionMapper courseSectionMapper,
+            CourseEnrollmentService courseEnrollmentService) {
         this.courseMapper = courseMapper;
         this.courseChapterMapper = courseChapterMapper;
         this.courseSectionMapper = courseSectionMapper;
+        this.courseEnrollmentService = courseEnrollmentService;
     }
 
     @Override
@@ -200,6 +204,9 @@ public class CourseSectionContentServiceImpl extends ServiceImpl<CourseSectionCo
             Course course = getCourseOrThrow(section.getCourseId(), true);
             if (!Objects.equals(course.getId(), section.getCourseId())) {
                 throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "section not found");
+            }
+            if (!courseEnrollmentService.canCurrentMemberAccessSection(course.getId(), section.getIsFreeTrial())) {
+                throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "course enrollment required");
             }
         }
         return section;

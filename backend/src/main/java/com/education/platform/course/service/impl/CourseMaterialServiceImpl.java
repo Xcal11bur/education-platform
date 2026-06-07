@@ -13,6 +13,7 @@ import com.education.platform.course.entity.Course;
 import com.education.platform.course.entity.CourseMaterial;
 import com.education.platform.course.mapper.CourseMapper;
 import com.education.platform.course.mapper.CourseMaterialMapper;
+import com.education.platform.course.service.CourseEnrollmentService;
 import com.education.platform.course.service.CourseMaterialService;
 import com.education.platform.course.vo.CourseMaterialVO;
 import java.util.Collection;
@@ -32,10 +33,15 @@ public class CourseMaterialServiceImpl extends ServiceImpl<CourseMaterialMapper,
 
     private final CourseMapper courseMapper;
     private final CourseMaterialMapper courseMaterialMapper;
+    private final CourseEnrollmentService courseEnrollmentService;
 
-    public CourseMaterialServiceImpl(CourseMapper courseMapper, CourseMaterialMapper courseMaterialMapper) {
+    public CourseMaterialServiceImpl(
+            CourseMapper courseMapper,
+            CourseMaterialMapper courseMaterialMapper,
+            CourseEnrollmentService courseEnrollmentService) {
         this.courseMapper = courseMapper;
         this.courseMaterialMapper = courseMaterialMapper;
+        this.courseEnrollmentService = courseEnrollmentService;
     }
 
     @Override
@@ -106,10 +112,14 @@ public class CourseMaterialServiceImpl extends ServiceImpl<CourseMaterialMapper,
     @Override
     public List<CourseMaterialVO> listPortalMaterials(Long courseId) {
         getCourseOrThrow(courseId, true);
+        boolean enrolled = courseEnrollmentService.isCurrentMemberEnrolled(courseId);
         List<CourseMaterial> materials = lambdaQuery()
                 .eq(CourseMaterial::getCourseId, courseId)
                 .orderByAsc(CourseMaterial::getSort, CourseMaterial::getId)
-                .list();
+                .list()
+                .stream()
+                .filter(material -> Objects.equals(material.getDownloadLimit(), 0) || enrolled)
+                .toList();
         return fillMaterialVOs(materials);
     }
 

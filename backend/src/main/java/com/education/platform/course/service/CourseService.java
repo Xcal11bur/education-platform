@@ -7,6 +7,7 @@ import com.education.platform.course.dto.CourseQueryDTO;
 import com.education.platform.course.dto.CourseSaveDTO;
 import com.education.platform.course.entity.Course;
 import com.education.platform.course.vo.CourseVO;
+import java.util.List;
 
 public interface CourseService extends IService<Course> {
 
@@ -23,4 +24,6 @@ public interface CourseService extends IService<Course> {
     PageResponse<CourseVO> pagePortalCourses(CourseQueryDTO queryDTO);
 
     CourseDetailVO getPortalCourseDetail(Long id);
+
+    List<CourseVO> listCurrentMemberCourses();
 }
