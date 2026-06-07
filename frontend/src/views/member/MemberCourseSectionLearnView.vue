@@ -34,8 +34,6 @@
         </div>
 
         <div class="section-content-block">
-          <h2>小节内容</h2>
-
           <div v-if="renderedContentItems.length" class="content-item-list">
             <section
               v-for="item in renderedContentItems"

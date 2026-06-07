@@ -375,6 +375,7 @@ const selectedContentUploadFile = ref(null)
 const selectedContentFileName = ref('')
 const contentUploadError = ref('')
 const contentFileInputKey = ref(0)
+const pendingEditorImages = ref([])
 const contentForm = reactive({
   title: '',
   contentType: 'RICH_TEXT',
@@ -414,7 +415,7 @@ const editor = useEditor({
         return false
       }
       event.preventDefault()
-      imageFiles.forEach((file) => uploadAndInsertEditorImage(file))
+      imageFiles.forEach((file) => insertPendingEditorImage(file))
       return true
     },
     handleDrop(_view, event) {
@@ -424,7 +425,7 @@ const editor = useEditor({
         return false
       }
       event.preventDefault()
-      imageFiles.forEach((file) => uploadAndInsertEditorImage(file))
+      imageFiles.forEach((file) => insertPendingEditorImage(file))
       return true
     }
   },
@@ -531,6 +532,7 @@ function resetContentForm() {
   selectedContentFileName.value = ''
   contentUploadError.value = ''
   contentFileInputKey.value += 1
+  clearPendingEditorImages()
   editor.value?.commands.setContent('')
   contentFormRef.value?.clearValidate()
 }
@@ -731,6 +733,11 @@ async function submitContentForm() {
   await contentFormRef.value.validate()
   contentSaving.value = true
   try {
+    if (contentForm.contentType === 'RICH_TEXT') {
+      await uploadPendingEditorImages()
+      syncEditorContent()
+    }
+
     const payload = {
       ...contentForm,
       contentHtml: contentForm.contentType === 'RICH_TEXT' ? contentForm.contentHtml : '',
@@ -875,6 +882,7 @@ function handleContentTypeChange() {
   if (contentForm.contentType !== 'RICH_TEXT') {
     contentForm.contentHtml = ''
     contentForm.contentJson = ''
+    clearPendingEditorImages()
     editor.value?.commands.setContent('')
   }
 }
@@ -931,20 +939,55 @@ function insertEditorImage() {
   editor.value.chain().focus().setImage({ src: url }).run()
 }
 
-async function uploadAndInsertEditorImage(file) {
+function insertPendingEditorImage(file) {
   if (!editor.value) {
     return
   }
-  try {
-    const { data } = await uploadSectionContentFile(file, 'IMAGE')
-    editor.value.chain().focus().setImage({
-      src: data.url,
-      alt: data.originalFilename || ''
-    }).run()
-    ElMessage.success('图片已上传')
-  } catch (_error) {
-    ElMessage.error('图片上传失败')
+  const objectUrl = URL.createObjectURL(file)
+  pendingEditorImages.value.push({
+    file,
+    objectUrl
+  })
+  editor.value.chain().focus().setImage({
+    src: objectUrl,
+    alt: file.name || ''
+  }).run()
+}
+
+async function uploadPendingEditorImages() {
+  if (!editor.value || !pendingEditorImages.value.length) {
+    return
   }
+
+  for (const item of pendingEditorImages.value) {
+    const { data } = await uploadSectionContentFile(item.file, 'IMAGE')
+    replaceEditorImageSrc(item.objectUrl, data.url)
+    URL.revokeObjectURL(item.objectUrl)
+  }
+  pendingEditorImages.value = []
+}
+
+function replaceEditorImageSrc(sourceUrl, targetUrl) {
+  const escapedSource = escapeRegExp(sourceUrl)
+  contentForm.contentHtml = (editor.value.getHTML() || '').replaceAll(sourceUrl, targetUrl)
+  contentForm.contentJson = JSON.stringify(editor.value.getJSON()).replace(
+    new RegExp(escapedSource, 'g'),
+    () => targetUrl
+  )
+  if (contentForm.contentJson) {
+    editor.value.commands.setContent(JSON.parse(contentForm.contentJson))
+  } else {
+    editor.value.commands.setContent(contentForm.contentHtml || '')
+  }
+}
+
+function clearPendingEditorImages() {
+  pendingEditorImages.value.forEach((item) => URL.revokeObjectURL(item.objectUrl))
+  pendingEditorImages.value = []
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 function validateContentFile(file) {
@@ -1020,10 +1063,12 @@ function handleContentFileChange(event) {
 }
 
 onBeforeUnmount(() => {
+  clearPendingEditorImages()
   editor.value?.destroy()
 })
 
 function handleSectionContentDialogClosed() {
+  clearPendingEditorImages()
   currentContentSection.value = null
   currentContentChapter.value = null
   sectionContents.value = []
