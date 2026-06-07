@@ -43,7 +43,11 @@
       <section class="hero-section">
         <div ref="categoryMenuRef" class="category-nav">
           <div class="category-menu-shell">
-            <div class="category-level1">
+            <div
+              class="category-level1"
+              :class="{ 'is-scrolling': categoryScrolling }"
+              @scroll="handleCategoryScroll"
+            >
               <button
                 v-for="item in categoryTree"
                 :key="item.id"
@@ -201,7 +205,9 @@ const activeCategoryId = ref(null)
 const activeCourseCategoryId = ref(null)
 const activeBannerIndex = ref(0)
 const categoryMenuRef = ref(null)
+const categoryScrolling = ref(false)
 let bannerTimer = null
+let categoryScrollTimer = null
 
 const displayName = computed(
   () => authStore.profile?.displayName || authStore.profile?.username || '学员'
@@ -335,6 +341,22 @@ function stopBannerRotation() {
   }
 }
 
+function stopCategoryScrollTimer() {
+  if (categoryScrollTimer) {
+    clearTimeout(categoryScrollTimer)
+    categoryScrollTimer = null
+  }
+}
+
+function handleCategoryScroll() {
+  categoryScrolling.value = true
+  stopCategoryScrollTimer()
+  categoryScrollTimer = window.setTimeout(() => {
+    categoryScrolling.value = false
+    categoryScrollTimer = null
+  }, 800)
+}
+
 function startBannerRotation() {
   stopBannerRotation()
   if (bannerCourses.value.length <= 1) {
@@ -424,6 +446,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopBannerRotation()
+  stopCategoryScrollTimer()
   document.removeEventListener('click', handleDocumentClick)
 })
 </script>
@@ -542,11 +565,20 @@ onBeforeUnmount(() => {
 .category-level1 {
   display: flex;
   flex-direction: column;
+  height: 258px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 16px;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.category-level1:hover,
+.category-level1.is-scrolling {
+  scrollbar-color: #cbd5e1 transparent;
 }
 
 .category-item {
@@ -568,6 +600,24 @@ onBeforeUnmount(() => {
 
 .category-item:last-child {
   border-bottom: 0;
+}
+
+.category-level1::-webkit-scrollbar {
+  width: 6px;
+}
+
+.category-level1::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+}
+
+.category-level1:hover::-webkit-scrollbar-thumb,
+.category-level1.is-scrolling::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+.category-level1::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .category-item:hover,
