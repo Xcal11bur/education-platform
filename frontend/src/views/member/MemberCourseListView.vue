@@ -153,13 +153,14 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getPortalCategoryTree } from '@/api/category'
 import { getPortalCourseList } from '@/api/course'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const navItems = [
@@ -292,17 +293,20 @@ function buildCourseCoverStyle(coverUrl) {
 function selectLevel1(id) {
   selectedLevel1Id.value = selectedLevel1Id.value === id ? null : id
   selectedLevel2Id.value = null
+  syncCategoryQuery()
 }
 
 function selectLevel2(level1Id, level2Id) {
   selectedLevel1Id.value = level1Id
   selectedLevel2Id.value = selectedLevel2Id.value === level2Id ? null : level2Id
+  syncCategoryQuery()
 }
 
 function resetFilters() {
   selectedLevel1Id.value = null
   selectedLevel2Id.value = null
   keyword.value = ''
+  syncCategoryQuery()
 }
 
 function countCoursesByLevel1(level1Id) {
@@ -332,9 +336,34 @@ async function fetchPortalCourses() {
   }
 }
 
+function applyCategoryQuery() {
+  const level1Id = Number(route.query.level1Id)
+  const level2Id = Number(route.query.level2Id)
+  selectedLevel1Id.value = Number.isFinite(level1Id) && level1Id > 0 ? level1Id : null
+  selectedLevel2Id.value = Number.isFinite(level2Id) && level2Id > 0 ? level2Id : null
+}
+
+function syncCategoryQuery() {
+  router.replace({
+    path: '/member/courses',
+    query: {
+      ...(selectedLevel1Id.value ? { level1Id: selectedLevel1Id.value } : {}),
+      ...(selectedLevel2Id.value ? { level2Id: selectedLevel2Id.value } : {})
+    }
+  })
+}
+
 onMounted(async () => {
   await Promise.all([fetchPortalCategories(), fetchPortalCourses()])
+  applyCategoryQuery()
 })
+
+watch(
+  () => [route.query.level1Id, route.query.level2Id],
+  () => {
+    applyCategoryQuery()
+  }
+)
 </script>
 
 <style scoped>

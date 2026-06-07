@@ -7,7 +7,15 @@
             首页
           </button>
           <span class="breadcrumb-separator">></span>
-          <span>{{ course.categoryLevel1?.name || '课程详情' }}</span>
+          <button
+            v-if="course.categoryLevel1?.id"
+            type="button"
+            class="breadcrumb-link is-category"
+            @click="goCategoryCourses"
+          >
+            {{ course.categoryLevel1.name }}
+          </button>
+          <span v-else>{{ course.categoryLevel1?.name || '课程详情' }}</span>
           <span class="breadcrumb-separator">></span>
           <span class="is-current">{{ course.title || '课程详情' }}</span>
         </div>
@@ -245,6 +253,13 @@ function goLearnPage(sectionId = null) {
   router.push(`/member/courses/${route.params.id}/learn`)
 }
 
+function goCategoryCourses() {
+  router.push({
+    path: '/member/courses',
+    query: { level1Id: course.value.categoryLevel1.id }
+  })
+}
+
 function handleLogout() {
   authStore.logout()
   router.push('/login')
@@ -313,6 +328,14 @@ onMounted(fetchCourseDetail)
 
 .breadcrumb-row .is-current {
   color: #409eff;
+}
+
+.breadcrumb-link.is-category {
+  color: #409eff;
+}
+
+.breadcrumb-link.is-category:hover {
+  text-decoration: underline;
 }
 
 .profile-entry {

@@ -1,5 +1,6 @@
 package com.education.platform.course.vo;
 
+import java.time.LocalDateTime;
 import lombok.Data;
 
 @Data
@@ -14,4 +15,5 @@ public class CourseMaterialVO {
     private Long fileSize;
     private Integer downloadLimit;
     private Integer sort;
+    private LocalDateTime createdAt;
 }

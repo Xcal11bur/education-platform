@@ -122,7 +122,10 @@
               >
                 <div>
                   <div class="material-title">{{ material.materialName }}</div>
-                  <div class="material-sub">{{ materialTypeText(material.materialType) }}</div>
+                  <div class="material-sub">
+                    <span>{{ materialTypeText(material.materialType) }}</span>
+                    <span>上传时间 {{ formatUploadTime(material.createdAt) }}</span>
+                  </div>
                 </div>
                 <div class="material-size">{{ formatFileSize(material.fileSize) }}</div>
               </a>
@@ -219,6 +222,17 @@ function formatFileSize(size) {
     return `${(total / 1024).toFixed(1)} KB`
   }
   return `${total} B`
+}
+
+function formatUploadTime(value) {
+  if (!value) {
+    return '--'
+  }
+  const normalized = String(value)
+    .replace('T', ' ')
+    .replace(/\.\d+$/, '')
+    .replace(/Z$/, '')
+  return normalized.length > 16 ? normalized.slice(0, 16) : normalized
 }
 
 function displayChapterTitle(chapter, chapterIndex) {
@@ -553,6 +567,14 @@ onMounted(async () => {
   color: #1f2d3d;
   font-size: 15px;
   font-weight: 700;
+}
+
+.material-sub {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .material-sub,

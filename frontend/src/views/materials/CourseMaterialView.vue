@@ -45,7 +45,9 @@
     </div>
 
     <el-table v-if="courseId" :data="materials" border>
-      <el-table-column prop="id" label="ID" width="90" />
+      <el-table-column label="ID" width="90">
+        <template #default="{ $index }">{{ rowIndex($index) }}</template>
+      </el-table-column>
       <el-table-column prop="materialName" label="资料名称" min-width="180" />
       <el-table-column label="资料类型" width="120">
         <template #default="{ row }">{{ materialTypeText(row.materialType) }}</template>
@@ -57,7 +59,9 @@
       <el-table-column label="下载权限" width="130">
         <template #default="{ row }">{{ downloadLimitText(row.downloadLimit) }}</template>
       </el-table-column>
-      <el-table-column prop="sort" label="排序" width="90" />
+      <el-table-column label="上传时间" width="170">
+        <template #default="{ row }">{{ formatUploadTime(row.createdAt) }}</template>
+      </el-table-column>
       <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openEdit(row.id)">编辑</el-button>
@@ -84,9 +88,6 @@
 
     <el-dialog v-model="dialogVisible" :title="editingId ? '编辑资料' : '新增资料'" width="680px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-        <el-form-item label="资料名称" prop="materialName">
-          <el-input v-model="form.materialName" />
-        </el-form-item>
         <el-form-item label="资料类型" prop="materialType">
           <el-select v-model="form.materialType">
             <el-option label="文档" :value="1" />
@@ -114,9 +115,6 @@
             <el-radio :value="0">全部学员</el-radio>
             <el-radio :value="1">已报名学员</el-radio>
           </el-radio-group>
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="form.sort" :min="0" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -172,8 +170,7 @@ const defaultForm = () => ({
   materialName: '',
   materialType: 1,
   fileUrl: '',
-  downloadLimit: 1,
-  sort: 0
+  downloadLimit: 1
 })
 
 const form = reactive(defaultForm())
@@ -187,7 +184,6 @@ const existingFileName = computed(() => {
 })
 
 const rules = {
-  materialName: [{ required: true, message: '请输入资料名称', trigger: 'blur' }],
   materialType: [{ required: true, message: '请选择资料类型', trigger: 'change' }],
   uploadFile: [{
     validator: (_rule, _value, callback) => {
@@ -212,6 +208,21 @@ function downloadLimitText(value) {
 function formatFileSizeMb(value) {
   const size = Number(value || 0)
   return `${(size / 1024 / 1024).toFixed(2)} MB`
+}
+
+function rowIndex(index) {
+  return (query.pageNum - 1) * query.pageSize + index + 1
+}
+
+function formatUploadTime(value) {
+  if (!value) {
+    return '--'
+  }
+  const normalized = String(value)
+    .replace('T', ' ')
+    .replace(/\.\d+$/, '')
+    .replace(/Z$/, '')
+  return normalized.length > 16 ? normalized.slice(0, 16) : normalized
 }
 
 async function fetchCourseOptions() {
@@ -263,8 +274,7 @@ async function openEdit(id) {
     materialName: data.materialName,
     materialType: data.materialType,
     fileUrl: data.fileUrl,
-    downloadLimit: data.downloadLimit,
-    sort: data.sort
+    downloadLimit: data.downloadLimit
   })
   dialogVisible.value = true
 }
@@ -284,6 +294,7 @@ async function submitForm() {
         const { data } = await uploadMaterialFile(selectedUploadFile.value)
         payload.fileUrl = data.url
         payload.fileSize = data.size
+        payload.materialName = data.originalFilename || selectedUploadFile.value.name
         uploadError.value = ''
       } finally {
         uploading.value = false
@@ -336,9 +347,7 @@ function handleFileChange(event) {
 
   selectedUploadFile.value = file
   selectedFileName.value = file.name
-  if (!form.materialName) {
-    form.materialName = file.name
-  }
+  form.materialName = file.name
   formRef.value?.validateField('uploadFile')
 }
 
