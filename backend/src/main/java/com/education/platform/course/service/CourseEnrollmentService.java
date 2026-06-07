@@ -10,6 +10,8 @@ public interface CourseEnrollmentService extends IService<CourseEnrollment> {
 
     boolean enrollCurrentMember(Long courseId);
 
+    boolean unenrollCurrentMember(Long courseId);
+
     boolean isCurrentMemberEnrolled(Long courseId);
 
     boolean canCurrentMemberAccessSection(Long courseId, Integer isFreeTrial);

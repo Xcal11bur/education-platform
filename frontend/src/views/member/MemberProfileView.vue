@@ -51,10 +51,20 @@
                 v-for="course in memberCourses"
                 :key="course.id"
                 class="my-course-card"
+                @click="goMyCourse(course)"
               >
                 <div class="my-course-cover" :style="buildCourseCoverStyle(course.coverUrl)">
                   <div class="my-course-overlay"></div>
                   <span class="my-course-category">{{ course.category }}</span>
+                  <el-button
+                    class="unenroll-button"
+                    type="danger"
+                    size="small"
+                    plain
+                    @click.stop="handleUnenroll(course)"
+                  >
+                    退课
+                  </el-button>
                 </div>
                 <div class="my-course-body">
                   <h3>{{ course.title }}</h3>
@@ -63,9 +73,6 @@
                     <span>{{ course.teacherName || '平台课程' }}</span>
                     <span>{{ course.learners }} 人学习</span>
                   </div>
-                  <el-button type="primary" plain @click="goMyCourse(course)">
-                    进入学习
-                  </el-button>
                 </div>
               </article>
             </div>
@@ -178,9 +185,9 @@
 import { Collection, Message, User } from '@element-plus/icons-vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
-import { getMemberCourseList } from '@/api/course'
+import { getMemberCourseList, unenrollCourse } from '@/api/course'
 import {
   getMemberProfile,
   updateMemberMobile,
@@ -306,6 +313,21 @@ async function fetchMemberCourses() {
   } finally {
     courseLoading.value = false
   }
+}
+
+async function handleUnenroll(course) {
+  await ElMessageBox.confirm(
+    `确认退出《${course.title || '当前课程'}》吗？`,
+    '退课确认',
+    {
+      type: 'warning',
+      confirmButtonText: '确认退课',
+      cancelButtonText: '取消'
+    }
+  )
+  const { data } = await unenrollCourse(course.id)
+  memberCourses.value = memberCourses.value.filter((item) => item.id !== course.id)
+  ElMessage.success(data ? '已退课' : '课程已不在您的学习列表中')
 }
 
 function buildCourseCoverStyle(coverUrl) {
@@ -584,11 +606,19 @@ function revokeAvatarPreview() {
 }
 
 .my-course-card {
+  position: relative;
   overflow: hidden;
   border: 1px solid #dcdfe6;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 10px 24px rgba(31, 45, 61, 0.05);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.my-course-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(31, 45, 61, 0.08);
 }
 
 .my-course-cover {
@@ -616,6 +646,23 @@ function revokeAvatarPreview() {
   color: #1d4ed8;
   font-size: 12px;
   font-weight: 700;
+}
+
+.unenroll-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.my-course-card:hover .unenroll-button {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 .my-course-body {

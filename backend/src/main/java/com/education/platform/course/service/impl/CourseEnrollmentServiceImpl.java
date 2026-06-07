@@ -27,6 +27,7 @@ public class CourseEnrollmentServiceImpl extends ServiceImpl<CourseEnrollmentMap
     private static final String ROLE_MEMBER = "MEMBER";
     private static final int COURSE_STATUS_PUBLISHED = 1;
     private static final int ENROLLMENT_STATUS_ACTIVE = 1;
+    private static final int ENROLLMENT_STATUS_INACTIVE = 0;
     private static final int ENROLL_TYPE_SELF = 1;
 
     private final CourseMapper courseMapper;
@@ -59,6 +60,26 @@ public class CourseEnrollmentServiceImpl extends ServiceImpl<CourseEnrollmentMap
         }
         course.setStudyCount((course.getStudyCount() == null ? 0 : course.getStudyCount()) + 1);
         courseMapper.updateById(course);
+        return true;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean unenrollCurrentMember(Long courseId) {
+        Long memberId = getCurrentMemberId();
+        CourseEnrollment enrollment = getEnrollment(memberId, courseId);
+        if (enrollment == null || !Objects.equals(enrollment.getStatus(), ENROLLMENT_STATUS_ACTIVE)) {
+            return false;
+        }
+        enrollment.setStatus(ENROLLMENT_STATUS_INACTIVE);
+        updateById(enrollment);
+
+        Course course = courseMapper.selectById(courseId);
+        if (course != null) {
+            int studyCount = course.getStudyCount() == null ? 0 : course.getStudyCount();
+            course.setStudyCount(Math.max(0, studyCount - 1));
+            courseMapper.updateById(course);
+        }
         return true;
     }
 

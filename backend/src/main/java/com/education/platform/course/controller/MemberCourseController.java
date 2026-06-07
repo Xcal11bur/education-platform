@@ -6,6 +6,7 @@ import com.education.platform.course.service.CourseService;
 import com.education.platform.course.vo.CourseVO;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,5 +29,10 @@ public class MemberCourseController {
     @PostMapping("/{courseId}/enroll")
     public Result<Boolean> enroll(@PathVariable Long courseId) {
         return Result.success(courseEnrollmentService.enrollCurrentMember(courseId));
+    }
+
+    @DeleteMapping("/{courseId}/enroll")
+    public Result<Boolean> unenroll(@PathVariable Long courseId) {
+        return Result.success(courseEnrollmentService.unenrollCurrentMember(courseId));
     }
 }

@@ -44,6 +44,13 @@ export function enrollCourse(courseId) {
   })
 }
 
+export function unenrollCourse(courseId) {
+  return request({
+    url: `/member/courses/${courseId}/enroll`,
+    method: 'delete'
+  })
+}
+
 export function getMemberCourseList() {
   return request({
     url: '/member/courses',
