@@ -2,7 +2,6 @@ package com.education.platform.admin.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.education.platform.common.model.BaseEntity;
-import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -17,5 +16,4 @@ public class AdminUser extends BaseEntity {
     private String mobile;
     private String email;
     private Integer status;
-    private LocalDateTime lastLoginAt;
 }

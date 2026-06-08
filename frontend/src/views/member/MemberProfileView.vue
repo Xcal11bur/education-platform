@@ -138,6 +138,16 @@
             </el-radio-group>
           </el-form-item>
 
+          <el-form-item label="生日">
+            <el-date-picker
+              v-model="profileForm.birthday"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="请选择生日"
+              style="width: 100%;"
+            />
+          </el-form-item>
+
           <el-form-item>
             <el-button type="primary" :loading="saving" @click="submitProfile">保存</el-button>
           </el-form-item>
@@ -220,7 +230,8 @@ const profileForm = reactive({
   nickname: '',
   realName: '',
   avatar: '',
-  gender: 1
+  gender: 1,
+  birthday: ''
 })
 
 const mobileForm = reactive({
@@ -288,7 +299,8 @@ async function fetchProfile() {
     nickname: data?.nickname || '',
     realName: data?.realName || '',
     avatar: data?.avatar || '',
-    gender: data?.gender ?? 1
+    gender: data?.gender ?? 1,
+    birthday: data?.birthday || ''
   })
 }
 
@@ -394,7 +406,8 @@ async function submitProfile() {
       nickname: profileForm.nickname,
       realName: profileForm.realName,
       avatar: avatarUrl,
-      gender: profileForm.gender
+      gender: profileForm.gender,
+      birthday: profileForm.birthday || null
     })
     profileForm.avatar = avatarUrl
     selectedAvatarFile.value = null
