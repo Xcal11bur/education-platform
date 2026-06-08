@@ -96,9 +96,7 @@ function handleLogout() {
 }
 
 .layout-sidebar {
-  background:
-    radial-gradient(circle at top, rgba(255, 255, 255, 0.12), transparent 26%),
-    linear-gradient(180deg, #184c47 0%, #113430 100%);
+  background: linear-gradient(180deg, #1f2a3d 0%, #1a2434 100%);
   color: #fff;
   padding: 18px 14px;
 }
@@ -118,7 +116,7 @@ function handleLogout() {
   place-items: center;
   font-size: 20px;
   font-weight: 700;
-  background: linear-gradient(135deg, #46b993, #2f8d73);
+  background: linear-gradient(135deg, #409eff, #2f68ff);
 }
 
 .brand-title {
@@ -128,7 +126,7 @@ function handleLogout() {
 
 .brand-subtitle {
   margin-top: 4px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.65);
   font-size: 12px;
 }
 
@@ -142,11 +140,11 @@ function handleLogout() {
 }
 
 :deep(.el-menu-item.is-active) {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--bg-sidebar-active);
 }
 
 :deep(.el-menu-item:hover) {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-sidebar-hover);
 }
 
 .layout-main {
@@ -195,9 +193,6 @@ function handleLogout() {
 
 .layout-content {
   padding: 24px 28px 28px;
-  background:
-    radial-gradient(circle at top right, rgba(70, 185, 147, 0.08), transparent 20%),
-    #f5f7f6;
   min-height: calc(100vh - 73px);
 }
 

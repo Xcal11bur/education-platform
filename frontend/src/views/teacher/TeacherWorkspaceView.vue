@@ -40,16 +40,16 @@ const description = computed(
   padding: 26px 28px;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.96);
-  border: 1px solid #dce8e3;
-  box-shadow: 0 14px 32px rgba(17, 52, 48, 0.05);
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 12px 28px rgba(31, 45, 61, 0.06);
 }
 
 .workspace-badge {
   display: inline-flex;
   padding: 7px 12px;
   border-radius: 999px;
-  background: #e8f5f1;
-  color: #1c6b60;
+  background: #edf4ff;
+  color: #2c5ea8;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -59,12 +59,12 @@ const description = computed(
 .workspace-card h1,
 .next-card h2 {
   margin: 16px 0 12px;
-  color: #183f3a;
+  color: #1f2d3d;
 }
 
 .workspace-card p,
 .next-card li {
-  color: #647772;
+  color: #606266;
   line-height: 1.75;
 }
 

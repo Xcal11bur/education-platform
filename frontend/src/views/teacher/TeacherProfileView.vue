@@ -274,20 +274,20 @@ onBeforeUnmount(() => {
 .profile-head h1 {
   margin: 0;
   font-size: 28px;
-  color: #183f3a;
+  color: #1f2d3d;
 }
 
 .profile-head p {
   margin: 8px 0 0;
-  color: #6b7d78;
+  color: #606266;
 }
 
 .profile-form {
   background: rgba(255, 255, 255, 0.96);
-  border: 1px solid #dce8e3;
+  border: 1px solid #e5e7eb;
   border-radius: 18px;
   padding: 26px 28px 8px;
-  box-shadow: 0 14px 32px rgba(17, 52, 48, 0.05);
+  box-shadow: 0 12px 28px rgba(31, 45, 61, 0.06);
 }
 
 .avatar-editor {
@@ -297,8 +297,8 @@ onBeforeUnmount(() => {
 }
 
 .editable-avatar {
-  background: #eef7f3;
-  color: #2f8d73;
+  background: #eef2f7;
+  color: #409eff;
   font-size: 28px;
 }
 
@@ -321,8 +321,8 @@ onBeforeUnmount(() => {
   margin-right: 10px;
   border: 0;
   border-radius: 6px;
-  background: rgba(47, 141, 115, 0.12);
-  color: #2f8d73;
+  background: rgba(64, 158, 255, 0.12);
+  color: #409eff;
   padding: 6px 10px;
   cursor: pointer;
 }

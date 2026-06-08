@@ -78,9 +78,9 @@ const entries = [
   border-radius: 22px;
   background:
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.35), transparent 28%),
-    linear-gradient(135deg, #1c6b60 0%, #2d8f7f 100%);
+    linear-gradient(135deg, #4f5fd5 0%, #6377c5 100%);
   color: #fff;
-  box-shadow: 0 18px 40px rgba(28, 107, 96, 0.18);
+  box-shadow: 0 18px 40px rgba(79, 95, 189, 0.18);
 }
 
 .hero-kicker {
@@ -139,7 +139,7 @@ const entries = [
 
 .entry-card {
   padding: 22px;
-  border: 1px solid #dce8e3;
+  border: 1px solid #dcdfe6;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.96);
   text-align: left;
@@ -149,19 +149,19 @@ const entries = [
 
 .entry-card:hover {
   transform: translateY(-2px);
-  border-color: #8fd0bf;
-  box-shadow: 0 14px 30px rgba(27, 86, 78, 0.08);
+  border-color: #bfd5ff;
+  box-shadow: 0 14px 30px rgba(47, 104, 255, 0.08);
 }
 
 .entry-card strong {
   display: block;
-  color: #183f3a;
+  color: #1f2d3d;
   font-size: 18px;
 }
 
 .entry-card p {
   margin: 10px 0 0;
-  color: #61736e;
+  color: #606266;
   line-height: 1.65;
 }
 
