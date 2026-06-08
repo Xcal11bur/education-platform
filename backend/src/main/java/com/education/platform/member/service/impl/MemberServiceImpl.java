@@ -1,17 +1,25 @@
 package com.education.platform.member.service.impl;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.education.platform.auth.model.LoginUser;
 import com.education.platform.auth.util.SecurityUtils;
+import com.education.platform.common.enums.StatusEnum;
 import com.education.platform.common.exception.BusinessException;
+import com.education.platform.common.model.PageResponse;
 import com.education.platform.common.result.ResultCode;
 import com.education.platform.member.dto.MemberMobileUpdateDTO;
 import com.education.platform.member.dto.MemberPasswordUpdateDTO;
 import com.education.platform.member.dto.MemberProfileUpdateDTO;
+import com.education.platform.member.dto.MemberQueryDTO;
+import com.education.platform.member.dto.MemberSaveDTO;
 import com.education.platform.member.entity.Member;
 import com.education.platform.member.mapper.MemberMapper;
 import com.education.platform.member.service.MemberService;
 import com.education.platform.member.vo.MemberProfileVO;
+import com.education.platform.member.vo.MemberVO;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.BeanUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -35,6 +43,53 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
         return lambdaQuery()
                 .eq(Member::getMobile, mobile)
                 .oneOpt();
+    }
+
+    @Override
+    public PageResponse<MemberVO> pageMembers(MemberQueryDTO queryDTO) {
+        IPage<Member> page = lambdaQuery()
+                .like(StringUtils.hasText(queryDTO.getMobile()), Member::getMobile, queryDTO.getMobile())
+                .like(StringUtils.hasText(queryDTO.getNickname()), Member::getNickname, queryDTO.getNickname())
+                .eq(queryDTO.getStatus() != null, Member::getStatus, queryDTO.getStatus())
+                .orderByDesc(Member::getId)
+                .page(new Page<>(queryDTO.getPageNum(), queryDTO.getPageSize()));
+        List<MemberVO> list = page.getRecords().stream()
+                .map(this::toMemberVO)
+                .toList();
+        return PageResponse.<MemberVO>builder()
+                .pageNum(page.getCurrent())
+                .pageSize(page.getSize())
+                .total(page.getTotal())
+                .list(list)
+                .build();
+    }
+
+    @Override
+    public MemberVO getMemberDetail(Long id) {
+        return toMemberVO(getMemberOrThrow(id));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateMember(Long id, MemberSaveDTO request) {
+        Member member = getMemberOrThrow(id);
+        validateUniqueMobile(request.getMobile(), id);
+        member.setMobile(request.getMobile());
+        member.setNickname(request.getNickname());
+        member.setRealName(request.getRealName());
+        member.setAvatar(request.getAvatar());
+        member.setGender(request.getGender() == null ? 0 : request.getGender());
+        member.setBirthday(request.getBirthday());
+        member.setStatus(request.getStatus() == null ? member.getStatus() : request.getStatus());
+        updateById(member);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateMemberStatus(Long id, Integer status) {
+        Member member = getMemberOrThrow(id);
+        member.setStatus(status == null ? StatusEnum.DISABLED.getCode() : status);
+        updateById(member);
     }
 
     @Override
@@ -87,6 +142,24 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
         updateById(member);
     }
 
+    private Member getMemberOrThrow(Long id) {
+        Member member = getById(id);
+        if (member == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "member not found");
+        }
+        return member;
+    }
+
+    private void validateUniqueMobile(String mobile, Long excludeId) {
+        boolean mobileExists = lambdaQuery()
+                .eq(Member::getMobile, mobile)
+                .ne(excludeId != null, Member::getId, excludeId)
+                .exists();
+        if (mobileExists) {
+            throw new BusinessException(ResultCode.CONFLICT.getCode(), "mobile already exists");
+        }
+    }
+
     private Member getCurrentMember() {
         LoginUser loginUser = SecurityUtils.getLoginUser()
                 .orElseThrow(() -> new BusinessException(ResultCode.UNAUTHORIZED));
@@ -102,6 +175,15 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
 
     private MemberProfileVO toProfileVO(Member member) {
         MemberProfileVO vo = new MemberProfileVO();
+        BeanUtils.copyProperties(member, vo);
+        if (!StringUtils.hasText(vo.getNickname())) {
+            vo.setNickname(member.getMobile());
+        }
+        return vo;
+    }
+
+    private MemberVO toMemberVO(Member member) {
+        MemberVO vo = new MemberVO();
         BeanUtils.copyProperties(member, vo);
         if (!StringUtils.hasText(vo.getNickname())) {
             vo.setNickname(member.getMobile());

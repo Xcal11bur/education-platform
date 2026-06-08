@@ -89,7 +89,6 @@ public class AuthServiceImpl implements AuthService {
         member.setNickname(request.getNickname());
         member.setRealName(request.getRealName());
         member.setStatus(StatusEnum.ENABLED.getCode());
-        member.setRegisterSource("WEB");
         memberService.save(member);
     }
 

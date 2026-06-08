@@ -74,6 +74,12 @@ const router = createRouter({
           meta: { title: '教师管理', roles: ['ADMIN'] }
         },
         {
+          path: 'members',
+          name: 'Members',
+          component: () => import('@/views/members/MemberListView.vue'),
+          meta: { title: '学员管理', roles: ['ADMIN'] }
+        },
+        {
           path: 'banners',
           name: 'CourseBanners',
           component: () => import('@/views/banners/CourseBannerView.vue'),
