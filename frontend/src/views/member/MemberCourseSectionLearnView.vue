@@ -368,7 +368,9 @@ onBeforeUnmount(() => {
 <style scoped>
 .section-page {
   min-height: 100vh;
-  background: #f5f7fb;
+  background:
+    radial-gradient(circle at top, rgba(64, 158, 255, 0.16), transparent 34%),
+    linear-gradient(180deg, #f6f9fd 0%, #edf3fb 100%);
 }
 
 .section-topbar {

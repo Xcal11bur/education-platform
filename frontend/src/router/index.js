@@ -178,12 +178,11 @@ const router = createRouter({
         {
           path: 'course-management/tasks',
           name: 'TeacherCourseTasks',
-          component: () => import('@/views/teacher/TeacherWorkspaceView.vue'),
+          component: () => import('@/views/teacher/TeacherCourseTaskView.vue'),
           meta: {
             title: '作业管理',
             activeMenu: '/teacher/course-management/tasks',
-            roles: ['TEACHER'],
-            description: '后续在这里落作业创建、题目维护、提交查看与批改。'
+            roles: ['TEACHER']
           }
         }
       ]

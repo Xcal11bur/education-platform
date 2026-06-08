@@ -13,7 +13,6 @@ public class CourseTask extends BaseEntity {
 
     private Long courseId;
     private String title;
-    private Integer taskType;
     private String description;
     private Integer totalScore;
     private Integer passScore;

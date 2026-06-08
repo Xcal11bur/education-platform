@@ -1,5 +1,6 @@
 package com.education.platform.task.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
@@ -14,13 +15,12 @@ public class CourseTaskSaveDTO {
     @NotBlank(message = "title must not be blank")
     private String title;
 
-    @NotNull(message = "taskType must not be null")
-    private Integer taskType;
-
     private String description;
     private Integer totalScore;
     private Integer passScore;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime startTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime endTime;
     private Integer durationMinutes;
     private Integer allowRetakeCount;
