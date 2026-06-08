@@ -8,6 +8,14 @@ export function getMemberList(params) {
   })
 }
 
+export function createMember(data) {
+  return request({
+    url: '/admin/members',
+    method: 'post',
+    data
+  })
+}
+
 export function getMemberDetail(id) {
   return request({
     url: `/admin/members/${id}`,

@@ -20,6 +20,8 @@ public interface MemberService extends IService<Member> {
 
     MemberVO getMemberDetail(Long id);
 
+    void createMember(MemberSaveDTO request);
+
     void updateMember(Long id, MemberSaveDTO request);
 
     void updateMemberStatus(Long id, Integer status);

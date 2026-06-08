@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,6 +33,12 @@ public class MemberAdminController {
     @GetMapping("/{id}")
     public Result<MemberVO> detail(@PathVariable Long id) {
         return Result.success(memberService.getMemberDetail(id));
+    }
+
+    @PostMapping
+    public Result<Void> create(@Valid @RequestBody MemberSaveDTO request) {
+        memberService.createMember(request);
+        return Result.success();
     }
 
     @PutMapping("/{id}")

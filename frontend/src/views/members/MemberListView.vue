@@ -1,5 +1,9 @@
 <template>
   <div class="page-card">
+    <div class="toolbar" style="justify-content: flex-end; margin-bottom: 18px;">
+      <el-button type="primary" @click="openCreate">新增学员</el-button>
+    </div>
+
     <div class="filter-bar">
       <el-input v-model="query.mobile" placeholder="学员手机号" clearable />
       <el-input v-model="query.nickname" placeholder="学员昵称" clearable />
@@ -48,13 +52,21 @@
       />
     </div>
 
-    <el-dialog v-model="dialogVisible" title="编辑学员" width="620px">
+    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑学员' : '新增学员'" width="620px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="96px">
         <el-form-item label="手机号" prop="mobile">
           <el-input v-model="form.mobile" />
         </el-form-item>
         <el-form-item label="昵称" prop="nickname">
           <el-input v-model="form.nickname" />
+        </el-form-item>
+        <el-form-item label="登录密码" prop="password">
+          <el-input
+            v-model="form.password"
+            type="password"
+            show-password
+            :placeholder="editingId ? '留空表示不修改密码' : '请输入 6-20 位密码'"
+          />
         </el-form-item>
         <el-form-item label="真实姓名">
           <el-input v-model="form.realName" />
@@ -96,7 +108,13 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getMemberDetail, getMemberList, updateMember, updateMemberStatus } from '@/api/adminMember'
+import {
+  createMember,
+  getMemberDetail,
+  getMemberList,
+  updateMember,
+  updateMemberStatus
+} from '@/api/adminMember'
 
 const members = ref([])
 const total = ref(0)
@@ -116,6 +134,7 @@ const query = reactive({
 const defaultForm = () => ({
   mobile: '',
   nickname: '',
+  password: '',
   realName: '',
   avatar: '',
   gender: 0,
@@ -130,7 +149,23 @@ const rules = {
     { required: true, message: '请输入手机号', trigger: 'blur' },
     { pattern: /^1\d{10}$/, message: '手机号格式不正确', trigger: 'blur' }
   ],
-  nickname: [{ required: true, message: '请输入昵称', trigger: 'blur' }]
+  nickname: [{ required: true, message: '请输入昵称', trigger: 'blur' }],
+  password: [
+    {
+      validator: (_rule, value, callback) => {
+        if (!editingId.value && !value) {
+          callback(new Error('请输入登录密码'))
+          return
+        }
+        if (value && (value.length < 6 || value.length > 20)) {
+          callback(new Error('密码长度为 6-20 位'))
+          return
+        }
+        callback()
+      },
+      trigger: 'blur'
+    }
+  ]
 }
 
 async function fetchMembers() {
@@ -143,12 +178,19 @@ function resetForm() {
   Object.assign(form, defaultForm())
 }
 
+function openCreate() {
+  editingId.value = null
+  resetForm()
+  dialogVisible.value = true
+}
+
 async function openEdit(id) {
   const { data } = await getMemberDetail(id)
   editingId.value = id
   resetForm()
   Object.assign(form, {
     ...data,
+    password: '',
     birthday: data.birthday || ''
   })
   dialogVisible.value = true
@@ -158,8 +200,17 @@ async function submitForm() {
   await formRef.value.validate()
   saving.value = true
   try {
-    await updateMember(editingId.value, form)
-    ElMessage.success('学员信息已更新')
+    const payload = {
+      ...form,
+      password: form.password || null
+    }
+    if (editingId.value) {
+      await updateMember(editingId.value, payload)
+      ElMessage.success('学员信息已更新')
+    } else {
+      await createMember(payload)
+      ElMessage.success('学员已创建')
+    }
     dialogVisible.value = false
     fetchMembers()
   } finally {

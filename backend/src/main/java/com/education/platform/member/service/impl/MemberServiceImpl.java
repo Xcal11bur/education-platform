@@ -71,6 +71,26 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void createMember(MemberSaveDTO request) {
+        validateUniqueMobile(request.getMobile(), null);
+        if (!StringUtils.hasText(request.getPassword())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "password must not be blank");
+        }
+
+        Member member = new Member();
+        member.setMobile(request.getMobile());
+        member.setPassword(passwordEncoder.encode(request.getPassword()));
+        member.setNickname(request.getNickname());
+        member.setRealName(request.getRealName());
+        member.setAvatar(request.getAvatar());
+        member.setGender(request.getGender() == null ? 0 : request.getGender());
+        member.setBirthday(request.getBirthday());
+        member.setStatus(request.getStatus() == null ? StatusEnum.ENABLED.getCode() : request.getStatus());
+        save(member);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void updateMember(Long id, MemberSaveDTO request) {
         Member member = getMemberOrThrow(id);
         validateUniqueMobile(request.getMobile(), id);
@@ -81,6 +101,9 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
         member.setGender(request.getGender() == null ? 0 : request.getGender());
         member.setBirthday(request.getBirthday());
         member.setStatus(request.getStatus() == null ? member.getStatus() : request.getStatus());
+        if (StringUtils.hasText(request.getPassword())) {
+            member.setPassword(passwordEncoder.encode(request.getPassword()));
+        }
         updateById(member);
     }
 

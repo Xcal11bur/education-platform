@@ -2,6 +2,7 @@ package com.education.platform.member.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
@@ -13,6 +14,9 @@ public class MemberSaveDTO {
 
     @NotBlank(message = "nickname must not be blank")
     private String nickname;
+
+    @Size(min = 6, max = 20, message = "password length must be between 6 and 20")
+    private String password;
 
     private String realName;
     private String avatar;
