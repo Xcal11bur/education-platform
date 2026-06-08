@@ -56,11 +56,22 @@
           <div class="header-title">{{ currentTitle }}</div>
         </div>
         <div class="header-actions">
-          <div class="user-panel">
-            <span class="user-name">{{ authStore.profile?.displayName || '管理员' }}</span>
-            <span class="user-role">{{ authStore.profile?.role || 'ADMIN' }}</span>
-          </div>
-          <el-button text @click="handleLogout">退出登录</el-button>
+          <el-dropdown trigger="click" placement="bottom-end">
+            <button class="profile-entry" type="button">
+              <el-avatar class="profile-avatar" :size="34" :src="authStore.profile?.avatar">
+                {{ (authStore.profile?.displayName || '管理员').slice(0, 1).toUpperCase() }}
+              </el-avatar>
+              <div class="profile-copy">
+                <strong>{{ authStore.profile?.displayName || '管理员' }}</strong>
+                <span>{{ authStore.profile?.role || 'ADMIN' }}</span>
+              </div>
+            </button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="handleLogout">退出登录</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </header>
 
@@ -166,35 +177,54 @@ function handleLogout() {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  padding: 18px 28px;
+  min-height: 64px;
+  padding: 10px 24px;
   background: rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(220, 223, 230, 0.8);
 }
 
 .header-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 12px;
 }
 
-.user-panel {
-  text-align: right;
+.profile-entry {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
 }
 
-.user-name {
-  display: block;
+.profile-avatar {
+  background: #409eff;
+  color: #fff;
+}
+
+.profile-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.profile-copy strong {
+  color: var(--text-primary);
   font-weight: 600;
 }
 
-.user-role {
+.profile-copy span {
   display: block;
-  margin-top: 4px;
+  margin-top: 2px;
   color: var(--text-secondary);
   font-size: 12px;
 }
@@ -216,6 +246,10 @@ function handleLogout() {
   .layout-content {
     padding-left: 18px;
     padding-right: 18px;
+  }
+
+  .profile-copy span {
+    display: none;
   }
 }
 </style>
