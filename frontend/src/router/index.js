@@ -184,6 +184,16 @@ const router = createRouter({
             activeMenu: '/teacher/course-management/tasks',
             roles: ['TEACHER']
           }
+        },
+        {
+          path: 'course-management/tasks/:taskId/questions',
+          name: 'TeacherTaskQuestions',
+          component: () => import('@/views/teacher/TeacherTaskQuestionView.vue'),
+          meta: {
+            title: '题目管理',
+            activeMenu: '/teacher/course-management/tasks',
+            roles: ['TEACHER']
+          }
         }
       ]
     }

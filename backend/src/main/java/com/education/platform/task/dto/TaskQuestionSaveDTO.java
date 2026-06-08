@@ -16,6 +16,7 @@ public class TaskQuestionSaveDTO {
     private String optionsJson;
     private String answerJson;
     private String analysis;
+    @NotNull(message = "score must not be null")
     private Integer score;
     private Integer sort;
 }

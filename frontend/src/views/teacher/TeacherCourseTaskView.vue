@@ -5,6 +5,14 @@
       <el-button type="primary" @click="openCreate">新增作业</el-button>
     </div>
 
+    <el-alert
+      title="作业创建后可继续维护题目，题目分值会自动汇总回总分。发布前至少需要配置一道题。"
+      type="info"
+      :closable="false"
+      show-icon
+      class="page-alert"
+    />
+
     <div class="filter-bar">
       <el-select v-model="query.courseId" placeholder="课程" clearable filterable>
         <el-option
@@ -28,6 +36,7 @@
       </el-table-column>
       <el-table-column prop="courseTitle" label="所属课程" min-width="180" />
       <el-table-column prop="title" label="作业标题" min-width="180" />
+      <el-table-column prop="questionCount" label="题目数" width="100" />
       <el-table-column label="总分/及格" width="120">
         <template #default="{ row }">{{ row.totalScore }}/{{ row.passScore }}</template>
       </el-table-column>
@@ -44,8 +53,9 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="180" fixed="right">
+      <el-table-column label="操作" width="240" fixed="right">
         <template #default="{ row }">
+          <el-button link type="primary" @click="openQuestions(row.id)">题目管理</el-button>
           <el-button link type="primary" @click="openEdit(row.id)">编辑</el-button>
           <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
         </template>
@@ -79,7 +89,8 @@
           <el-input v-model="form.title" maxlength="100" />
         </el-form-item>
         <el-form-item label="总分">
-          <el-input-number v-model="form.totalScore" :min="1" :max="1000" />
+          <el-input-number v-model="form.totalScore" :min="0" :max="1000" />
+          <span class="field-tip">添加题目后自动按题目分值汇总</span>
         </el-form-item>
         <el-form-item label="及格分">
           <el-input-number v-model="form.passScore" :min="0" :max="1000" />
@@ -128,6 +139,7 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTeacherCourseList } from '@/api/teacherCourse'
 import {
@@ -138,6 +150,7 @@ import {
   updateTeacherTask
 } from '@/api/teacherTask'
 
+const router = useRouter()
 const tasks = ref([])
 const total = ref(0)
 const courseOptions = ref([])
@@ -253,6 +266,10 @@ async function handleDelete(row) {
   await fetchTasks()
 }
 
+function openQuestions(id) {
+  router.push(`/teacher/course-management/tasks/${id}/questions`)
+}
+
 function rowIndex(index) {
   return (query.pageNum - 1) * query.pageSize + index + 1
 }
@@ -262,3 +279,15 @@ onMounted(async () => {
   await fetchTasks()
 })
 </script>
+
+<style scoped>
+.page-alert {
+  margin-bottom: 16px;
+}
+
+.field-tip {
+  margin-left: 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+</style>

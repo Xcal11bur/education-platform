@@ -21,4 +21,5 @@ public class CourseTaskVO {
     private Integer durationMinutes;
     private Integer allowRetakeCount;
     private Integer status;
+    private Integer questionCount;
 }
