@@ -22,6 +22,7 @@
           ref="loginFormRef"
           :model="loginForm"
           :rules="loginRules"
+          :validate-on-rule-change="false"
           label-position="top"
           class="login-form"
           @keyup.enter="handleLogin"
@@ -120,7 +121,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getCaptcha, registerMember } from '@/api/auth'
@@ -247,16 +248,18 @@ const registerRules = {
   ]
 }
 
-watch(loginMode, (mode) => {
+watch(loginMode, async (mode) => {
   Object.assign(loginForm, defaults[mode])
+  await nextTick()
   loginFormRef.value?.clearValidate()
 })
 
-watch(panelMode, () => {
-  loginFormRef.value?.clearValidate()
-  registerFormRef.value?.clearValidate()
+watch(panelMode, async () => {
   loginForm.captchaCode = ''
   registerForm.captchaCode = ''
+  await nextTick()
+  loginFormRef.value?.clearValidate()
+  registerFormRef.value?.clearValidate()
   if (panelMode.value === 'register') {
     refreshCaptcha()
   }
