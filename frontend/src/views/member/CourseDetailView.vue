@@ -102,11 +102,20 @@
                   :key="chapter.id"
                   class="chapter-card"
                 >
-                  <div class="chapter-head">
-                    <h3>{{ displayChapterTitle(chapter, chapterIndex) }}</h3>
-                  </div>
+                  <button
+                    class="chapter-head"
+                    type="button"
+                    @click="toggleChapter(chapter.id)"
+                  >
+                    <div class="chapter-head-main">
+                      <el-icon class="chapter-toggle" :class="{ 'is-collapsed': !isChapterExpanded(chapter.id) }">
+                        <ArrowDown />
+                      </el-icon>
+                      <h3>{{ displayChapterTitle(chapter, chapterIndex) }}</h3>
+                    </div>
+                  </button>
 
-                  <div v-if="chapter.sections?.length" class="section-list">
+                  <div v-if="isChapterExpanded(chapter.id) && chapter.sections?.length" class="section-list">
                     <div
                       v-for="(section, sectionIndex) in chapter.sections"
                       :key="section.id"
@@ -126,7 +135,7 @@
                   </div>
 
                   <el-empty
-                    v-else
+                    v-else-if="isChapterExpanded(chapter.id)"
                     description="暂无小节内容"
                     :image-size="60"
                   />
@@ -178,7 +187,7 @@
 </template>
 
 <script setup>
-import { Lock } from '@element-plus/icons-vue'
+import { ArrowDown, Lock } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -192,6 +201,7 @@ const authStore = useAuthStore()
 const loading = ref(false)
 const enrolling = ref(false)
 const activeTab = ref('chapters')
+const expandedChapterIds = ref([])
 const course = ref({
   teacher: null,
   categoryLevel1: null,
@@ -252,6 +262,22 @@ function displaySectionTitle(section, chapterIndex, sectionIndex) {
   ]
 
   return orderPatterns.reduce((value, pattern) => value.replace(pattern, '').trim(), title)
+}
+
+function expandAllChapters() {
+  expandedChapterIds.value = chapters.value.map((chapter) => chapter.id)
+}
+
+function isChapterExpanded(chapterId) {
+  return expandedChapterIds.value.includes(chapterId)
+}
+
+function toggleChapter(chapterId) {
+  if (isChapterExpanded(chapterId)) {
+    expandedChapterIds.value = expandedChapterIds.value.filter((id) => id !== chapterId)
+    return
+  }
+  expandedChapterIds.value = [...expandedChapterIds.value, chapterId]
 }
 
 function goLearnPage(sectionId = null) {
@@ -324,6 +350,7 @@ async function fetchCourseDetail() {
       categoryLevel2: null,
       chapters: []
     }
+    expandAllChapters()
   } finally {
     loading.value = false
   }
@@ -548,16 +575,36 @@ onMounted(fetchCourseDetail)
 }
 
 .chapter-head {
-  padding: 20px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
   background: #f8fafc;
   border-bottom: 1px solid #ebeef5;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
+  cursor: pointer;
+}
+
+.chapter-head-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chapter-toggle {
+  color: #94a3b8;
+  font-size: 16px;
+  transition: transform 0.2s ease;
+}
+
+.chapter-toggle.is-collapsed {
+  transform: rotate(-90deg);
 }
 
 .chapter-head h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 17px;
   color: #1f2d3d;
 }
 
@@ -569,7 +616,7 @@ onMounted(fetchCourseDetail)
 .section-row {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-bottom: 1px solid #f1f4f8;
   cursor: pointer;
   transition: background-color 0.2s ease;
@@ -600,12 +647,12 @@ onMounted(fetchCourseDetail)
 
 .section-order {
   color: #909399;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .section-title {
   color: #303133;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
 }
 
@@ -700,6 +747,10 @@ onMounted(fetchCourseDetail)
   .section-row {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .chapter-head {
+    padding: 12px 14px;
   }
 
 }

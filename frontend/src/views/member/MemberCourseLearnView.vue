@@ -65,11 +65,20 @@
                 :key="chapter.id"
                 class="chapter-card"
               >
-                <div class="chapter-head">
-                  <h3>{{ displayChapterTitle(chapter, chapterIndex) }}</h3>
-                </div>
+                <button
+                  class="chapter-head"
+                  type="button"
+                  @click="toggleChapter(chapter.id)"
+                >
+                  <div class="chapter-head-main">
+                    <el-icon class="chapter-toggle" :class="{ 'is-collapsed': !isChapterExpanded(chapter.id) }">
+                      <ArrowDown />
+                    </el-icon>
+                    <h3>{{ displayChapterTitle(chapter, chapterIndex) }}</h3>
+                  </div>
+                </button>
 
-                <div v-if="chapter.sections?.length" class="section-list">
+                <div v-if="isChapterExpanded(chapter.id) && chapter.sections?.length" class="section-list">
                   <button
                     v-for="(section, sectionIndex) in chapter.sections"
                     :key="section.id"
@@ -88,7 +97,7 @@
                 </div>
 
                 <el-empty
-                  v-else
+                  v-else-if="isChapterExpanded(chapter.id)"
                   description="暂无小节内容"
                   :image-size="60"
                 />
@@ -149,7 +158,7 @@
 </template>
 
 <script setup>
-import { Collection, Document, EditPen, Reading } from '@element-plus/icons-vue'
+import { ArrowDown, Collection, Document, EditPen, Reading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -162,6 +171,7 @@ const authStore = useAuthStore()
 
 const loading = ref(false)
 const activeMenu = ref('chapters')
+const expandedChapterIds = ref([])
 const course = ref({
   title: '',
   coverUrl: '',
@@ -261,6 +271,22 @@ function displaySectionTitle(section, chapterIndex, sectionIndex) {
   return orderPatterns.reduce((value, pattern) => value.replace(pattern, '').trim(), title)
 }
 
+function expandAllChapters() {
+  expandedChapterIds.value = chapters.value.map((chapter) => chapter.id)
+}
+
+function isChapterExpanded(chapterId) {
+  return expandedChapterIds.value.includes(chapterId)
+}
+
+function toggleChapter(chapterId) {
+  if (isChapterExpanded(chapterId)) {
+    expandedChapterIds.value = expandedChapterIds.value.filter((id) => id !== chapterId)
+    return
+  }
+  expandedChapterIds.value = [...expandedChapterIds.value, chapterId]
+}
+
 function openSection(sectionId) {
   router.push(`/member/courses/${route.params.id}/learn/sections/${sectionId}`)
 }
@@ -270,6 +296,7 @@ async function fetchCourseDetail() {
   try {
     const { data } = await getPortalCourseDetail(route.params.id)
     course.value = data || { title: '', coverUrl: '', chapters: [] }
+    expandAllChapters()
     if (!course.value.enrolled) {
       ElMessage.warning('请先报名课程后再开始学习')
       router.replace(`/member/courses/${route.params.id}`)
@@ -493,9 +520,31 @@ onMounted(async () => {
 }
 
 .chapter-head {
+  width: 100%;
+  border: 0;
   padding: 14px 16px;
   background: #f8fafc;
   border-bottom: 1px solid #ebeef5;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  cursor: pointer;
+}
+
+.chapter-head-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chapter-toggle {
+  color: #94a3b8;
+  font-size: 16px;
+  transition: transform 0.2s ease;
+}
+
+.chapter-toggle.is-collapsed {
+  transform: rotate(-90deg);
 }
 
 .chapter-head h3 {
@@ -626,6 +675,10 @@ onMounted(async () => {
     flex-direction: column;
     align-items: flex-start;
     padding: 10px 14px;
+  }
+
+  .chapter-head {
+    padding: 12px 14px;
   }
 }
 </style>
