@@ -141,13 +141,13 @@ const captcha = reactive({
 
 const defaults = {
   admin: {
-    username: 'admin',
-    password: '123456',
+    username: '',
+    password: '',
     captchaCode: ''
   },
   member: {
-    username: '13800000011',
-    password: '123456',
+    username: '',
+    password: '',
     captchaCode: ''
   }
 }
