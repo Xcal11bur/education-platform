@@ -1,11 +1,15 @@
 import { defineStore } from 'pinia'
-import { getProfile, loginAdmin, loginMember } from '@/api/auth'
+import { getProfile, loginAdmin, loginMember, loginTeacher } from '@/api/auth'
 
 const TOKEN_KEY = 'edu_platform_token'
 const ROLE_KEY = 'edu_platform_role'
 
 function resolveLoginRequest(mode) {
-  return mode === 'member' ? loginMember : loginAdmin
+  return {
+    admin: loginAdmin,
+    teacher: loginTeacher,
+    member: loginMember
+  }[mode] || loginAdmin
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -36,7 +40,13 @@ export const useAuthStore = defineStore('auth', {
       return data
     },
     getDefaultRoute() {
-      return this.role === 'MEMBER' ? '/member-home' : '/dashboard'
+      if (this.role === 'MEMBER') {
+        return '/member-home'
+      }
+      if (this.role === 'TEACHER') {
+        return '/teacher/dashboard'
+      }
+      return '/dashboard'
     },
     logout() {
       this.token = ''

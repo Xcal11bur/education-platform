@@ -15,6 +15,14 @@ export function loginAdmin(data) {
   })
 }
 
+export function loginTeacher(data) {
+  return request({
+    url: '/auth/teacher/login',
+    method: 'post',
+    data
+  })
+}
+
 export function loginMember(data) {
   return request({
     url: '/auth/member/login',

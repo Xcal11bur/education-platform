@@ -15,11 +15,21 @@ public interface CourseService extends IService<Course> {
 
     CourseDetailVO getAdminCourseDetail(Long id);
 
+    PageResponse<CourseVO> pageTeacherCourses(CourseQueryDTO queryDTO);
+
+    CourseDetailVO getTeacherCourseDetail(Long id);
+
     void createCourse(CourseSaveDTO request);
 
     void updateCourse(Long id, CourseSaveDTO request);
 
     void updatePublishStatus(Long id, Integer publishStatus);
+
+    void createTeacherCourse(CourseSaveDTO request);
+
+    void updateTeacherCourse(Long id, CourseSaveDTO request);
+
+    void updateTeacherPublishStatus(Long id, Integer publishStatus);
 
     PageResponse<CourseVO> pagePortalCourses(CourseQueryDTO queryDTO);
 

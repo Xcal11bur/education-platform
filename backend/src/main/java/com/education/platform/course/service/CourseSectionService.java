@@ -11,4 +11,10 @@ public interface CourseSectionService extends IService<CourseSection> {
     void updateSection(Long id, CourseSectionSaveDTO request);
 
     void deleteSection(Long id);
+
+    void createTeacherSection(Long chapterId, CourseSectionSaveDTO request);
+
+    void updateTeacherSection(Long id, CourseSectionSaveDTO request);
+
+    void deleteTeacherSection(Long id);
 }

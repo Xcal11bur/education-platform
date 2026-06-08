@@ -20,6 +20,7 @@ import com.education.platform.course.mapper.CourseMapper;
 import com.education.platform.course.service.CourseChapterService;
 import com.education.platform.course.service.CourseEnrollmentService;
 import com.education.platform.course.service.CourseService;
+import com.education.platform.course.service.TeacherCourseAccessService;
 import com.education.platform.course.vo.CourseVO;
 import com.education.platform.teacher.entity.Teacher;
 import com.education.platform.teacher.mapper.TeacherMapper;
@@ -48,15 +49,18 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     private final com.education.platform.course.mapper.CourseCategoryMapper courseCategoryMapper;
     private final CourseChapterService courseChapterService;
     private final CourseEnrollmentService courseEnrollmentService;
+    private final TeacherCourseAccessService teacherCourseAccessService;
 
     public CourseServiceImpl(TeacherMapper teacherMapper,
                              com.education.platform.course.mapper.CourseCategoryMapper courseCategoryMapper,
                              CourseChapterService courseChapterService,
-                             CourseEnrollmentService courseEnrollmentService) {
+                             CourseEnrollmentService courseEnrollmentService,
+                             TeacherCourseAccessService teacherCourseAccessService) {
         this.teacherMapper = teacherMapper;
         this.courseCategoryMapper = courseCategoryMapper;
         this.courseChapterService = courseChapterService;
         this.courseEnrollmentService = courseEnrollmentService;
+        this.teacherCourseAccessService = teacherCourseAccessService;
     }
 
     @Override
@@ -84,20 +88,23 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     }
 
     @Override
+    public PageResponse<CourseVO> pageTeacherCourses(CourseQueryDTO queryDTO) {
+        queryDTO.setTeacherId(teacherCourseAccessService.getCurrentTeacherId());
+        return pageAdminCourses(queryDTO);
+    }
+
+    @Override
+    public CourseDetailVO getTeacherCourseDetail(Long id) {
+        return buildCourseDetail(teacherCourseAccessService.getCurrentTeacherCourse(id), false);
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void createCourse(CourseSaveDTO request) {
         validateCourseRequest(request);
         Course course = new Course();
         BeanUtils.copyProperties(request, course);
-        if (course.getDifficulty() == null) {
-            course.setDifficulty(1);
-        }
-        if (course.getPrice() == null) {
-            course.setPrice(BigDecimal.ZERO);
-        }
-        if (course.getPublishStatus() == null) {
-            course.setPublishStatus(PUBLISH_STATUS_DRAFT);
-        }
+        fillDefaultCourseFields(course);
         course.setSort(nextSort());
         course.setStudyCount(0);
         save(course);
@@ -109,22 +116,47 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         Course course = getCourseOrThrow(id);
         validateCourseRequest(request);
         BeanUtils.copyProperties(request, course, "id", "studyCount", "sort");
-        if (course.getDifficulty() == null) {
-            course.setDifficulty(1);
-        }
-        if (course.getPrice() == null) {
-            course.setPrice(BigDecimal.ZERO);
-        }
+        fillDefaultCourseFields(course);
         updateById(course);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updatePublishStatus(Long id, Integer publishStatus) {
+        applyPublishStatus(getCourseOrThrow(id), publishStatus);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void createTeacherCourse(CourseSaveDTO request) {
+        Long teacherId = teacherCourseAccessService.getCurrentTeacherId();
+        request.setTeacherId(teacherId);
+        createCourse(request);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateTeacherCourse(Long id, CourseSaveDTO request) {
+        Long teacherId = teacherCourseAccessService.getCurrentTeacherId();
+        Course course = teacherCourseAccessService.getCurrentTeacherCourse(id);
+        request.setTeacherId(teacherId);
+        validateCourseRequest(request);
+        BeanUtils.copyProperties(request, course, "id", "teacherId", "studyCount", "sort");
+        course.setTeacherId(teacherId);
+        fillDefaultCourseFields(course);
+        updateById(course);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateTeacherPublishStatus(Long id, Integer publishStatus) {
+        applyPublishStatus(teacherCourseAccessService.getCurrentTeacherCourse(id), publishStatus);
+    }
+
+    private void applyPublishStatus(Course course, Integer publishStatus) {
         if (!List.of(PUBLISH_STATUS_DRAFT, PUBLISH_STATUS_PUBLISHED, PUBLISH_STATUS_UNPUBLISHED).contains(publishStatus)) {
             throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "publishStatus must be 0, 1 or 2");
         }
-        Course course = getCourseOrThrow(id);
         if (publishStatus == PUBLISH_STATUS_PUBLISHED) {
             validateCourseCanBePublished(course);
         }
@@ -228,6 +260,18 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
             throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "course not found");
         }
         return course;
+    }
+
+    private void fillDefaultCourseFields(Course course) {
+        if (course.getDifficulty() == null) {
+            course.setDifficulty(1);
+        }
+        if (course.getPrice() == null) {
+            course.setPrice(BigDecimal.ZERO);
+        }
+        if (course.getPublishStatus() == null) {
+            course.setPublishStatus(PUBLISH_STATUS_DRAFT);
+        }
     }
 
     private int nextSort() {

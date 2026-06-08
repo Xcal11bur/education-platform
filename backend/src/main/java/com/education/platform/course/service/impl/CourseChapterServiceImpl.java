@@ -12,6 +12,7 @@ import com.education.platform.course.mapper.CourseChapterMapper;
 import com.education.platform.course.mapper.CourseMapper;
 import com.education.platform.course.mapper.CourseSectionMapper;
 import com.education.platform.course.service.CourseChapterService;
+import com.education.platform.course.service.TeacherCourseAccessService;
 import com.education.platform.course.vo.CourseChapterVO;
 import com.education.platform.course.vo.CourseSectionVO;
 import java.util.Comparator;
@@ -28,12 +29,15 @@ public class CourseChapterServiceImpl extends ServiceImpl<CourseChapterMapper, C
 
     private final CourseMapper courseMapper;
     private final CourseSectionMapper courseSectionMapper;
+    private final TeacherCourseAccessService teacherCourseAccessService;
 
     public CourseChapterServiceImpl(
             CourseMapper courseMapper,
-            CourseSectionMapper courseSectionMapper) {
+            CourseSectionMapper courseSectionMapper,
+            TeacherCourseAccessService teacherCourseAccessService) {
         this.courseMapper = courseMapper;
         this.courseSectionMapper = courseSectionMapper;
+        this.teacherCourseAccessService = teacherCourseAccessService;
     }
 
     @Override
@@ -71,7 +75,37 @@ public class CourseChapterServiceImpl extends ServiceImpl<CourseChapterMapper, C
     @Override
     public List<CourseChapterVO> getChapterTree(Long courseId, boolean portalOnly) {
         getCourseOrThrow(courseId, portalOnly);
+        return buildChapterTree(courseId);
+    }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void createTeacherChapter(Long courseId, CourseChapterSaveDTO request) {
+        teacherCourseAccessService.getCurrentTeacherCourse(courseId);
+        createChapter(courseId, request);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateTeacherChapter(Long id, CourseChapterSaveDTO request) {
+        teacherCourseAccessService.getCurrentTeacherChapter(id);
+        updateChapter(id, request);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteTeacherChapter(Long id) {
+        teacherCourseAccessService.getCurrentTeacherChapter(id);
+        deleteChapter(id);
+    }
+
+    @Override
+    public List<CourseChapterVO> getTeacherChapterTree(Long courseId) {
+        teacherCourseAccessService.getCurrentTeacherCourse(courseId);
+        return buildChapterTree(courseId);
+    }
+
+    private List<CourseChapterVO> buildChapterTree(Long courseId) {
         List<CourseChapter> chapters = lambdaQuery()
                 .eq(CourseChapter::getCourseId, courseId)
                 .orderByAsc(CourseChapter::getSort, CourseChapter::getId)

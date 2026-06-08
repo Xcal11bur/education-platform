@@ -15,4 +15,12 @@ public interface CourseChapterService extends IService<CourseChapter> {
     void deleteChapter(Long id);
 
     List<CourseChapterVO> getChapterTree(Long courseId, boolean portalOnly);
+
+    void createTeacherChapter(Long courseId, CourseChapterSaveDTO request);
+
+    void updateTeacherChapter(Long id, CourseChapterSaveDTO request);
+
+    void deleteTeacherChapter(Long id);
+
+    List<CourseChapterVO> getTeacherChapterTree(Long courseId);
 }

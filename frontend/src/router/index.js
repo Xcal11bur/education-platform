@@ -126,6 +126,67 @@ const router = createRouter({
           meta: { roles: ['ADMIN'] }
         }
       ]
+    },
+    {
+      path: '/teacher',
+      component: () => import('@/layout/TeacherLayout.vue'),
+      redirect: '/teacher/dashboard',
+      meta: { roles: ['TEACHER'] },
+      children: [
+        {
+          path: 'dashboard',
+          name: 'TeacherDashboard',
+          component: () => import('@/views/teacher/TeacherDashboardView.vue'),
+          meta: { title: '教师工作台', roles: ['TEACHER'] }
+        },
+        {
+          path: 'profile',
+          name: 'TeacherProfile',
+          component: () => import('@/views/teacher/TeacherProfileView.vue'),
+          meta: { title: '个人信息', roles: ['TEACHER'] }
+        },
+        {
+          path: 'courses',
+          name: 'TeacherCourses',
+          component: () => import('@/views/teacher/TeacherCourseListView.vue'),
+          meta: {
+            title: '我的课程',
+            activeMenu: '/teacher/courses',
+            roles: ['TEACHER']
+          }
+        },
+        {
+          path: 'course-management/chapters',
+          name: 'TeacherCourseChapters',
+          component: () => import('@/views/teacher/TeacherCourseChapterView.vue'),
+          meta: {
+            title: '课程章节',
+            activeMenu: '/teacher/course-management/chapters',
+            roles: ['TEACHER']
+          }
+        },
+        {
+          path: 'course-management/materials',
+          name: 'TeacherCourseMaterials',
+          component: () => import('@/views/teacher/TeacherCourseMaterialView.vue'),
+          meta: {
+            title: '课程资料',
+            activeMenu: '/teacher/course-management/materials',
+            roles: ['TEACHER']
+          }
+        },
+        {
+          path: 'course-management/tasks',
+          name: 'TeacherCourseTasks',
+          component: () => import('@/views/teacher/TeacherWorkspaceView.vue'),
+          meta: {
+            title: '作业管理',
+            activeMenu: '/teacher/course-management/tasks',
+            roles: ['TEACHER'],
+            description: '后续在这里落作业创建、题目维护、提交查看与批改。'
+          }
+        }
+      ]
     }
   ]
 })

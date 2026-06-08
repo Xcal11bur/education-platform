@@ -12,6 +12,7 @@ import com.education.platform.course.mapper.CourseChapterMapper;
 import com.education.platform.course.mapper.CourseSectionContentMapper;
 import com.education.platform.course.mapper.CourseSectionMapper;
 import com.education.platform.course.service.CourseSectionService;
+import com.education.platform.course.service.TeacherCourseAccessService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -21,12 +22,15 @@ public class CourseSectionServiceImpl extends ServiceImpl<CourseSectionMapper, C
 
     private final CourseChapterMapper courseChapterMapper;
     private final CourseSectionContentMapper courseSectionContentMapper;
+    private final TeacherCourseAccessService teacherCourseAccessService;
 
     public CourseSectionServiceImpl(
             CourseChapterMapper courseChapterMapper,
-            CourseSectionContentMapper courseSectionContentMapper) {
+            CourseSectionContentMapper courseSectionContentMapper,
+            TeacherCourseAccessService teacherCourseAccessService) {
         this.courseChapterMapper = courseChapterMapper;
         this.courseSectionContentMapper = courseSectionContentMapper;
+        this.teacherCourseAccessService = teacherCourseAccessService;
     }
 
     @Override
@@ -60,6 +64,27 @@ public class CourseSectionServiceImpl extends ServiceImpl<CourseSectionMapper, C
             throw new BusinessException(ResultCode.CONFLICT.getCode(), "section has content items and cannot be deleted");
         }
         removeById(id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void createTeacherSection(Long chapterId, CourseSectionSaveDTO request) {
+        teacherCourseAccessService.getCurrentTeacherChapter(chapterId);
+        createSection(chapterId, request);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateTeacherSection(Long id, CourseSectionSaveDTO request) {
+        teacherCourseAccessService.getCurrentTeacherSection(id);
+        updateSection(id, request);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteTeacherSection(Long id) {
+        teacherCourseAccessService.getCurrentTeacherSection(id);
+        deleteSection(id);
     }
 
     private void fillSection(CourseSection section, CourseSectionSaveDTO request) {

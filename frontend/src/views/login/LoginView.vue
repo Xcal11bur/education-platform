@@ -9,11 +9,12 @@
         </el-radio-group>
       </div>
 
-      <h1>{{ panelMode === 'login' ? (isAdminMode ? '管理员登录' : '学员登录') : '学员注册' }}</h1>
+      <h1>{{ panelMode === 'login' ? loginTitle : '学员注册' }}</h1>
 
       <template v-if="panelMode === 'login'">
         <el-radio-group v-model="loginMode" class="login-mode">
           <el-radio-button label="管理员" value="admin" />
+          <el-radio-button label="教师" value="teacher" />
           <el-radio-button label="学员" value="member" />
         </el-radio-group>
 
@@ -25,10 +26,10 @@
           class="login-form"
           @keyup.enter="handleLogin"
         >
-          <el-form-item :label="isAdminMode ? '账号' : '手机号'" prop="username">
+          <el-form-item :label="usernameLabel" prop="username">
             <el-input
               v-model="loginForm.username"
-              :placeholder="isAdminMode ? '请输入管理员账号' : '请输入学员手机号'"
+              :placeholder="usernamePlaceholder"
             />
           </el-form-item>
 
@@ -47,7 +48,7 @@
             :loading="submitting"
             @click="handleLogin"
           >
-            {{ isAdminMode ? '登录后台' : '进入平台' }}
+            {{ loginSubmitText }}
           </el-button>
         </el-form>
       </template>
@@ -145,6 +146,11 @@ const defaults = {
     password: '',
     captchaCode: ''
   },
+  teacher: {
+    username: '',
+    password: '',
+    captchaCode: ''
+  },
   member: {
     username: '',
     password: '',
@@ -167,13 +173,38 @@ const registerForm = reactive({
   captchaCode: ''
 })
 
-const isAdminMode = computed(() => loginMode.value === 'admin')
+const loginModeLabels = {
+  admin: {
+    title: '管理员登录',
+    usernameLabel: '账号',
+    usernamePlaceholder: '请输入管理员账号',
+    submitText: '登录后台'
+  },
+  teacher: {
+    title: '教师登录',
+    usernameLabel: '账号',
+    usernamePlaceholder: '请输入教师账号',
+    submitText: '进入教师端'
+  },
+  member: {
+    title: '学员登录',
+    usernameLabel: '手机号',
+    usernamePlaceholder: '请输入学员手机号',
+    submitText: '进入平台'
+  }
+}
+
+const currentLoginMode = computed(() => loginModeLabels[loginMode.value] || loginModeLabels.admin)
+const loginTitle = computed(() => currentLoginMode.value.title)
+const usernameLabel = computed(() => currentLoginMode.value.usernameLabel)
+const usernamePlaceholder = computed(() => currentLoginMode.value.usernamePlaceholder)
+const loginSubmitText = computed(() => currentLoginMode.value.submitText)
 
 const loginRules = computed(() => ({
   username: [
     {
       required: true,
-      message: isAdminMode.value ? '请输入管理员账号' : '请输入学员手机号',
+      message: currentLoginMode.value.usernamePlaceholder,
       trigger: 'blur'
     }
   ],

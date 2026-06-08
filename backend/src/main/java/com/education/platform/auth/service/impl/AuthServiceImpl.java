@@ -108,6 +108,18 @@ public class AuthServiceImpl implements AuthService {
                         .build();
             }
         }
+        if (ROLE_TEACHER.equals(loginUser.getRole()) && loginUser.getUserId() != null) {
+            Teacher teacher = teacherService.getById(loginUser.getUserId());
+            if (teacher != null) {
+                return UserProfileResponse.builder()
+                        .userId(teacher.getId())
+                        .username(teacher.getLoginName())
+                        .role(ROLE_TEACHER)
+                        .displayName(teacher.getName())
+                        .avatar(teacher.getAvatar())
+                        .build();
+            }
+        }
         return UserProfileResponse.builder()
                 .userId(loginUser.getUserId())
                 .username(loginUser.getUsername())

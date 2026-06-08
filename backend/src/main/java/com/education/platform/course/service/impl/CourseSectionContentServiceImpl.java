@@ -15,6 +15,7 @@ import com.education.platform.course.mapper.CourseSectionContentMapper;
 import com.education.platform.course.mapper.CourseSectionMapper;
 import com.education.platform.course.service.CourseEnrollmentService;
 import com.education.platform.course.service.CourseSectionContentService;
+import com.education.platform.course.service.TeacherCourseAccessService;
 import com.education.platform.course.vo.CourseSectionContentVO;
 import java.util.Collection;
 import java.util.List;
@@ -50,16 +51,19 @@ public class CourseSectionContentServiceImpl extends ServiceImpl<CourseSectionCo
     private final CourseChapterMapper courseChapterMapper;
     private final CourseSectionMapper courseSectionMapper;
     private final CourseEnrollmentService courseEnrollmentService;
+    private final TeacherCourseAccessService teacherCourseAccessService;
 
     public CourseSectionContentServiceImpl(
             CourseMapper courseMapper,
             CourseChapterMapper courseChapterMapper,
             CourseSectionMapper courseSectionMapper,
-            CourseEnrollmentService courseEnrollmentService) {
+            CourseEnrollmentService courseEnrollmentService,
+            TeacherCourseAccessService teacherCourseAccessService) {
         this.courseMapper = courseMapper;
         this.courseChapterMapper = courseChapterMapper;
         this.courseSectionMapper = courseSectionMapper;
         this.courseEnrollmentService = courseEnrollmentService;
+        this.teacherCourseAccessService = teacherCourseAccessService;
     }
 
     @Override
@@ -73,11 +77,23 @@ public class CourseSectionContentServiceImpl extends ServiceImpl<CourseSectionCo
     }
 
     @Override
+    public List<CourseSectionContentVO> listTeacherContents(Long sectionId) {
+        teacherCourseAccessService.getCurrentTeacherSection(sectionId);
+        return listAdminContents(sectionId);
+    }
+
+    @Override
     public CourseSectionContentVO getContentDetail(Long id) {
         CourseSectionContent content = getContentOrThrow(id);
         return fillContentVOs(List.of(content)).stream()
                 .findFirst()
                 .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND.getCode(), "section content not found"));
+    }
+
+    @Override
+    public CourseSectionContentVO getTeacherContentDetail(Long id) {
+        teacherCourseAccessService.getCurrentTeacherContent(id);
+        return getContentDetail(id);
     }
 
     @Override
@@ -95,6 +111,13 @@ public class CourseSectionContentServiceImpl extends ServiceImpl<CourseSectionCo
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void createTeacherContent(Long sectionId, CourseSectionContentSaveDTO request) {
+        teacherCourseAccessService.getCurrentTeacherSection(sectionId);
+        createContent(sectionId, request);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void updateContent(Long id, CourseSectionContentSaveDTO request) {
         CourseSectionContent content = getContentOrThrow(id);
         getSectionOrThrow(content.getSectionId(), false);
@@ -104,9 +127,23 @@ public class CourseSectionContentServiceImpl extends ServiceImpl<CourseSectionCo
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void updateTeacherContent(Long id, CourseSectionContentSaveDTO request) {
+        teacherCourseAccessService.getCurrentTeacherContent(id);
+        updateContent(id, request);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteContent(Long id) {
         getContentOrThrow(id);
         removeById(id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteTeacherContent(Long id) {
+        teacherCourseAccessService.getCurrentTeacherContent(id);
+        deleteContent(id);
     }
 
     @Override

@@ -3,15 +3,20 @@ package com.education.platform.teacher.service.impl;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.education.platform.auth.model.LoginUser;
+import com.education.platform.auth.util.SecurityUtils;
 import com.education.platform.common.enums.StatusEnum;
 import com.education.platform.common.exception.BusinessException;
 import com.education.platform.common.model.PageResponse;
 import com.education.platform.common.result.ResultCode;
+import com.education.platform.teacher.dto.TeacherPasswordUpdateDTO;
+import com.education.platform.teacher.dto.TeacherProfileUpdateDTO;
 import com.education.platform.teacher.dto.TeacherQueryDTO;
 import com.education.platform.teacher.dto.TeacherSaveDTO;
 import com.education.platform.teacher.entity.Teacher;
 import com.education.platform.teacher.mapper.TeacherMapper;
 import com.education.platform.teacher.service.TeacherService;
+import com.education.platform.teacher.vo.TeacherProfileVO;
 import com.education.platform.teacher.vo.TeacherVO;
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +28,8 @@ import org.springframework.util.StringUtils;
 
 @Service
 public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> implements TeacherService {
+
+    private static final String ROLE_TEACHER = "TEACHER";
 
     private final PasswordEncoder passwordEncoder;
 
@@ -104,6 +111,39 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         updateById(teacher);
     }
 
+    @Override
+    public TeacherProfileVO getCurrentProfile() {
+        return toTeacherProfileVO(getCurrentTeacher());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateCurrentProfile(TeacherProfileUpdateDTO request) {
+        Teacher teacher = getCurrentTeacher();
+        validateUniqueMobileAndEmail(request.getMobile(), request.getEmail(), teacher.getId());
+        teacher.setName(request.getName());
+        teacher.setMobile(request.getMobile());
+        teacher.setTitle(request.getTitle());
+        teacher.setIntro(request.getIntro());
+        teacher.setAvatar(request.getAvatar());
+        teacher.setEmail(request.getEmail());
+        updateById(teacher);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateCurrentPassword(TeacherPasswordUpdateDTO request) {
+        Teacher teacher = getCurrentTeacher();
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "password confirmation does not match");
+        }
+        if (!passwordEncoder.matches(request.getOldPassword(), teacher.getPassword())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "old password is incorrect");
+        }
+        teacher.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        updateById(teacher);
+    }
+
     private Teacher getTeacherOrThrow(Long id) {
         Teacher teacher = getById(id);
         if (teacher == null) {
@@ -129,9 +169,25 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
             throw new BusinessException(ResultCode.CONFLICT.getCode(), "mobile already exists");
         }
 
-        if (StringUtils.hasText(request.getEmail())) {
+        validateUniqueEmail(request.getEmail(), excludeId);
+    }
+
+    private void validateUniqueMobileAndEmail(String mobile, String email, Long excludeId) {
+        boolean mobileExists = lambdaQuery()
+                .eq(Teacher::getMobile, mobile)
+                .ne(excludeId != null, Teacher::getId, excludeId)
+                .exists();
+        if (mobileExists) {
+            throw new BusinessException(ResultCode.CONFLICT.getCode(), "mobile already exists");
+        }
+
+        validateUniqueEmail(email, excludeId);
+    }
+
+    private void validateUniqueEmail(String email, Long excludeId) {
+        if (StringUtils.hasText(email)) {
             boolean emailExists = lambdaQuery()
-                    .eq(Teacher::getEmail, request.getEmail())
+                    .eq(Teacher::getEmail, email)
                     .ne(excludeId != null, Teacher::getId, excludeId)
                     .exists();
             if (emailExists) {
@@ -140,9 +196,24 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         }
     }
 
+    private Teacher getCurrentTeacher() {
+        LoginUser loginUser = SecurityUtils.getLoginUser()
+                .orElseThrow(() -> new BusinessException(ResultCode.UNAUTHORIZED));
+        if (!ROLE_TEACHER.equals(loginUser.getRole()) || loginUser.getUserId() == null) {
+            throw new BusinessException(ResultCode.FORBIDDEN);
+        }
+        return getTeacherOrThrow(loginUser.getUserId());
+    }
+
     private TeacherVO toTeacherVO(Teacher teacher) {
         TeacherVO teacherVO = new TeacherVO();
         BeanUtils.copyProperties(teacher, teacherVO);
         return teacherVO;
+    }
+
+    private TeacherProfileVO toTeacherProfileVO(Teacher teacher) {
+        TeacherProfileVO profileVO = new TeacherProfileVO();
+        BeanUtils.copyProperties(teacher, profileVO);
+        return profileVO;
     }
 }

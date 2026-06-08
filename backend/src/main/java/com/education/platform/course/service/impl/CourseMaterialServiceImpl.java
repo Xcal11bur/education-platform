@@ -15,6 +15,7 @@ import com.education.platform.course.mapper.CourseMapper;
 import com.education.platform.course.mapper.CourseMaterialMapper;
 import com.education.platform.course.service.CourseEnrollmentService;
 import com.education.platform.course.service.CourseMaterialService;
+import com.education.platform.course.service.TeacherCourseAccessService;
 import com.education.platform.course.vo.CourseMaterialVO;
 import java.util.Collection;
 import java.util.List;
@@ -34,18 +35,33 @@ public class CourseMaterialServiceImpl extends ServiceImpl<CourseMaterialMapper,
     private final CourseMapper courseMapper;
     private final CourseMaterialMapper courseMaterialMapper;
     private final CourseEnrollmentService courseEnrollmentService;
+    private final TeacherCourseAccessService teacherCourseAccessService;
 
     public CourseMaterialServiceImpl(
             CourseMapper courseMapper,
             CourseMaterialMapper courseMaterialMapper,
-            CourseEnrollmentService courseEnrollmentService) {
+            CourseEnrollmentService courseEnrollmentService,
+            TeacherCourseAccessService teacherCourseAccessService) {
         this.courseMapper = courseMapper;
         this.courseMaterialMapper = courseMaterialMapper;
         this.courseEnrollmentService = courseEnrollmentService;
+        this.teacherCourseAccessService = teacherCourseAccessService;
     }
 
     @Override
     public PageResponse<CourseMaterialVO> pageAdminMaterials(CourseMaterialQueryDTO queryDTO) {
+        return pageMaterials(queryDTO);
+    }
+
+    @Override
+    public PageResponse<CourseMaterialVO> pageTeacherMaterials(CourseMaterialQueryDTO queryDTO) {
+        if (queryDTO.getCourseId() != null) {
+            teacherCourseAccessService.getCurrentTeacherCourse(queryDTO.getCourseId());
+        }
+        return pageMaterials(queryDTO);
+    }
+
+    private PageResponse<CourseMaterialVO> pageMaterials(CourseMaterialQueryDTO queryDTO) {
         IPage<CourseMaterial> page = lambdaQuery()
                 .eq(queryDTO.getCourseId() != null, CourseMaterial::getCourseId, queryDTO.getCourseId())
                 .like(StringUtils.hasText(queryDTO.getMaterialName()), CourseMaterial::getMaterialName, queryDTO.getMaterialName())
@@ -69,6 +85,12 @@ public class CourseMaterialServiceImpl extends ServiceImpl<CourseMaterialMapper,
     }
 
     @Override
+    public CourseMaterialVO getTeacherMaterialDetail(Long id) {
+        teacherCourseAccessService.getCurrentTeacherMaterial(id);
+        return getMaterialDetail(id);
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void createMaterial(CourseMaterialSaveDTO request) {
         getCourseOrThrow(request.getCourseId(), false);
@@ -82,6 +104,13 @@ public class CourseMaterialServiceImpl extends ServiceImpl<CourseMaterialMapper,
         }
         material.setSort(nextSort(request.getCourseId()));
         save(material);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void createTeacherMaterial(CourseMaterialSaveDTO request) {
+        teacherCourseAccessService.getCurrentTeacherCourse(request.getCourseId());
+        createMaterial(request);
     }
 
     @Override
@@ -101,12 +130,27 @@ public class CourseMaterialServiceImpl extends ServiceImpl<CourseMaterialMapper,
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void updateTeacherMaterial(Long id, CourseMaterialSaveDTO request) {
+        teacherCourseAccessService.getCurrentTeacherMaterial(id);
+        teacherCourseAccessService.getCurrentTeacherCourse(request.getCourseId());
+        updateMaterial(id, request);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteMaterial(Long id) {
         getMaterialOrThrow(id);
         int affectedRows = courseMaterialMapper.deleteMaterialPhysically(id);
         if (affectedRows != 1) {
             throw new BusinessException(ResultCode.INTERNAL_ERROR.getCode(), "failed to delete course material");
         }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteTeacherMaterial(Long id) {
+        teacherCourseAccessService.getCurrentTeacherMaterial(id);
+        deleteMaterial(id);
     }
 
     @Override
