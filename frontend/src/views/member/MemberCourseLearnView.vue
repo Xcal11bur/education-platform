@@ -211,10 +211,10 @@
                       <span>{{ task.totalScore }} 分 / {{ task.questionCount }} 题</span>
                     </div>
                     <div class="assignment-actions">
-                      <el-button type="primary" text @click="openExamAnswer(task)">
+                      <el-button v-if="task.canSubmit" type="primary" text @click="openExamAnswer(task)">
                         {{ examActionLabel(task) }}
                       </el-button>
-                      <el-button v-if="task.completed" text @click="openExamReview(task)">
+                      <el-button v-else text @click="openExamReview(task)">
                         查看详情
                       </el-button>
                     </div>
