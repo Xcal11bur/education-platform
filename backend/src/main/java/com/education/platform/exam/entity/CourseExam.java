@@ -18,6 +18,5 @@ public class CourseExam extends BaseEntity {
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private Integer durationMinutes;
-    private Integer allowRetakeCount;
     private Integer status;
 }

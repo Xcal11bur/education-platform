@@ -286,7 +286,7 @@ async function openEdit(id) {
     startTime: data.startTime || '',
     endTime: data.endTime || '',
     durationMinutes: data.durationMinutes ?? null,
-    allowRetakeCount: data.allowRetakeCount ?? (isExamScene.value ? 0 : 1),
+    allowRetakeCount: data.allowRetakeCount ?? 1,
     status: data.status ?? 0
   })
   dialogVisible.value = true
@@ -303,7 +303,7 @@ async function submitForm() {
       passScore: form.passScore,
       startTime: form.startTime || null,
       endTime: form.endTime || null,
-      allowRetakeCount: isExamScene.value ? 0 : form.allowRetakeCount,
+      ...(!isExamScene.value ? { allowRetakeCount: form.allowRetakeCount } : {}),
       status: form.status,
       ...(isExamScene.value ? { durationMinutes: form.durationMinutes || null } : {})
     }

@@ -21,7 +21,6 @@ public class CourseExamMemberDetailVO {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime endTime;
     private Integer durationMinutes;
-    private Integer allowRetakeCount;
     private Integer questionCount;
     private Boolean submitted;
     private Boolean canSubmit;

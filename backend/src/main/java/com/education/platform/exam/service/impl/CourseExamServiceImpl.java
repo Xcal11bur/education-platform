@@ -159,7 +159,6 @@ public class CourseExamServiceImpl extends ServiceImpl<CourseExamMapper, CourseE
         if (exam.getPassScore() == null) {
             exam.setPassScore(60);
         }
-        exam.setAllowRetakeCount(0);
         if (exam.getStatus() == null) {
             exam.setStatus(0);
         }

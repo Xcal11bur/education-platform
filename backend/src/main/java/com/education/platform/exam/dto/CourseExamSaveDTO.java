@@ -22,6 +22,5 @@ public class CourseExamSaveDTO {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime endTime;
     private Integer durationMinutes;
-    private Integer allowRetakeCount;
     private Integer status;
 }
