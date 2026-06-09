@@ -139,7 +139,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTeacherCourseList } from '@/api/teacherCourse'
@@ -167,6 +167,7 @@ const dialogVisible = ref(false)
 const saving = ref(false)
 const editingId = ref(null)
 const formRef = ref()
+const initialized = ref(false)
 
 const isExamScene = computed(() => route.meta?.scene === 'exam')
 const entityName = computed(() => (isExamScene.value ? '考试' : '作业'))
@@ -244,9 +245,27 @@ async function fetchTasks() {
   total.value = data.total || 0
 }
 
+function resetQuery() {
+  query.pageNum = 1
+  query.pageSize = 10
+  query.courseId = null
+  query.title = ''
+  query.status = null
+}
+
 function resetForm() {
   Object.assign(form, defaultForm())
   formRef.value?.clearValidate()
+}
+
+async function syncSceneData() {
+  dialogVisible.value = false
+  editingId.value = null
+  tasks.value = []
+  total.value = 0
+  resetQuery()
+  resetForm()
+  await fetchTasks()
 }
 
 function openCreate() {
@@ -323,8 +342,19 @@ function rowIndex(index) {
 
 onMounted(async () => {
   await fetchCourseOptions()
-  await fetchTasks()
+  initialized.value = true
+  await syncSceneData()
 })
+
+watch(
+  () => route.fullPath,
+  async () => {
+    if (!initialized.value) {
+      return
+    }
+    await syncSceneData()
+  }
+)
 </script>
 
 <style scoped>

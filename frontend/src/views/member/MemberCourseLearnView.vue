@@ -156,8 +156,8 @@
                     <strong>{{ formatTaskScore(task) }}</strong>
                   </div>
                   <div class="assignment-side-item">
-                    <span>已考次数</span>
-                    <strong>{{ task.usedAttempts }}/1</strong>
+                    <span>剩余次数</span>
+                    <strong>{{ task.remainingAttempts }}</strong>
                   </div>
                 </div>
               </article>
@@ -224,10 +224,6 @@
                   <div class="assignment-side-item">
                     <span>得分</span>
                     <strong>{{ formatTaskScore(task) }}</strong>
-                  </div>
-                  <div class="assignment-side-item">
-                    <span>剩余次数</span>
-                    <strong>{{ task.remainingAttempts }}</strong>
                   </div>
                 </div>
               </article>
