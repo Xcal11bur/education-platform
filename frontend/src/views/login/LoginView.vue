@@ -25,12 +25,15 @@
           :validate-on-rule-change="false"
           label-position="top"
           class="login-form"
+          autocomplete="on"
           @keyup.enter="handleLogin"
         >
           <el-form-item :label="usernameLabel" prop="username">
             <el-input
               v-model="loginForm.username"
               :placeholder="usernamePlaceholder"
+              name="login-username"
+              autocomplete="username"
             />
           </el-form-item>
 
@@ -40,6 +43,8 @@
               type="password"
               show-password
               placeholder="请输入密码"
+              name="login-password"
+              autocomplete="current-password"
             />
           </el-form-item>
 
@@ -61,18 +66,34 @@
           :rules="registerRules"
           label-position="top"
           class="login-form"
+          autocomplete="off"
           @keyup.enter="handleRegister"
         >
           <el-form-item label="手机号" prop="mobile">
-            <el-input v-model="registerForm.mobile" placeholder="请输入手机号" />
+            <el-input
+              v-model="registerForm.mobile"
+              placeholder="请输入手机号"
+              name="register-mobile"
+              autocomplete="off"
+            />
           </el-form-item>
 
           <el-form-item label="昵称" prop="nickname">
-            <el-input v-model="registerForm.nickname" placeholder="请输入昵称" />
+            <el-input
+              v-model="registerForm.nickname"
+              placeholder="请输入昵称"
+              name="register-nickname"
+              autocomplete="off"
+            />
           </el-form-item>
 
           <el-form-item label="真实姓名" prop="realName">
-            <el-input v-model="registerForm.realName" placeholder="选填" />
+            <el-input
+              v-model="registerForm.realName"
+              placeholder="选填"
+              name="register-real-name"
+              autocomplete="off"
+            />
           </el-form-item>
 
           <el-form-item label="密码" prop="password">
@@ -81,6 +102,8 @@
               type="password"
               show-password
               placeholder="请输入密码"
+              name="register-password"
+              autocomplete="new-password"
             />
           </el-form-item>
 
@@ -90,6 +113,8 @@
               type="password"
               show-password
               placeholder="请再次输入密码"
+              name="register-confirm-password"
+              autocomplete="new-password"
             />
           </el-form-item>
 
@@ -99,6 +124,8 @@
                 v-model="registerForm.captchaCode"
                 placeholder="请输入验证码"
                 maxlength="4"
+                name="register-captcha"
+                autocomplete="off"
               />
               <button type="button" class="captcha-image" @click="refreshCaptcha">
                 <img v-if="captcha.imageBase64" :src="captcha.imageBase64" alt="captcha" />
@@ -256,7 +283,14 @@ watch(loginMode, async (mode) => {
 
 watch(panelMode, async () => {
   loginForm.captchaCode = ''
-  registerForm.captchaCode = ''
+  Object.assign(registerForm, {
+    mobile: '',
+    nickname: '',
+    realName: '',
+    password: '',
+    confirmPassword: '',
+    captchaCode: ''
+  })
   await nextTick()
   loginFormRef.value?.clearValidate()
   registerFormRef.value?.clearValidate()
