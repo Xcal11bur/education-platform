@@ -14,7 +14,6 @@ public class MybatisPlusMetaObjectHandler implements MetaObjectHandler {
         strictInsertFill(metaObject, "updatedAt", LocalDateTime.class, LocalDateTime.now());
         strictInsertFill(metaObject, "createdBy", Long.class, 0L);
         strictInsertFill(metaObject, "updatedBy", Long.class, 0L);
-        strictInsertFill(metaObject, "deleted", Integer.class, 0);
     }
 
     @Override

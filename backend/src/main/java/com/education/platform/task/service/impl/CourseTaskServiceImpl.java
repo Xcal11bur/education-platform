@@ -15,6 +15,7 @@ import com.education.platform.task.entity.CourseTask;
 import com.education.platform.task.entity.TaskQuestion;
 import com.education.platform.task.mapper.CourseTaskMapper;
 import com.education.platform.task.mapper.TaskQuestionMapper;
+import com.education.platform.task.mapper.TaskSubmissionMapper;
 import com.education.platform.task.service.CourseTaskService;
 import com.education.platform.task.vo.CourseTaskVO;
 import java.util.Collection;
@@ -36,15 +37,18 @@ public class CourseTaskServiceImpl extends ServiceImpl<CourseTaskMapper, CourseT
 
     private final CourseMapper courseMapper;
     private final TaskQuestionMapper taskQuestionMapper;
+    private final TaskSubmissionMapper taskSubmissionMapper;
     private final TeacherCourseAccessService teacherCourseAccessService;
 
     public CourseTaskServiceImpl(
             CourseMapper courseMapper,
             TaskQuestionMapper taskQuestionMapper,
+            TaskSubmissionMapper taskSubmissionMapper,
             TeacherCourseAccessService teacherCourseAccessService
     ) {
         this.courseMapper = courseMapper;
         this.taskQuestionMapper = taskQuestionMapper;
+        this.taskSubmissionMapper = taskSubmissionMapper;
         this.teacherCourseAccessService = teacherCourseAccessService;
     }
 
@@ -115,7 +119,9 @@ public class CourseTaskServiceImpl extends ServiceImpl<CourseTaskMapper, CourseT
     public void deleteTeacherTask(Long id) {
         CourseTask task = getTaskOrThrow(id);
         teacherCourseAccessService.getCurrentTeacherCourse(task.getCourseId());
-        removeById(id);
+        taskSubmissionMapper.hardDeleteByTaskId(id);
+        taskQuestionMapper.hardDeleteByTaskId(id);
+        baseMapper.hardDeleteById(id);
     }
 
     private void validateTaskRequest(Long taskId, CourseTaskSaveDTO request) {
