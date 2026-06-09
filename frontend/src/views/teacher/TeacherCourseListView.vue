@@ -39,18 +39,11 @@
         </template>
       </el-table-column>
       <el-table-column prop="studyCount" label="学习人数" width="110" />
-      <el-table-column label="操作" width="390" fixed="right">
+      <el-table-column label="操作" width="320" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openEdit(row.id)">编辑</el-button>
           <el-button link type="primary" @click="goChapters(row.id)">章节</el-button>
           <el-button link type="primary" @click="goMaterials(row.id)">资料</el-button>
-          <el-button
-            link
-            :type="row.publishStatus === 1 ? 'warning' : 'success'"
-            @click="togglePublish(row)"
-          >
-            {{ row.publishStatus === 1 ? '下架' : '上架' }}
-          </el-button>
           <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
         </template>
       </el-table-column>
@@ -141,7 +134,6 @@ import {
   getTeacherCourseDetail,
   getTeacherCourseList,
   updateTeacherCourse,
-  updateTeacherCoursePublishStatus,
   uploadTeacherCourseCoverFile
 } from '@/api/teacherCourse'
 
@@ -362,13 +354,6 @@ function handleCoverFileChange(event) {
   selectedCoverFile.value = file
   selectedCoverFileName.value = file.name
   formRef.value?.validateField('coverUpload')
-}
-
-async function togglePublish(row) {
-  const publishStatus = row.publishStatus === 1 ? 2 : 1
-  await updateTeacherCoursePublishStatus(row.id, { publishStatus })
-  ElMessage.success(publishStatus === 1 ? '课程已上架' : '课程已下架')
-  fetchCourses()
 }
 
 async function handleDelete(row) {

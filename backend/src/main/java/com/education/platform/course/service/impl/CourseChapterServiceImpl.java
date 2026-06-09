@@ -8,8 +8,10 @@ import com.education.platform.course.dto.CourseChapterSaveDTO;
 import com.education.platform.course.entity.Course;
 import com.education.platform.course.entity.CourseChapter;
 import com.education.platform.course.entity.CourseSection;
+import com.education.platform.course.entity.CourseSectionContent;
 import com.education.platform.course.mapper.CourseChapterMapper;
 import com.education.platform.course.mapper.CourseMapper;
+import com.education.platform.course.mapper.CourseSectionContentMapper;
 import com.education.platform.course.mapper.CourseSectionMapper;
 import com.education.platform.course.service.CourseChapterService;
 import com.education.platform.course.service.TeacherCourseAccessService;
@@ -29,14 +31,17 @@ public class CourseChapterServiceImpl extends ServiceImpl<CourseChapterMapper, C
 
     private final CourseMapper courseMapper;
     private final CourseSectionMapper courseSectionMapper;
+    private final CourseSectionContentMapper courseSectionContentMapper;
     private final TeacherCourseAccessService teacherCourseAccessService;
 
     public CourseChapterServiceImpl(
             CourseMapper courseMapper,
             CourseSectionMapper courseSectionMapper,
+            CourseSectionContentMapper courseSectionContentMapper,
             TeacherCourseAccessService teacherCourseAccessService) {
         this.courseMapper = courseMapper;
         this.courseSectionMapper = courseSectionMapper;
+        this.courseSectionContentMapper = courseSectionContentMapper;
         this.teacherCourseAccessService = teacherCourseAccessService;
     }
 
@@ -63,12 +68,12 @@ public class CourseChapterServiceImpl extends ServiceImpl<CourseChapterMapper, C
     @Transactional(rollbackFor = Exception.class)
     public void deleteChapter(Long id) {
         CourseChapter chapter = getChapterOrThrow(id);
-        boolean hasSections = courseSectionMapper.selectCount(
+        courseSectionContentMapper.delete(
+                Wrappers.<CourseSectionContent>lambdaQuery().eq(CourseSectionContent::getChapterId, id)
+        );
+        courseSectionMapper.delete(
                 Wrappers.<CourseSection>lambdaQuery().eq(CourseSection::getChapterId, id)
-        ) > 0;
-        if (hasSections) {
-            throw new BusinessException(ResultCode.CONFLICT.getCode(), "chapter has sections and cannot be deleted");
-        }
+        );
         removeById(chapter.getId());
     }
 

@@ -735,7 +735,15 @@ async function submitContentForm() {
 }
 
 async function handleDeleteChapter(chapter) {
-  await ElMessageBox.confirm(`确定删除章节“${chapter.title}”吗？`, '删除章节', { type: 'warning' })
+  await ElMessageBox.confirm(
+    `确定删除章节“${chapter.title}”吗？其下所有小节和内容项会一并删除，且不可恢复。`,
+    '删除章节',
+    {
+      type: 'warning',
+      confirmButtonText: '确认删除',
+      cancelButtonText: '取消'
+    }
+  )
   await deleteChapter(chapter.id)
   ElMessage.success('章节已删除')
   if (activeChapterId.value === chapter.id) {
