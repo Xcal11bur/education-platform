@@ -1,12 +1,12 @@
 <template>
   <div class="page-card">
     <div class="page-header">
-      <h2 class="page-title">作业管理</h2>
-      <el-button type="primary" @click="openCreate">新增作业</el-button>
+      <h2 class="page-title">{{ pageTitle }}</h2>
+      <el-button type="primary" @click="openCreate">新增{{ entityName }}</el-button>
     </div>
 
     <el-alert
-      title="作业创建后可继续维护题目，题目分值会自动汇总回总分。发布前至少需要配置一道题。"
+      :title="pageAlertText"
       type="info"
       :closable="false"
       show-icon
@@ -22,7 +22,7 @@
           :value="item.id"
         />
       </el-select>
-      <el-input v-model="query.title" placeholder="作业标题" clearable />
+      <el-input v-model="query.title" :placeholder="`${entityName}标题`" clearable />
       <el-select v-model="query.status" placeholder="状态" clearable>
         <el-option label="草稿" :value="0" />
         <el-option label="已发布" :value="1" />
@@ -35,7 +35,7 @@
         <template #default="{ $index }">{{ rowIndex($index) }}</template>
       </el-table-column>
       <el-table-column prop="courseTitle" label="所属课程" min-width="180" />
-      <el-table-column prop="title" label="作业标题" min-width="180" />
+      <el-table-column :label="`${entityName}标题`" prop="title" min-width="180" />
       <el-table-column prop="questionCount" label="题目数" width="100" />
       <el-table-column label="总分/及格" width="120">
         <template #default="{ row }">{{ row.totalScore }}/{{ row.passScore }}</template>
@@ -45,6 +45,9 @@
       </el-table-column>
       <el-table-column label="截止时间" min-width="170">
         <template #default="{ row }">{{ formatDateTime(row.endTime) }}</template>
+      </el-table-column>
+      <el-table-column v-if="isExamScene" label="时长(分钟)" width="120">
+        <template #default="{ row }">{{ row.durationMinutes ?? '--' }}</template>
       </el-table-column>
       <el-table-column label="状态" width="110">
         <template #default="{ row }">
@@ -74,7 +77,7 @@
       />
     </div>
 
-    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑作业' : '新增作业'" width="760px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="760px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="110px">
         <el-form-item label="所属课程" prop="courseId">
           <el-select v-model="form.courseId" placeholder="请选择课程" filterable style="width: 100%">
@@ -86,7 +89,7 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="作业标题" prop="title">
+        <el-form-item :label="`${entityName}标题`" prop="title">
           <el-input v-model="form.title" maxlength="100" />
         </el-form-item>
         <el-form-item label="总分">
@@ -114,7 +117,7 @@
             style="width: 100%;"
           />
         </el-form-item>
-        <el-form-item label="限时(分钟)">
+        <el-form-item v-if="isExamScene" label="限时(分钟)">
           <el-input-number v-model="form.durationMinutes" :min="1" :max="1440" />
         </el-form-item>
         <el-form-item label="可补交次数">
@@ -136,8 +139,8 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTeacherCourseList } from '@/api/teacherCourse'
 import {
@@ -147,7 +150,15 @@ import {
   getTeacherTaskList,
   updateTeacherTask
 } from '@/api/teacherTask'
+import {
+  createTeacherExam,
+  deleteTeacherExam,
+  getTeacherExamDetail,
+  getTeacherExamList,
+  updateTeacherExam
+} from '@/api/teacherExam'
 
+const route = useRoute()
 const router = useRouter()
 const tasks = ref([])
 const total = ref(0)
@@ -156,6 +167,17 @@ const dialogVisible = ref(false)
 const saving = ref(false)
 const editingId = ref(null)
 const formRef = ref()
+
+const isExamScene = computed(() => route.meta?.scene === 'exam')
+const entityName = computed(() => (isExamScene.value ? '考试' : '作业'))
+const entityPluralPath = computed(() => (isExamScene.value ? 'exams' : 'tasks'))
+const pageTitle = computed(() => `${entityName.value}管理`)
+const dialogTitle = computed(() => `${editingId.value ? '编辑' : '新增'}${entityName.value}`)
+const pageAlertText = computed(() => (
+  isExamScene.value
+    ? '考试创建后可继续维护题目，题目分值会自动汇总回总分。发布前至少需要配置一道题，并设置考试时长。'
+    : '作业创建后可继续维护题目，题目分值会自动汇总回总分。发布前至少需要配置一道题。'
+))
 
 const query = reactive({
   pageNum: 1,
@@ -181,7 +203,7 @@ const form = reactive(defaultForm())
 
 const rules = {
   courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
-  title: [{ required: true, message: '请输入作业标题', trigger: 'blur' }]
+  title: [{ required: true, message: '请输入标题', trigger: 'blur' }]
 }
 
 function formatDateTime(value) {
@@ -191,13 +213,33 @@ function formatDateTime(value) {
   return String(value).replace('T', ' ').replace(/\.\d+$/, '').replace(/Z$/, '')
 }
 
+function getListRequest() {
+  return isExamScene.value ? getTeacherExamList : getTeacherTaskList
+}
+
+function getDetailRequest() {
+  return isExamScene.value ? getTeacherExamDetail : getTeacherTaskDetail
+}
+
+function getCreateRequest() {
+  return isExamScene.value ? createTeacherExam : createTeacherTask
+}
+
+function getUpdateRequest() {
+  return isExamScene.value ? updateTeacherExam : updateTeacherTask
+}
+
+function getDeleteRequest() {
+  return isExamScene.value ? deleteTeacherExam : deleteTeacherTask
+}
+
 async function fetchCourseOptions() {
   const { data } = await getTeacherCourseList({ pageNum: 1, pageSize: 100 })
   courseOptions.value = data.list || []
 }
 
 async function fetchTasks() {
-  const { data } = await getTeacherTaskList(query)
+  const { data } = await getListRequest()(query)
   tasks.value = data.list || []
   total.value = data.total || 0
 }
@@ -214,7 +256,7 @@ function openCreate() {
 }
 
 async function openEdit(id) {
-  const { data } = await getTeacherTaskDetail(id)
+  const { data } = await getDetailRequest()(id)
   editingId.value = id
   resetForm()
   Object.assign(form, {
@@ -224,7 +266,7 @@ async function openEdit(id) {
     passScore: data.passScore ?? 60,
     startTime: data.startTime || '',
     endTime: data.endTime || '',
-    durationMinutes: data.durationMinutes,
+    durationMinutes: data.durationMinutes ?? null,
     allowRetakeCount: data.allowRetakeCount ?? 1,
     status: data.status ?? 0
   })
@@ -236,17 +278,22 @@ async function submitForm() {
   saving.value = true
   try {
     const payload = {
-      ...form,
+      courseId: form.courseId,
+      title: form.title,
+      totalScore: form.totalScore,
+      passScore: form.passScore,
       startTime: form.startTime || null,
       endTime: form.endTime || null,
-      durationMinutes: form.durationMinutes || null
+      allowRetakeCount: form.allowRetakeCount,
+      status: form.status,
+      ...(isExamScene.value ? { durationMinutes: form.durationMinutes || null } : {})
     }
     if (editingId.value) {
-      await updateTeacherTask(editingId.value, payload)
-      ElMessage.success('作业已更新')
+      await getUpdateRequest()(editingId.value, payload)
+      ElMessage.success(`${entityName.value}已更新`)
     } else {
-      await createTeacherTask(payload)
-      ElMessage.success('作业已创建')
+      await getCreateRequest()(payload)
+      ElMessage.success(`${entityName.value}已创建`)
     }
     dialogVisible.value = false
     await fetchTasks()
@@ -256,18 +303,18 @@ async function submitForm() {
 }
 
 async function handleDelete(row) {
-  await ElMessageBox.confirm(`确定删除作业“${row.title}”吗？`, '删除作业', { type: 'warning' })
-  await deleteTeacherTask(row.id)
-  ElMessage.success('作业已删除')
+  await ElMessageBox.confirm(`确定删除${entityName.value}“${row.title}”吗？`, `删除${entityName.value}`, { type: 'warning' })
+  await getDeleteRequest()(row.id)
+  ElMessage.success(`${entityName.value}已删除`)
   await fetchTasks()
 }
 
 function openQuestions(id) {
-  router.push(`/teacher/course-management/tasks/${id}/questions`)
+  router.push(`/teacher/course-management/${entityPluralPath.value}/${id}/questions`)
 }
 
 function openSubmissions(id) {
-  router.push(`/teacher/course-management/tasks/${id}/submissions`)
+  router.push(`/teacher/course-management/${entityPluralPath.value}/${id}/submissions`)
 }
 
 function rowIndex(index) {

@@ -1,10 +1,8 @@
 <template>
   <div class="task-page">
     <header class="task-topbar">
-      <button class="back-link" type="button" @click="goBack">
-        返回课程
-      </button>
-      <div class="topbar-title">作业详情</div>
+      <button class="back-link" type="button" @click="goBack">返回课程</button>
+      <div class="topbar-title">{{ pageTitle }}</div>
       <el-dropdown trigger="click" placement="bottom-end">
         <button class="profile-entry" type="button">
           <el-avatar class="profile-avatar" :size="34" :src="avatarUrl">
@@ -28,11 +26,11 @@
         <div class="task-stage-head">
           <div>
             <div class="task-kicker">{{ taskDetail?.courseTitle || '--' }}</div>
-            <h1>{{ taskDetail?.title || '作业详情' }}</h1>
+            <h1>{{ taskDetail?.title || pageTitle }}</h1>
           </div>
           <div class="task-head-actions">
             <div
-              v-if="taskDetail?.submitted && taskDetail?.latestSubmission && taskDetail?.latestSubmission?.reviewStatus === 1"
+              v-if="taskDetail?.submitted && taskDetail?.latestSubmission?.reviewStatus === 1"
               class="task-score-panel"
               :class="scoreStatusClass"
             >
@@ -48,10 +46,11 @@
         </div>
 
         <div class="task-meta-row">
-          <span>作答时间：{{ formatDateTime(taskDetail?.startTime) }} 至 {{ formatDateTime(taskDetail?.endTime) }}</span>
+          <span>{{ sceneLabel }}时间：{{ formatDateTime(taskDetail?.startTime) }} 至 {{ formatDateTime(taskDetail?.endTime) }}</span>
           <span>总分 {{ taskDetail?.totalScore ?? 0 }}</span>
-          <span>及格分 {{ taskDetail?.passScore ?? 0 }}</span>
-          <span>剩余次数 {{ taskDetail?.remainingAttempts ?? 0 }}</span>
+          <span>及格 {{ taskDetail?.passScore ?? 0 }}</span>
+          <span v-if="isExamScene">时长 {{ formatDurationMinutes(taskDetail?.durationMinutes) }}</span>
+          <span v-else>剩余次数 {{ taskDetail?.remainingAttempts ?? 0 }}</span>
         </div>
 
         <div
@@ -71,13 +70,19 @@
           >
             <div class="question-head">
               <div class="question-title">
-                {{ index + 1 }}. <span class="question-type">({{ questionTypeText(question.questionType) }}，{{ question.score }}分)</span>{{ question.stem }}
+                {{ index + 1 }}.
+                <span class="question-type">({{ questionTypeText(question.questionType) }}，{{ question.score }} 分)</span>
+                {{ question.stem }}
               </div>
             </div>
 
             <div class="question-options">
               <template v-if="isAnswerMode && question.questionType !== 4">
-                <el-radio-group v-model="answerMap[question.id]" class="question-radio-group">
+                <el-radio-group
+                  v-model="answerMap[question.id]"
+                  class="question-radio-group"
+                  :disabled="isAnswerLocked"
+                >
                   <div
                     v-for="option in parseOptions(question.optionsJson)"
                     :key="option.label"
@@ -94,6 +99,7 @@
                   v-model="answerMap[question.id]"
                   placeholder="请输入你的作答内容"
                   :min-height="240"
+                  :readonly="isAnswerLocked"
                 />
               </template>
               <template v-else>
@@ -129,28 +135,36 @@
                   {{ question.reviewPending ? '待批改' : `${question.earnedScore ?? 0} 分` }}
                 </div>
               </div>
-              <div v-if="question.analysis" class="analysis-block">
-                解析：{{ question.analysis }}
-              </div>
+              <div v-if="question.analysis" class="analysis-block">解析：{{ question.analysis }}</div>
             </template>
           </section>
         </div>
 
         <div v-if="isAnswerMode" class="submit-row">
-          <el-button type="primary" size="large" :loading="submitting" @click="submitTask">
-            提交作业
+          <el-button
+            type="primary"
+            size="large"
+            :loading="submitting || autoSubmitting"
+            :disabled="isAnswerLocked"
+            @click="submitTask()"
+          >
+            {{ submitButtonLabel }}
           </el-button>
         </div>
       </section>
 
       <aside class="task-sidebar">
         <div class="sidebar-card">
-          <div
-            v-for="group in questionGroups"
-            :key="group.key"
-            class="sidebar-group"
-          >
-            <div class="sidebar-title">{{ group.title }}（{{ group.totalScore }}分）</div>
+          <div v-if="showExamCountdown" class="countdown-panel">
+            <div class="countdown-label">倒计时</div>
+            <div class="countdown-value" :class="{ 'is-danger': examRemainingSeconds <= 300 }">
+              {{ formattedExamCountdown }}
+            </div>
+            <div class="countdown-tip">时间结束后系统将自动提交</div>
+          </div>
+
+          <div v-for="group in questionGroups" :key="group.key" class="sidebar-group">
+            <div class="sidebar-title">{{ group.title }}（{{ group.totalScore }} 分）</div>
             <div class="sidebar-grid">
               <button
                 v-for="question in group.questions"
@@ -175,10 +189,11 @@
 
 <script setup>
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { getMemberTaskDetail, submitMemberTask } from '@/api/memberTask'
+import { getMemberExamDetail, submitMemberExam } from '@/api/memberExam'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
@@ -187,34 +202,61 @@ const authStore = useAuthStore()
 
 const loading = ref(false)
 const submitting = ref(false)
+const autoSubmitting = ref(false)
 const taskDetail = ref(null)
 const answerMap = reactive({})
+const examStartedAt = ref('')
+const examRemainingSeconds = ref(0)
+
+let examTimer = null
 
 const displayName = computed(
   () => authStore.profile?.displayName || authStore.profile?.username || '学员'
 )
 const avatarUrl = computed(() => authStore.profile?.avatar || '')
+const isExamScene = computed(() => route.meta?.scene === 'exam' || route.query.scene === 'exam')
+const currentEntityId = computed(() => Number(route.params.examId || route.params.taskId))
+const sceneLabel = computed(() => (isExamScene.value ? '考试' : '作业'))
+const pageTitle = computed(() => `${sceneLabel.value}详情`)
 const isAnswerMode = computed(() => route.query.mode === 'answer' && taskDetail.value?.canSubmit === true)
+const showExamCountdown = computed(
+  () => isExamScene.value && isAnswerMode.value && Number(taskDetail.value?.durationMinutes || 0) > 0
+)
+const isAnswerLocked = computed(
+  () => submitting.value || autoSubmitting.value || (showExamCountdown.value && examRemainingSeconds.value <= 0)
+)
+const submitButtonLabel = computed(() => (isExamScene.value ? '提交考试' : '提交作业'))
+
+const formattedExamCountdown = computed(() => {
+  const totalSeconds = Math.max(0, Number(examRemainingSeconds.value || 0))
+  const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0')
+  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0')
+  const seconds = String(totalSeconds % 60).padStart(2, '0')
+  return `${hours}:${minutes}:${seconds}`
+})
+
 const pageStatus = computed(() => {
   if (isAnswerMode.value) {
-    return { label: '答题中', type: 'primary' }
+    return { label: isExamScene.value ? '考试中' : '答题中', type: 'primary' }
   }
   if (taskDetail.value?.submitted && taskDetail.value?.latestSubmission?.reviewStatus === 0) {
     return { label: '待批改', type: 'warning' }
   }
   if (taskDetail.value?.submitted) {
-    return { label: '已提交', type: 'success' }
+    return { label: isExamScene.value ? '已交卷' : '已提交', type: 'success' }
   }
   if (taskDetail.value?.canSubmit) {
-    return { label: '待作答', type: 'warning' }
+    return { label: isExamScene.value ? '待考试' : '待作答', type: 'warning' }
   }
-  return { label: '不可作答', type: 'info' }
+  return { label: isExamScene.value ? '不可考试' : '不可作答', type: 'info' }
 })
+
 const isPassed = computed(() => {
   const score = Number(taskDetail.value?.latestSubmission?.score ?? -1)
   const passScore = Number(taskDetail.value?.passScore ?? 0)
   return score >= 0 && score >= passScore
 })
+
 const scoreStatusText = computed(() => (isPassed.value ? '已及格' : '未及格'))
 const scoreStatusClass = computed(() => (isPassed.value ? 'is-passed' : 'is-failed'))
 
@@ -248,7 +290,7 @@ function parseOptions(value) {
   try {
     const parsed = JSON.parse(value)
     return Array.isArray(parsed) ? parsed : []
-  } catch (error) {
+  } catch {
     return []
   }
 }
@@ -260,7 +302,7 @@ function parseAnswer(value) {
   try {
     const parsed = JSON.parse(value)
     return Array.isArray(parsed) ? parsed : []
-  } catch (error) {
+  } catch {
     return []
   }
 }
@@ -275,8 +317,25 @@ function formatDateTime(value) {
     .replace(/Z$/, '')
 }
 
+function formatDurationMinutes(value) {
+  const totalMinutes = Number(value || 0)
+  if (!totalMinutes) {
+    return '--'
+  }
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  if (hours > 0 && minutes > 0) {
+    return `${hours} 小时 ${minutes} 分钟`
+  }
+  if (hours > 0) {
+    return `${hours} 小时`
+  }
+  return `${minutes} 分钟`
+}
+
 function goBack() {
-  router.push(`/member/courses/${route.params.id}/learn?tab=assignments`)
+  const tab = isExamScene.value ? 'exams' : 'assignments'
+  router.push(`/member/courses/${route.params.id}/learn?tab=${tab}`)
 }
 
 function goProfile() {
@@ -286,6 +345,101 @@ function goProfile() {
 function handleLogout() {
   authStore.logout()
   router.push('/login')
+}
+
+function buildExamSessionStorageKey() {
+  return `member_exam_started_at_${currentEntityId.value}`
+}
+
+function readExamSession() {
+  return localStorage.getItem(buildExamSessionStorageKey()) || ''
+}
+
+function writeExamSession(value) {
+  localStorage.setItem(buildExamSessionStorageKey(), value)
+}
+
+function clearExamSession() {
+  localStorage.removeItem(buildExamSessionStorageKey())
+}
+
+function formatStartedAt(date = new Date()) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+}
+
+function parseStartedAt(value) {
+  if (!value) {
+    return null
+  }
+  const date = new Date(String(value).replace(' ', 'T'))
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function ensureExamStartedAt() {
+  if (!isExamScene.value || route.query.mode !== 'answer') {
+    examStartedAt.value = ''
+    return
+  }
+  const fromQuery = typeof route.query.startedAt === 'string' ? route.query.startedAt : ''
+  const fromStorage = readExamSession()
+  examStartedAt.value = fromQuery || fromStorage || formatStartedAt()
+  writeExamSession(examStartedAt.value)
+}
+
+function stopExamCountdown() {
+  if (examTimer) {
+    clearInterval(examTimer)
+    examTimer = null
+  }
+}
+
+function updateExamRemainingSeconds() {
+  if (!showExamCountdown.value) {
+    examRemainingSeconds.value = 0
+    return
+  }
+  const startedAt = parseStartedAt(examStartedAt.value)
+  const durationMinutes = Number(taskDetail.value?.durationMinutes || 0)
+  if (!startedAt || !durationMinutes) {
+    examRemainingSeconds.value = 0
+    return
+  }
+  const expiresAt = startedAt.getTime() + durationMinutes * 60 * 1000
+  examRemainingSeconds.value = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000))
+}
+
+async function handleExamTimeout() {
+  if (!showExamCountdown.value || autoSubmitting.value || submitting.value || !isAnswerMode.value) {
+    return
+  }
+  autoSubmitting.value = true
+  ElMessage.warning('考试时间已到，系统正在自动提交')
+  await submitTask({ auto: true })
+}
+
+function startExamCountdown() {
+  stopExamCountdown()
+  updateExamRemainingSeconds()
+  if (!showExamCountdown.value) {
+    return
+  }
+  if (examRemainingSeconds.value <= 0) {
+    handleExamTimeout()
+    return
+  }
+  examTimer = window.setInterval(async () => {
+    updateExamRemainingSeconds()
+    if (examRemainingSeconds.value <= 0) {
+      stopExamCountdown()
+      await handleExamTimeout()
+    }
+  }, 1000)
 }
 
 function findQuestionIndex(questionId) {
@@ -380,9 +534,21 @@ function initAnswerMap() {
 async function fetchTaskDetail() {
   loading.value = true
   try {
-    const { data } = await getMemberTaskDetail(route.params.taskId)
+    const params = examStartedAt.value ? { startedAt: examStartedAt.value } : undefined
+    const request = isExamScene.value ? getMemberExamDetail : getMemberTaskDetail
+    const { data } = await request(currentEntityId.value, params)
     taskDetail.value = data
     initAnswerMap()
+
+    if (taskDetail.value?.submitted) {
+      clearExamSession()
+    }
+
+    if (showExamCountdown.value) {
+      startExamCountdown()
+    } else {
+      stopExamCountdown()
+    }
   } finally {
     loading.value = false
   }
@@ -410,26 +576,55 @@ function validateBeforeSubmit() {
   return true
 }
 
-async function submitTask() {
-  if (!validateBeforeSubmit()) {
+async function submitTask(options = {}) {
+  const auto = Boolean(options.auto)
+  if (!auto && !validateBeforeSubmit()) {
     return
   }
-  await ElMessageBox.confirm('确认提交当前作业吗？提交后将自动判分。', '提交作业', { type: 'warning' })
-  submitting.value = true
+
+  if (!auto) {
+    await ElMessageBox.confirm(
+      isExamScene.value ? '确认提交当前考试吗？提交后将结束本次考试。' : '确认提交当前作业吗？提交后将自动判分。',
+      submitButtonLabel.value,
+      { type: 'warning' }
+    )
+  }
+
+  if (auto) {
+    autoSubmitting.value = true
+  } else {
+    submitting.value = true
+  }
+
   try {
-    await submitMemberTask(route.params.taskId, {
-      answersJson: JSON.stringify(buildAnswersPayload())
+    const request = isExamScene.value ? submitMemberExam : submitMemberTask
+    await request(currentEntityId.value, {
+      answersJson: JSON.stringify(buildAnswersPayload()),
+      startedAt: examStartedAt.value || null
     })
-    ElMessage.success('作业已提交')
+    clearExamSession()
+    stopExamCountdown()
+    ElMessage.success(isExamScene.value ? '考试已提交' : '作业已提交')
     await fetchTaskDetail()
-    router.replace(`/member/courses/${route.params.id}/learn/tasks/${route.params.taskId}?mode=review`)
+    await router.replace({
+      path: isExamScene.value
+        ? `/member/courses/${route.params.id}/learn/exams/${currentEntityId.value}`
+        : `/member/courses/${route.params.id}/learn/tasks/${currentEntityId.value}`,
+      query: { mode: 'review' }
+    })
   } finally {
     submitting.value = false
+    autoSubmitting.value = false
   }
 }
 
 onMounted(async () => {
+  ensureExamStartedAt()
   await fetchTaskDetail()
+})
+
+onBeforeUnmount(() => {
+  stopExamCountdown()
 })
 </script>
 
@@ -758,6 +953,39 @@ onMounted(async () => {
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid #e5e7eb;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.countdown-panel {
+  margin-bottom: 22px;
+  padding: 18px 16px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fff7ed 0%, #fff1f2 100%);
+  border: 1px solid #fed7aa;
+}
+
+.countdown-label {
+  color: #9a3412;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.countdown-value {
+  margin-top: 8px;
+  color: #c2410c;
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.countdown-value.is-danger {
+  color: #dc2626;
+}
+
+.countdown-tip {
+  margin-top: 8px;
+  color: #9a3412;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .sidebar-group + .sidebar-group {

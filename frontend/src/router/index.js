@@ -44,6 +44,12 @@ const router = createRouter({
       meta: { title: '作业详情', roles: ['MEMBER'] }
     },
     {
+      path: '/member/courses/:id/learn/exams/:examId',
+      name: 'MemberCourseExamDetail',
+      component: () => import('@/views/member/MemberCourseTaskDetailView.vue'),
+      meta: { title: '考试详情', roles: ['MEMBER'], scene: 'exam' }
+    },
+    {
       path: '/member/courses/:id/learn/sections/:sectionId',
       name: 'MemberCourseSectionLearn',
       component: () => import('@/views/member/MemberCourseSectionLearnView.vue'),
@@ -192,6 +198,17 @@ const router = createRouter({
           }
         },
         {
+          path: 'course-management/exams',
+          name: 'TeacherCourseExams',
+          component: () => import('@/views/teacher/TeacherCourseTaskView.vue'),
+          meta: {
+            title: '考试管理',
+            activeMenu: '/teacher/course-management/exams',
+            roles: ['TEACHER'],
+            scene: 'exam'
+          }
+        },
+        {
           path: 'course-management/tasks/:taskId/questions',
           name: 'TeacherTaskQuestions',
           component: () => import('@/views/teacher/TeacherTaskQuestionView.vue'),
@@ -202,6 +219,17 @@ const router = createRouter({
           }
         },
         {
+          path: 'course-management/exams/:examId/questions',
+          name: 'TeacherExamQuestions',
+          component: () => import('@/views/teacher/TeacherTaskQuestionView.vue'),
+          meta: {
+            title: '考试题目管理',
+            activeMenu: '/teacher/course-management/exams',
+            roles: ['TEACHER'],
+            scene: 'exam'
+          }
+        },
+        {
           path: 'course-management/tasks/:taskId/submissions',
           name: 'TeacherTaskSubmissions',
           component: () => import('@/views/teacher/TeacherTaskSubmissionView.vue'),
@@ -209,6 +237,17 @@ const router = createRouter({
             title: '提交记录',
             activeMenu: '/teacher/course-management/tasks',
             roles: ['TEACHER']
+          }
+        },
+        {
+          path: 'course-management/exams/:examId/submissions',
+          name: 'TeacherExamSubmissions',
+          component: () => import('@/views/teacher/TeacherTaskSubmissionView.vue'),
+          meta: {
+            title: '考试提交记录',
+            activeMenu: '/teacher/course-management/exams',
+            roles: ['TEACHER'],
+            scene: 'exam'
           }
         }
       ]

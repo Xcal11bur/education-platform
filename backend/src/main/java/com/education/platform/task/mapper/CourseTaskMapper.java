@@ -7,6 +7,6 @@ import org.apache.ibatis.annotations.Param;
 
 public interface CourseTaskMapper extends BaseMapper<CourseTask> {
 
-    @Delete("DELETE FROM course_task WHERE id = #{id}")
+    @Delete("DELETE FROM course_homework WHERE id = #{id}")
     int hardDeleteById(@Param("id") Long id);
 }

@@ -1,4 +1,4 @@
-package com.education.platform.task.service.impl;
+package com.education.platform.exam.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -9,15 +9,15 @@ import com.education.platform.common.result.ResultCode;
 import com.education.platform.course.entity.Course;
 import com.education.platform.course.mapper.CourseMapper;
 import com.education.platform.course.service.TeacherCourseAccessService;
-import com.education.platform.task.dto.CourseTaskQueryDTO;
-import com.education.platform.task.dto.CourseTaskSaveDTO;
-import com.education.platform.task.entity.CourseTask;
-import com.education.platform.task.entity.TaskQuestion;
-import com.education.platform.task.mapper.CourseTaskMapper;
-import com.education.platform.task.mapper.TaskQuestionMapper;
-import com.education.platform.task.mapper.TaskSubmissionMapper;
-import com.education.platform.task.service.CourseTaskService;
-import com.education.platform.task.vo.CourseTaskVO;
+import com.education.platform.exam.dto.CourseExamQueryDTO;
+import com.education.platform.exam.dto.CourseExamSaveDTO;
+import com.education.platform.exam.entity.CourseExam;
+import com.education.platform.exam.entity.ExamQuestion;
+import com.education.platform.exam.mapper.CourseExamMapper;
+import com.education.platform.exam.mapper.ExamQuestionMapper;
+import com.education.platform.exam.mapper.ExamSubmissionMapper;
+import com.education.platform.exam.service.CourseExamService;
+import com.education.platform.exam.vo.CourseExamVO;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -31,29 +31,29 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 @Service
-public class CourseTaskServiceImpl extends ServiceImpl<CourseTaskMapper, CourseTask> implements CourseTaskService {
+public class CourseExamServiceImpl extends ServiceImpl<CourseExamMapper, CourseExam> implements CourseExamService {
 
-    private static final Set<Integer> TASK_STATUS = Set.of(0, 1);
+    private static final Set<Integer> EXAM_STATUS = Set.of(0, 1);
 
     private final CourseMapper courseMapper;
-    private final TaskQuestionMapper taskQuestionMapper;
-    private final TaskSubmissionMapper taskSubmissionMapper;
+    private final ExamQuestionMapper examQuestionMapper;
+    private final ExamSubmissionMapper examSubmissionMapper;
     private final TeacherCourseAccessService teacherCourseAccessService;
 
-    public CourseTaskServiceImpl(
+    public CourseExamServiceImpl(
             CourseMapper courseMapper,
-            TaskQuestionMapper taskQuestionMapper,
-            TaskSubmissionMapper taskSubmissionMapper,
+            ExamQuestionMapper examQuestionMapper,
+            ExamSubmissionMapper examSubmissionMapper,
             TeacherCourseAccessService teacherCourseAccessService
     ) {
         this.courseMapper = courseMapper;
-        this.taskQuestionMapper = taskQuestionMapper;
-        this.taskSubmissionMapper = taskSubmissionMapper;
+        this.examQuestionMapper = examQuestionMapper;
+        this.examSubmissionMapper = examSubmissionMapper;
         this.teacherCourseAccessService = teacherCourseAccessService;
     }
 
     @Override
-    public PageResponse<CourseTaskVO> pageTeacherTasks(CourseTaskQueryDTO queryDTO) {
+    public PageResponse<CourseExamVO> pageTeacherExams(CourseExamQueryDTO queryDTO) {
         Long teacherId = teacherCourseAccessService.getCurrentTeacherId();
         if (queryDTO.getCourseId() != null) {
             teacherCourseAccessService.getCurrentTeacherCourse(queryDTO.getCourseId());
@@ -64,16 +64,16 @@ public class CourseTaskServiceImpl extends ServiceImpl<CourseTaskMapper, CourseT
             return PageResponse.empty(queryDTO.getPageNum(), queryDTO.getPageSize());
         }
 
-        IPage<CourseTask> page = lambdaQuery()
-                .in(CourseTask::getCourseId, teacherCourseIds)
-                .eq(queryDTO.getCourseId() != null, CourseTask::getCourseId, queryDTO.getCourseId())
-                .like(StringUtils.hasText(queryDTO.getTitle()), CourseTask::getTitle, queryDTO.getTitle())
-                .eq(queryDTO.getStatus() != null, CourseTask::getStatus, queryDTO.getStatus())
-                .orderByDesc(CourseTask::getId)
+        IPage<CourseExam> page = lambdaQuery()
+                .in(CourseExam::getCourseId, teacherCourseIds)
+                .eq(queryDTO.getCourseId() != null, CourseExam::getCourseId, queryDTO.getCourseId())
+                .like(StringUtils.hasText(queryDTO.getTitle()), CourseExam::getTitle, queryDTO.getTitle())
+                .eq(queryDTO.getStatus() != null, CourseExam::getStatus, queryDTO.getStatus())
+                .orderByDesc(CourseExam::getId)
                 .page(new Page<>(queryDTO.getPageNum(), queryDTO.getPageSize()));
 
-        List<CourseTaskVO> list = fillTaskVOs(page.getRecords());
-        return PageResponse.<CourseTaskVO>builder()
+        List<CourseExamVO> list = fillExamVOs(page.getRecords());
+        return PageResponse.<CourseExamVO>builder()
                 .pageNum(page.getCurrent())
                 .pageSize(page.getSize())
                 .total(page.getTotal())
@@ -82,49 +82,49 @@ public class CourseTaskServiceImpl extends ServiceImpl<CourseTaskMapper, CourseT
     }
 
     @Override
-    public CourseTaskVO getTeacherTaskDetail(Long id) {
-        CourseTask task = getTaskOrThrow(id);
-        teacherCourseAccessService.getCurrentTeacherCourse(task.getCourseId());
-        return fillTaskVOs(List.of(task)).stream()
+    public CourseExamVO getTeacherExamDetail(Long id) {
+        CourseExam exam = getExamOrThrow(id);
+        teacherCourseAccessService.getCurrentTeacherCourse(exam.getCourseId());
+        return fillExamVOs(List.of(exam)).stream()
                 .findFirst()
-                .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND.getCode(), "course task not found"));
+                .orElseThrow(() -> new BusinessException(ResultCode.NOT_FOUND.getCode(), "course exam not found"));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void createTeacherTask(CourseTaskSaveDTO request) {
+    public void createTeacherExam(CourseExamSaveDTO request) {
         teacherCourseAccessService.getCurrentTeacherCourse(request.getCourseId());
-        validateTaskRequest(null, request);
-        CourseTask task = new CourseTask();
-        BeanUtils.copyProperties(request, task);
-        fillDefaultFields(task);
-        save(task);
+        validateExamRequest(null, request);
+        CourseExam exam = new CourseExam();
+        BeanUtils.copyProperties(request, exam);
+        fillDefaultFields(exam);
+        save(exam);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateTeacherTask(Long id, CourseTaskSaveDTO request) {
-        CourseTask task = getTaskOrThrow(id);
-        teacherCourseAccessService.getCurrentTeacherCourse(task.getCourseId());
+    public void updateTeacherExam(Long id, CourseExamSaveDTO request) {
+        CourseExam exam = getExamOrThrow(id);
+        teacherCourseAccessService.getCurrentTeacherCourse(exam.getCourseId());
         teacherCourseAccessService.getCurrentTeacherCourse(request.getCourseId());
-        validateTaskRequest(id, request);
-        BeanUtils.copyProperties(request, task, "id");
-        fillDefaultFields(task);
-        syncTaskScoreFromQuestions(task);
-        updateById(task);
+        validateExamRequest(id, request);
+        BeanUtils.copyProperties(request, exam, "id");
+        fillDefaultFields(exam);
+        syncExamScoreFromQuestions(exam);
+        updateById(exam);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteTeacherTask(Long id) {
-        CourseTask task = getTaskOrThrow(id);
-        teacherCourseAccessService.getCurrentTeacherCourse(task.getCourseId());
-        taskSubmissionMapper.hardDeleteByTaskId(id);
-        taskQuestionMapper.hardDeleteByTaskId(id);
+    public void deleteTeacherExam(Long id) {
+        CourseExam exam = getExamOrThrow(id);
+        teacherCourseAccessService.getCurrentTeacherCourse(exam.getCourseId());
+        examSubmissionMapper.hardDeleteByTaskId(id);
+        examQuestionMapper.hardDeleteByTaskId(id);
         baseMapper.hardDeleteById(id);
     }
 
-    private void validateTaskRequest(Long taskId, CourseTaskSaveDTO request) {
+    private void validateExamRequest(Long examId, CourseExamSaveDTO request) {
         if (request.getStartTime() != null && request.getEndTime() != null
                 && request.getEndTime().isBefore(request.getStartTime())) {
             throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "endTime must be after startTime");
@@ -135,15 +135,18 @@ public class CourseTaskServiceImpl extends ServiceImpl<CourseTaskMapper, CourseT
         if (request.getPassScore() != null && request.getPassScore() < 0) {
             throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "passScore must not be less than 0");
         }
+        if (request.getDurationMinutes() == null || request.getDurationMinutes() <= 0) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "durationMinutes must be greater than 0");
+        }
         if (request.getAllowRetakeCount() != null && request.getAllowRetakeCount() < 0) {
             throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "allowRetakeCount must not be less than 0");
         }
-        if (request.getStatus() != null && !TASK_STATUS.contains(request.getStatus())) {
+        if (request.getStatus() != null && !EXAM_STATUS.contains(request.getStatus())) {
             throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "status must be 0 or 1");
         }
         if (request.getStatus() != null && request.getStatus() == 1) {
-            TaskQuestionStats stats = buildQuestionStats(List.of(taskId == null ? -1L : taskId)).get(taskId);
-            if (taskId == null || stats == null || stats.getQuestionCount() <= 0 || stats.getTotalScore() <= 0) {
+            TaskQuestionStats stats = buildQuestionStats(List.of(examId == null ? -1L : examId)).get(examId);
+            if (examId == null || stats == null || stats.getQuestionCount() <= 0 || stats.getTotalScore() <= 0) {
                 throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "please add questions before publishing");
             }
             if (request.getPassScore() != null && request.getPassScore() > stats.getTotalScore()) {
@@ -152,38 +155,38 @@ public class CourseTaskServiceImpl extends ServiceImpl<CourseTaskMapper, CourseT
         }
     }
 
-    private void fillDefaultFields(CourseTask task) {
-        if (task.getTotalScore() == null) {
-            task.setTotalScore(100);
+    private void fillDefaultFields(CourseExam exam) {
+        if (exam.getTotalScore() == null) {
+            exam.setTotalScore(100);
         }
-        if (task.getPassScore() == null) {
-            task.setPassScore(60);
+        if (exam.getPassScore() == null) {
+            exam.setPassScore(60);
         }
-        if (task.getAllowRetakeCount() == null) {
-            task.setAllowRetakeCount(1);
+        if (exam.getAllowRetakeCount() == null) {
+            exam.setAllowRetakeCount(1);
         }
-        if (task.getStatus() == null) {
-            task.setStatus(0);
+        if (exam.getStatus() == null) {
+            exam.setStatus(0);
         }
     }
 
-    private void syncTaskScoreFromQuestions(CourseTask task) {
-        if (task == null || task.getId() == null) {
+    private void syncExamScoreFromQuestions(CourseExam exam) {
+        if (exam == null || exam.getId() == null) {
             return;
         }
-        TaskQuestionStats stats = buildQuestionStats(List.of(task.getId())).get(task.getId());
+        TaskQuestionStats stats = buildQuestionStats(List.of(exam.getId())).get(exam.getId());
         if (stats == null) {
             return;
         }
-        task.setTotalScore(stats.getTotalScore());
+        exam.setTotalScore(stats.getTotalScore());
     }
 
-    private CourseTask getTaskOrThrow(Long id) {
-        CourseTask task = getById(id);
-        if (task == null) {
-            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "course task not found");
+    private CourseExam getExamOrThrow(Long id) {
+        CourseExam exam = getById(id);
+        if (exam == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "course exam not found");
         }
-        return task;
+        return exam;
     }
 
     private List<Long> listTeacherCourseIds(Long teacherId) {
@@ -196,29 +199,29 @@ public class CourseTaskServiceImpl extends ServiceImpl<CourseTaskMapper, CourseT
                 .toList();
     }
 
-    private List<CourseTaskVO> fillTaskVOs(List<CourseTask> tasks) {
-        if (tasks.isEmpty()) {
+    private List<CourseExamVO> fillExamVOs(List<CourseExam> exams) {
+        if (exams.isEmpty()) {
             return List.of();
         }
-        Map<Long, TaskQuestionStats> statsMap = buildQuestionStats(tasks.stream()
-                .map(CourseTask::getId)
+        Map<Long, TaskQuestionStats> statsMap = buildQuestionStats(exams.stream()
+                .map(CourseExam::getId)
                 .filter(Objects::nonNull)
                 .toList());
-        Map<Long, Course> courseMap = listCoursesByIds(tasks.stream()
-                .map(CourseTask::getCourseId)
+        Map<Long, Course> courseMap = listCoursesByIds(exams.stream()
+                .map(CourseExam::getCourseId)
                 .filter(Objects::nonNull)
                 .toList());
-        return tasks.stream().map(task -> {
-            CourseTaskVO vo = new CourseTaskVO();
-            BeanUtils.copyProperties(task, vo);
-            TaskQuestionStats stats = statsMap.get(task.getId());
+        return exams.stream().map(exam -> {
+            CourseExamVO vo = new CourseExamVO();
+            BeanUtils.copyProperties(exam, vo);
+            TaskQuestionStats stats = statsMap.get(exam.getId());
             if (stats != null) {
                 vo.setQuestionCount(stats.getQuestionCount());
                 vo.setTotalScore(stats.getTotalScore());
             } else {
                 vo.setQuestionCount(0);
             }
-            Course course = courseMap.get(task.getCourseId());
+            Course course = courseMap.get(exam.getCourseId());
             if (course != null) {
                 vo.setCourseTitle(course.getTitle());
             }
@@ -226,23 +229,23 @@ public class CourseTaskServiceImpl extends ServiceImpl<CourseTaskMapper, CourseT
         }).toList();
     }
 
-    private Map<Long, TaskQuestionStats> buildQuestionStats(Collection<Long> taskIds) {
-        if (taskIds.isEmpty()) {
+    private Map<Long, TaskQuestionStats> buildQuestionStats(Collection<Long> examIds) {
+        if (examIds.isEmpty()) {
             return Map.of();
         }
-        return taskQuestionMapper.selectList(
-                        com.baomidou.mybatisplus.core.toolkit.Wrappers.<TaskQuestion>lambdaQuery()
-                                .in(TaskQuestion::getTaskId, taskIds)
+        return examQuestionMapper.selectList(
+                        com.baomidou.mybatisplus.core.toolkit.Wrappers.<ExamQuestion>lambdaQuery()
+                                .in(ExamQuestion::getTaskId, examIds)
                 ).stream()
                 .collect(Collectors.groupingBy(
-                        TaskQuestion::getTaskId,
+                        ExamQuestion::getTaskId,
                         Collectors.collectingAndThen(Collectors.toList(), this::toTaskQuestionStats)
                 ));
     }
 
-    private TaskQuestionStats toTaskQuestionStats(List<TaskQuestion> questions) {
+    private TaskQuestionStats toTaskQuestionStats(List<ExamQuestion> questions) {
         int totalScore = questions.stream()
-                .map(TaskQuestion::getScore)
+                .map(ExamQuestion::getScore)
                 .filter(Objects::nonNull)
                 .mapToInt(Integer::intValue)
                 .sum();

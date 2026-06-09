@@ -774,6 +774,7 @@ onBeforeUnmount(() => {
     linear-gradient(135deg, rgba(18, 86, 170, 0.92) 0%, rgba(54, 126, 214, 0.88) 52%, rgba(110, 170, 234, 0.78) 100%),
     radial-gradient(circle at top right, rgba(255, 255, 255, 0.3), transparent 26%);
   position: relative;
+  isolation: isolate;
   cursor: pointer;
 }
 
@@ -781,6 +782,7 @@ onBeforeUnmount(() => {
   content: '';
   position: absolute;
   inset: 0;
+  z-index: 0;
   background:
     linear-gradient(120deg, rgba(255, 255, 255, 0.08) 14%, transparent 14%, transparent 50%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.08) 52%, transparent 52%),
     linear-gradient(0deg, rgba(7, 34, 73, 0.12), rgba(7, 34, 73, 0.12));
@@ -804,7 +806,7 @@ onBeforeUnmount(() => {
 
 .banner-layout {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   flex: 1;
   align-items: flex-end;
@@ -829,6 +831,7 @@ onBeforeUnmount(() => {
   font-weight: 700;
   line-height: 1.1;
   color: #fff;
+  text-shadow: 0 6px 18px rgba(7, 17, 34, 0.38);
 }
 
 .banner-summary {
@@ -836,6 +839,7 @@ onBeforeUnmount(() => {
   color: rgba(255, 255, 255, 0.82);
   font-size: 14px;
   line-height: 1.7;
+  text-shadow: 0 4px 12px rgba(7, 17, 34, 0.32);
 }
 
 .banner-meta {
@@ -845,6 +849,7 @@ onBeforeUnmount(() => {
   gap: 18px;
   color: rgba(255, 255, 255, 0.86);
   font-size: 13px;
+  text-shadow: 0 4px 12px rgba(7, 17, 34, 0.28);
 }
 
 .banner-subcopy {

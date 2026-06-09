@@ -3,7 +3,7 @@
     <div class="question-page-header">
       <div>
         <div class="page-title-row">
-          <el-button link type="primary" @click="goBack">返回作业管理</el-button>
+          <el-button link type="primary" @click="goBack">返回{{ entityName }}管理</el-button>
           <h2 class="page-title">{{ headerTitle }}</h2>
         </div>
       </div>
@@ -12,7 +12,7 @@
 
     <div v-if="taskInfo" class="task-summary-grid">
       <div class="summary-item">
-        <span class="summary-label">作业状态</span>
+        <span class="summary-label">{{ entityName }}状态</span>
         <el-tag :type="taskInfo.status === 1 ? 'success' : 'info'">
           {{ taskInfo.status === 1 ? '已发布' : '草稿' }}
         </el-tag>
@@ -156,10 +156,20 @@ import {
   getTeacherTaskQuestionList,
   updateTeacherTaskQuestion
 } from '@/api/teacherTaskQuestion'
+import { getTeacherExamDetail } from '@/api/teacherExam'
+import {
+  createTeacherExamQuestion,
+  deleteTeacherExamQuestion,
+  getTeacherExamQuestionList,
+  updateTeacherExamQuestion
+} from '@/api/teacherExamQuestion'
 
 const route = useRoute()
 const router = useRouter()
-const taskId = Number(route.params.taskId)
+const isExamScene = computed(() => route.meta?.scene === 'exam')
+const taskId = computed(() => Number(route.params.examId || route.params.taskId))
+const entityName = computed(() => (isExamScene.value ? '考试' : '作业'))
+const backPath = computed(() => (isExamScene.value ? '/teacher/course-management/exams' : '/teacher/course-management/tasks'))
 
 const taskInfo = ref(null)
 const questions = ref([])
@@ -188,6 +198,26 @@ const defaultForm = () => ({
 })
 
 const form = reactive(defaultForm())
+
+function getDetailRequest() {
+  return isExamScene.value ? getTeacherExamDetail : getTeacherTaskDetail
+}
+
+function getQuestionListRequest() {
+  return isExamScene.value ? getTeacherExamQuestionList : getTeacherTaskQuestionList
+}
+
+function getQuestionCreateRequest() {
+  return isExamScene.value ? createTeacherExamQuestion : createTeacherTaskQuestion
+}
+
+function getQuestionUpdateRequest() {
+  return isExamScene.value ? updateTeacherExamQuestion : updateTeacherTaskQuestion
+}
+
+function getQuestionDeleteRequest() {
+  return isExamScene.value ? deleteTeacherExamQuestion : deleteTeacherTaskQuestion
+}
 
 function resetForm() {
   Object.assign(form, defaultForm())
@@ -226,12 +256,12 @@ function formatAnswer(row) {
 }
 
 async function fetchTaskInfo() {
-  const { data } = await getTeacherTaskDetail(taskId)
+  const { data } = await getDetailRequest()(taskId.value)
   taskInfo.value = data
 }
 
 async function fetchQuestions() {
-  const { data } = await getTeacherTaskQuestionList(taskId)
+  const { data } = await getQuestionListRequest()(taskId.value)
   questions.value = data || []
 }
 
@@ -240,7 +270,7 @@ async function reloadPageData() {
 }
 
 function goBack() {
-  router.push('/teacher/course-management/tasks')
+  router.push(backPath.value)
 }
 
 function openCreate() {
@@ -346,10 +376,10 @@ async function submitForm() {
   try {
     const payload = buildPayload()
     if (editingId.value) {
-      await updateTeacherTaskQuestion(editingId.value, payload)
+      await getQuestionUpdateRequest()(editingId.value, payload)
       ElMessage.success('题目已更新')
     } else {
-      await createTeacherTaskQuestion(taskId, payload)
+      await getQuestionCreateRequest()(taskId.value, payload)
       ElMessage.success('题目已创建')
     }
     dialogVisible.value = false
@@ -361,7 +391,7 @@ async function submitForm() {
 
 async function handleDelete(row) {
   await ElMessageBox.confirm(`确定删除题目“${row.stem}”吗？`, '删除题目', { type: 'warning' })
-  await deleteTeacherTaskQuestion(row.id)
+  await getQuestionDeleteRequest()(row.id)
   ElMessage.success('题目已删除')
   await reloadPageData()
 }

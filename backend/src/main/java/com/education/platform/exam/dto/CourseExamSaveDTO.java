@@ -1,4 +1,4 @@
-package com.education.platform.task.dto;
+package com.education.platform.exam.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotBlank;
@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 import lombok.Data;
 
 @Data
-public class CourseTaskSaveDTO {
+public class CourseExamSaveDTO {
 
     @NotNull(message = "courseId must not be null")
     private Long courseId;
@@ -21,6 +21,7 @@ public class CourseTaskSaveDTO {
     private LocalDateTime startTime;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime endTime;
+    private Integer durationMinutes;
     private Integer allowRetakeCount;
     private Integer status;
 }

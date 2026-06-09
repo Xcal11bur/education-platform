@@ -1,4 +1,4 @@
-package com.education.platform.task.service.impl;
+package com.education.platform.exam.service.impl;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -10,19 +10,19 @@ import com.education.platform.course.entity.Course;
 import com.education.platform.course.mapper.CourseMapper;
 import com.education.platform.course.service.CourseEnrollmentService;
 import com.education.platform.course.service.TeacherCourseAccessService;
+import com.education.platform.exam.entity.CourseExam;
+import com.education.platform.exam.entity.ExamQuestion;
+import com.education.platform.exam.entity.ExamSubmission;
+import com.education.platform.exam.mapper.CourseExamMapper;
+import com.education.platform.exam.mapper.ExamQuestionMapper;
+import com.education.platform.exam.mapper.ExamSubmissionMapper;
+import com.education.platform.exam.service.ExamSubmissionService;
+import com.education.platform.exam.vo.CourseExamMemberDetailVO;
+import com.education.platform.exam.vo.CourseExamMemberListVO;
 import com.education.platform.member.entity.Member;
 import com.education.platform.member.mapper.MemberMapper;
 import com.education.platform.task.dto.TaskSubmissionReviewDTO;
 import com.education.platform.task.dto.TaskSubmissionSaveDTO;
-import com.education.platform.task.entity.CourseTask;
-import com.education.platform.task.entity.TaskQuestion;
-import com.education.platform.task.entity.TaskSubmission;
-import com.education.platform.task.mapper.CourseTaskMapper;
-import com.education.platform.task.mapper.TaskQuestionMapper;
-import com.education.platform.task.mapper.TaskSubmissionMapper;
-import com.education.platform.task.service.TaskSubmissionService;
-import com.education.platform.task.vo.CourseTaskMemberDetailVO;
-import com.education.platform.task.vo.CourseTaskMemberListVO;
 import com.education.platform.task.vo.TaskQuestionMemberVO;
 import com.education.platform.task.vo.TaskSubmissionVO;
 import com.education.platform.task.vo.TaskSubmissionQuestionTeacherVO;
@@ -49,11 +49,11 @@ import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
-public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper, TaskSubmission>
-        implements TaskSubmissionService {
+public class ExamSubmissionServiceImpl extends ServiceImpl<ExamSubmissionMapper, ExamSubmission>
+        implements ExamSubmissionService {
 
     private static final String ROLE_MEMBER = "MEMBER";
-    private static final int TASK_STATUS_PUBLISHED = 1;
+    private static final int EXAM_STATUS_PUBLISHED = 1;
     private static final int REVIEW_PENDING_STATUS = 0;
     private static final int REVIEWED_STATUS = 1;
     private static final Set<Integer> SUPPORTED_QUESTION_TYPES = Set.of(1, 3);
@@ -61,40 +61,40 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
 
     private final ObjectMapper objectMapper;
     private final CourseMapper courseMapper;
-    private final CourseTaskMapper courseTaskMapper;
-    private final TaskQuestionMapper taskQuestionMapper;
+    private final CourseExamMapper courseExamMapper;
+    private final ExamQuestionMapper examQuestionMapper;
     private final CourseEnrollmentService courseEnrollmentService;
     private final TeacherCourseAccessService teacherCourseAccessService;
     private final MemberMapper memberMapper;
 
     @Override
-    public List<CourseTaskMemberListVO> listCurrentMemberCourseTasks(Long courseId) {
+    public List<CourseExamMemberListVO> listCurrentMemberCourseExams(Long courseId) {
         Long memberId = getCurrentMemberId();
         ensureCourseEnrolled(courseId);
 
-        List<CourseTask> tasks = courseTaskMapper.selectList(
-                Wrappers.<CourseTask>lambdaQuery()
-                        .eq(CourseTask::getCourseId, courseId)
-                        .eq(CourseTask::getStatus, TASK_STATUS_PUBLISHED)
-                        .orderByAsc(CourseTask::getEndTime)
-                        .orderByDesc(CourseTask::getId)
+        List<CourseExam> exams = courseExamMapper.selectList(
+                Wrappers.<CourseExam>lambdaQuery()
+                        .eq(CourseExam::getCourseId, courseId)
+                        .eq(CourseExam::getStatus, EXAM_STATUS_PUBLISHED)
+                        .orderByAsc(CourseExam::getEndTime)
+                        .orderByDesc(CourseExam::getId)
         );
-        if (tasks.isEmpty()) {
+        if (exams.isEmpty()) {
             return List.of();
         }
 
-        Map<Long, Integer> questionCountMap = buildQuestionCountMap(tasks.stream().map(CourseTask::getId).toList());
-        Map<Long, TaskSubmission> latestSubmissionMap = listLatestSubmissionMap(memberId, tasks.stream().map(CourseTask::getId).toList());
-        Map<Long, Integer> usedAttemptsMap = buildUsedAttemptsMap(memberId, tasks.stream().map(CourseTask::getId).toList());
+        Map<Long, Integer> questionCountMap = buildQuestionCountMap(exams.stream().map(CourseExam::getId).toList());
+        Map<Long, ExamSubmission> latestSubmissionMap = listLatestSubmissionMap(memberId, exams.stream().map(CourseExam::getId).toList());
+        Map<Long, Integer> usedAttemptsMap = buildUsedAttemptsMap(memberId, exams.stream().map(CourseExam::getId).toList());
         String courseTitle = getCourseTitle(courseId);
 
-        return tasks.stream().map(task -> {
-            CourseTaskMemberListVO vo = new CourseTaskMemberListVO();
-            BeanUtils.copyProperties(task, vo);
-            vo.setQuestionCount(questionCountMap.getOrDefault(task.getId(), 0));
+        return exams.stream().map(exam -> {
+            CourseExamMemberListVO vo = new CourseExamMemberListVO();
+            BeanUtils.copyProperties(exam, vo);
+            vo.setQuestionCount(questionCountMap.getOrDefault(exam.getId(), 0));
             vo.setCourseTitle(courseTitle);
 
-            TaskSubmission latestSubmission = latestSubmissionMap.get(task.getId());
+            ExamSubmission latestSubmission = latestSubmissionMap.get(exam.getId());
             vo.setCompleted(latestSubmission != null);
             vo.setLatestReviewStatus(latestSubmission == null ? null : latestSubmission.getReviewStatus());
             vo.setLatestScore(latestSubmission == null || !Objects.equals(latestSubmission.getReviewStatus(), REVIEWED_STATUS)
@@ -102,48 +102,48 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
                     : latestSubmission.getScore());
             vo.setLatestSubmittedAt(latestSubmission == null ? null : latestSubmission.getSubmittedAt());
 
-            int usedAttempts = usedAttemptsMap.getOrDefault(task.getId(), 0);
-            int remainingAttempts = getRemainingAttempts(task, usedAttempts);
+            int usedAttempts = usedAttemptsMap.getOrDefault(exam.getId(), 0);
+            int remainingAttempts = getRemainingAttempts(exam, usedAttempts);
             vo.setUsedAttempts(usedAttempts);
             vo.setRemainingAttempts(remainingAttempts);
-            vo.setCanSubmit(canSubmitTask(task, usedAttempts, vo.getQuestionCount(), null));
+            vo.setCanSubmit(canSubmitExam(exam, usedAttempts, vo.getQuestionCount(), null));
             return vo;
         }).toList();
     }
 
     @Override
-    public CourseTaskMemberDetailVO getCurrentMemberTaskDetail(Long taskId, LocalDateTime startedAt) {
+    public CourseExamMemberDetailVO getCurrentMemberExamDetail(Long examId, LocalDateTime startedAt) {
         Long memberId = getCurrentMemberId();
-        CourseTask task = getPublishedTaskOrThrow(taskId);
-        ensureCourseEnrolled(task.getCourseId());
+        CourseExam exam = getPublishedExamOrThrow(examId);
+        ensureCourseEnrolled(exam.getCourseId());
 
-        List<TaskQuestion> questions = listTaskQuestions(taskId);
-        TaskSubmission latestSubmission = getLatestSubmission(memberId, taskId);
-        int usedAttempts = countAttempts(memberId, taskId);
+        List<ExamQuestion> questions = listExamQuestions(examId);
+        ExamSubmission latestSubmission = getLatestSubmission(memberId, examId);
+        int usedAttempts = countAttempts(memberId, examId);
 
-        CourseTaskMemberDetailVO vo = new CourseTaskMemberDetailVO();
-        BeanUtils.copyProperties(task, vo);
-        vo.setCourseTitle(getCourseTitle(task.getCourseId()));
+        CourseExamMemberDetailVO vo = new CourseExamMemberDetailVO();
+        BeanUtils.copyProperties(exam, vo);
+        vo.setCourseTitle(getCourseTitle(exam.getCourseId()));
         vo.setQuestionCount(questions.size());
         vo.setSubmitted(latestSubmission != null);
         vo.setUsedAttempts(usedAttempts);
-        vo.setRemainingAttempts(getRemainingAttempts(task, usedAttempts));
-        vo.setCanSubmit(canSubmitTask(task, usedAttempts, questions.size(), startedAt));
+        vo.setRemainingAttempts(getRemainingAttempts(exam, usedAttempts));
+        vo.setCanSubmit(canSubmitExam(exam, usedAttempts, questions.size(), startedAt));
         vo.setLatestSubmission(toSubmissionVO(latestSubmission));
         vo.setQuestions(buildMemberQuestionVOs(questions, latestSubmission));
         return vo;
     }
 
     @Override
-    public List<TaskSubmissionVO> listCurrentMemberTaskSubmissions(Long taskId) {
+    public List<TaskSubmissionVO> listCurrentMemberExamSubmissions(Long examId) {
         Long memberId = getCurrentMemberId();
-        CourseTask task = getPublishedTaskOrThrow(taskId);
-        ensureCourseEnrolled(task.getCourseId());
+        CourseExam exam = getPublishedExamOrThrow(examId);
+        ensureCourseEnrolled(exam.getCourseId());
         return lambdaQuery()
-                .eq(TaskSubmission::getTaskId, taskId)
-                .eq(TaskSubmission::getMemberId, memberId)
-                .orderByDesc(TaskSubmission::getAttemptNo)
-                .orderByDesc(TaskSubmission::getId)
+                .eq(ExamSubmission::getTaskId, examId)
+                .eq(ExamSubmission::getMemberId, memberId)
+                .orderByDesc(ExamSubmission::getAttemptNo)
+                .orderByDesc(ExamSubmission::getId)
                 .list()
                 .stream()
                 .map(this::toSubmissionVO)
@@ -152,19 +152,19 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void submitCurrentMemberTask(Long taskId, TaskSubmissionSaveDTO request) {
+    public void submitCurrentMemberExam(Long examId, TaskSubmissionSaveDTO request) {
         Long memberId = getCurrentMemberId();
-        CourseTask task = getPublishedTaskOrThrow(taskId);
-        ensureCourseEnrolled(task.getCourseId());
+        CourseExam exam = getPublishedExamOrThrow(examId);
+        ensureCourseEnrolled(exam.getCourseId());
 
-        List<TaskQuestion> questions = listTaskQuestions(taskId);
+        List<ExamQuestion> questions = listExamQuestions(examId);
         if (questions.isEmpty()) {
-            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "task questions not found");
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "exam questions not found");
         }
 
-        int usedAttempts = countAttempts(memberId, taskId);
-        if (!canSubmitTask(task, usedAttempts, questions.size(), request.getStartedAt())) {
-            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "task can not be submitted now");
+        int usedAttempts = countAttempts(memberId, examId);
+        if (!canSubmitExam(exam, usedAttempts, questions.size(), request.getStartedAt())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "exam can not be submitted now");
         }
 
         Map<Long, List<String>> answerMap = parseSubmissionAnswers(request.getAnswersJson());
@@ -173,8 +173,8 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
         boolean hasSubjectiveQuestion = questions.stream().anyMatch(question -> Objects.equals(question.getQuestionType(), QUESTION_TYPE_SUBJECTIVE));
         LocalDateTime now = LocalDateTime.now();
 
-        TaskSubmission submission = new TaskSubmission();
-        submission.setTaskId(taskId);
+        ExamSubmission submission = new ExamSubmission();
+        submission.setTaskId(examId);
         submission.setMemberId(memberId);
         submission.setAttemptNo(usedAttempts + 1);
         submission.setAnswersJson(buildStoredAnswersJson(storedAnswerMap));
@@ -189,28 +189,28 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
     }
 
     @Override
-    public List<TaskSubmissionTeacherVO> listTeacherTaskSubmissions(Long taskId) {
-        CourseTask task = getTaskOrThrow(taskId);
-        teacherCourseAccessService.getCurrentTeacherCourse(task.getCourseId());
+    public List<TaskSubmissionTeacherVO> listTeacherExamSubmissions(Long examId) {
+        CourseExam exam = getExamOrThrow(examId);
+        teacherCourseAccessService.getCurrentTeacherCourse(exam.getCourseId());
 
-        List<TaskSubmission> submissions = lambdaQuery()
-                .eq(TaskSubmission::getTaskId, taskId)
-                .orderByDesc(TaskSubmission::getSubmittedAt)
-                .orderByDesc(TaskSubmission::getId)
+        List<ExamSubmission> submissions = lambdaQuery()
+                .eq(ExamSubmission::getTaskId, examId)
+                .orderByDesc(ExamSubmission::getSubmittedAt)
+                .orderByDesc(ExamSubmission::getId)
                 .list();
         if (submissions.isEmpty()) {
             return List.of();
         }
 
         Map<Long, Member> memberMap = listMembersByIds(submissions.stream()
-                .map(TaskSubmission::getMemberId)
+                .map(ExamSubmission::getMemberId)
                 .filter(Objects::nonNull)
                 .toList());
 
         return submissions.stream().map(submission -> {
             TaskSubmissionTeacherVO vo = new TaskSubmissionTeacherVO();
             BeanUtils.copyProperties(submission, vo);
-            vo.setTaskTitle(task.getTitle());
+            vo.setTaskTitle(exam.getTitle());
             Member member = memberMap.get(submission.getMemberId());
             if (member != null) {
                 vo.setMemberName(getMemberDisplayName(member));
@@ -221,22 +221,22 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
     }
 
     @Override
-    public TaskSubmissionTeacherDetailVO getTeacherTaskSubmissionDetail(Long submissionId) {
-        TaskSubmission submission = getSubmissionOrThrow(submissionId);
-        CourseTask task = getTaskOrThrow(submission.getTaskId());
-        teacherCourseAccessService.getCurrentTeacherCourse(task.getCourseId());
+    public TaskSubmissionTeacherDetailVO getTeacherExamSubmissionDetail(Long submissionId) {
+        ExamSubmission submission = getSubmissionOrThrow(submissionId);
+        CourseExam exam = getExamOrThrow(submission.getTaskId());
+        teacherCourseAccessService.getCurrentTeacherCourse(exam.getCourseId());
 
         Member member = memberMapper.selectById(submission.getMemberId());
-        List<TaskQuestion> questions = listTaskQuestions(task.getId());
+        List<ExamQuestion> questions = listExamQuestions(exam.getId());
         Map<Long, StoredAnswer> storedAnswerMap = parseStoredAnswers(submission.getAnswersJson());
 
         TaskSubmissionTeacherDetailVO vo = new TaskSubmissionTeacherDetailVO();
         BeanUtils.copyProperties(submission, vo);
-        vo.setTaskTitle(task.getTitle());
-        vo.setCourseId(task.getCourseId());
-        vo.setCourseTitle(getCourseTitle(task.getCourseId()));
-        vo.setTotalScore(task.getTotalScore());
-        vo.setPassScore(task.getPassScore());
+        vo.setTaskTitle(exam.getTitle());
+        vo.setCourseId(exam.getCourseId());
+        vo.setCourseTitle(getCourseTitle(exam.getCourseId()));
+        vo.setTotalScore(exam.getTotalScore());
+        vo.setPassScore(exam.getPassScore());
         if (member != null) {
             vo.setMemberName(getMemberDisplayName(member));
             vo.setMemberMobile(member.getMobile());
@@ -263,13 +263,13 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void reviewTeacherTaskSubmission(Long submissionId, TaskSubmissionReviewDTO request) {
-        TaskSubmission submission = getSubmissionOrThrow(submissionId);
-        CourseTask task = getTaskOrThrow(submission.getTaskId());
-        teacherCourseAccessService.getCurrentTeacherCourse(task.getCourseId());
+    public void reviewTeacherExamSubmission(Long submissionId, TaskSubmissionReviewDTO request) {
+        ExamSubmission submission = getSubmissionOrThrow(submissionId);
+        CourseExam exam = getExamOrThrow(submission.getTaskId());
+        teacherCourseAccessService.getCurrentTeacherCourse(exam.getCourseId());
 
-        List<TaskQuestion> questions = listTaskQuestions(task.getId());
-        Map<Long, TaskQuestion> questionMap = questions.stream().collect(Collectors.toMap(TaskQuestion::getId, Function.identity()));
+        List<ExamQuestion> questions = listExamQuestions(exam.getId());
+        Map<Long, ExamQuestion> questionMap = questions.stream().collect(Collectors.toMap(ExamQuestion::getId, Function.identity()));
         Map<Long, StoredAnswer> storedAnswerMap = parseStoredAnswers(submission.getAnswersJson());
         List<TaskSubmissionReviewDTO.QuestionScoreDTO> questionScores = request.getQuestionScores() == null
                 ? List.of()
@@ -282,7 +282,7 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
 
         int objectiveScore = 0;
         int subjectiveScore = 0;
-        for (TaskQuestion question : questions) {
+        for (ExamQuestion question : questions) {
             StoredAnswer storedAnswer = storedAnswerMap.get(question.getId());
             if (storedAnswer == null) {
                 continue;
@@ -308,9 +308,9 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
         }
 
         for (TaskSubmissionReviewDTO.QuestionScoreDTO item : questionScores) {
-            TaskQuestion question = questionMap.get(item.getQuestionId());
+            ExamQuestion question = questionMap.get(item.getQuestionId());
             if (question == null) {
-                throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "question not found in task");
+                throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "question not found in exam");
             }
             if (!Objects.equals(question.getQuestionType(), QUESTION_TYPE_SUBJECTIVE)) {
                 continue;
@@ -328,16 +328,16 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
         updateById(submission);
     }
 
-    private List<TaskQuestion> listTaskQuestions(Long taskId) {
-        return taskQuestionMapper.selectList(
-                Wrappers.<TaskQuestion>lambdaQuery()
-                        .eq(TaskQuestion::getTaskId, taskId)
-                        .orderByAsc(TaskQuestion::getSort)
-                        .orderByAsc(TaskQuestion::getId)
+    private List<ExamQuestion> listExamQuestions(Long examId) {
+        return examQuestionMapper.selectList(
+                Wrappers.<ExamQuestion>lambdaQuery()
+                        .eq(ExamQuestion::getTaskId, examId)
+                        .orderByAsc(ExamQuestion::getSort)
+                        .orderByAsc(ExamQuestion::getId)
         );
     }
 
-    private List<TaskQuestionMemberVO> buildMemberQuestionVOs(List<TaskQuestion> questions, TaskSubmission latestSubmission) {
+    private List<TaskQuestionMemberVO> buildMemberQuestionVOs(List<ExamQuestion> questions, ExamSubmission latestSubmission) {
         Map<Long, StoredAnswer> submissionAnswerMap = latestSubmission == null
                 ? Map.of()
                 : parseStoredAnswers(latestSubmission.getAnswersJson());
@@ -365,9 +365,9 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
         }).toList();
     }
 
-    private int calculateObjectiveScore(List<TaskQuestion> questions, Map<Long, StoredAnswer> answerMap) {
+    private int calculateObjectiveScore(List<ExamQuestion> questions, Map<Long, StoredAnswer> answerMap) {
         int score = 0;
-        for (TaskQuestion question : questions) {
+        for (ExamQuestion question : questions) {
             if (!SUPPORTED_QUESTION_TYPES.contains(question.getQuestionType())) {
                 continue;
             }
@@ -377,93 +377,113 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
         return score;
     }
 
-    private boolean isCorrectAnswer(TaskQuestion question, List<String> answers) {
+    private boolean isCorrectAnswer(ExamQuestion question, List<String> answers) {
         List<String> standardAnswers = parseStringList(question.getAnswerJson());
         return Objects.equals(normalizeAnswerValues(answers), normalizeAnswerValues(standardAnswers));
     }
 
-    private Map<Long, Integer> buildQuestionCountMap(Collection<Long> taskIds) {
-        if (taskIds == null || taskIds.isEmpty()) {
+    private Map<Long, Integer> buildQuestionCountMap(Collection<Long> examIds) {
+        if (examIds == null || examIds.isEmpty()) {
             return Map.of();
         }
-        return taskQuestionMapper.selectList(
-                Wrappers.<TaskQuestion>lambdaQuery().in(TaskQuestion::getTaskId, taskIds)
+        return examQuestionMapper.selectList(
+                Wrappers.<ExamQuestion>lambdaQuery().in(ExamQuestion::getTaskId, examIds)
         ).stream().collect(Collectors.groupingBy(
-                TaskQuestion::getTaskId,
+                ExamQuestion::getTaskId,
                 Collectors.collectingAndThen(Collectors.counting(), Math::toIntExact)
         ));
     }
 
-    private Map<Long, TaskSubmission> listLatestSubmissionMap(Long memberId, Collection<Long> taskIds) {
-        if (taskIds == null || taskIds.isEmpty()) {
+    private Map<Long, ExamSubmission> listLatestSubmissionMap(Long memberId, Collection<Long> examIds) {
+        if (examIds == null || examIds.isEmpty()) {
             return Map.of();
         }
         return lambdaQuery()
-                .eq(TaskSubmission::getMemberId, memberId)
-                .in(TaskSubmission::getTaskId, taskIds)
-                .orderByDesc(TaskSubmission::getAttemptNo)
-                .orderByDesc(TaskSubmission::getId)
+                .eq(ExamSubmission::getMemberId, memberId)
+                .in(ExamSubmission::getTaskId, examIds)
+                .orderByDesc(ExamSubmission::getAttemptNo)
+                .orderByDesc(ExamSubmission::getId)
                 .list()
                 .stream()
                 .collect(Collectors.toMap(
-                        TaskSubmission::getTaskId,
+                        ExamSubmission::getTaskId,
                         Function.identity(),
                         (left, right) -> left
                 ));
     }
 
-    private Map<Long, Integer> buildUsedAttemptsMap(Long memberId, Collection<Long> taskIds) {
-        if (taskIds == null || taskIds.isEmpty()) {
+    private Map<Long, Integer> buildUsedAttemptsMap(Long memberId, Collection<Long> examIds) {
+        if (examIds == null || examIds.isEmpty()) {
             return Map.of();
         }
         return lambdaQuery()
-                .eq(TaskSubmission::getMemberId, memberId)
-                .in(TaskSubmission::getTaskId, taskIds)
+                .eq(ExamSubmission::getMemberId, memberId)
+                .in(ExamSubmission::getTaskId, examIds)
                 .list()
                 .stream()
                 .collect(Collectors.groupingBy(
-                        TaskSubmission::getTaskId,
+                        ExamSubmission::getTaskId,
                         Collectors.collectingAndThen(Collectors.counting(), Math::toIntExact)
                 ));
     }
 
-    private TaskSubmission getLatestSubmission(Long memberId, Long taskId) {
+    private ExamSubmission getLatestSubmission(Long memberId, Long examId) {
         return lambdaQuery()
-                .eq(TaskSubmission::getMemberId, memberId)
-                .eq(TaskSubmission::getTaskId, taskId)
-                .orderByDesc(TaskSubmission::getAttemptNo)
-                .orderByDesc(TaskSubmission::getId)
+                .eq(ExamSubmission::getMemberId, memberId)
+                .eq(ExamSubmission::getTaskId, examId)
+                .orderByDesc(ExamSubmission::getAttemptNo)
+                .orderByDesc(ExamSubmission::getId)
                 .last("LIMIT 1")
                 .one();
     }
 
-    private int countAttempts(Long memberId, Long taskId) {
+    private int countAttempts(Long memberId, Long examId) {
         return Math.toIntExact(count(
-                Wrappers.<TaskSubmission>lambdaQuery()
-                        .eq(TaskSubmission::getMemberId, memberId)
-                        .eq(TaskSubmission::getTaskId, taskId)
+                Wrappers.<ExamSubmission>lambdaQuery()
+                        .eq(ExamSubmission::getMemberId, memberId)
+                        .eq(ExamSubmission::getTaskId, examId)
         ));
     }
 
-    private boolean canSubmitTask(CourseTask task, int usedAttempts, int questionCount, LocalDateTime startedAt) {
-        if (task == null
-                || !Objects.equals(task.getStatus(), TASK_STATUS_PUBLISHED)
+    private boolean canSubmitExam(CourseExam exam, int usedAttempts, int questionCount, LocalDateTime startedAt) {
+        if (exam == null
+                || !Objects.equals(exam.getStatus(), EXAM_STATUS_PUBLISHED)
                 || questionCount <= 0
-                || getRemainingAttempts(task, usedAttempts) <= 0) {
+                || getRemainingAttempts(exam, usedAttempts) <= 0) {
             return false;
         }
         LocalDateTime now = LocalDateTime.now();
-        if (task.getStartTime() != null && now.isBefore(task.getStartTime())) {
+        if (exam.getStartTime() != null && now.isBefore(exam.getStartTime())) {
             return false;
         }
-        if (task.getEndTime() != null && now.isAfter(task.getEndTime())) {
+        if (isExamSessionActive(exam, startedAt, now)) {
+            return true;
+        }
+        if (exam.getEndTime() != null && now.isAfter(exam.getEndTime())) {
             return false;
         }
         return true;
     }
 
-    private int getRemainingAttempts(CourseTask task, int usedAttempts) {
-        int totalAttempts = Math.max(1, (task.getAllowRetakeCount() == null ? 0 : task.getAllowRetakeCount()) + 1);
+    private boolean isExamSessionActive(CourseExam exam, LocalDateTime startedAt, LocalDateTime now) {
+        if (startedAt == null) {
+            return false;
+        }
+        if (exam.getStartTime() != null && startedAt.isBefore(exam.getStartTime())) {
+            return false;
+        }
+        if (exam.getEndTime() != null && startedAt.isAfter(exam.getEndTime())) {
+            return false;
+        }
+        if (startedAt.isAfter(now)) {
+            return false;
+        }
+        LocalDateTime expiresAt = startedAt.plusMinutes(exam.getDurationMinutes());
+        return now.isBefore(expiresAt);
+    }
+
+    private int getRemainingAttempts(CourseExam exam, int usedAttempts) {
+        int totalAttempts = Math.max(1, (exam.getAllowRetakeCount() == null ? 0 : exam.getAllowRetakeCount()) + 1);
         return Math.max(0, totalAttempts - usedAttempts);
     }
 
@@ -473,26 +493,26 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
         }
     }
 
-    private CourseTask getPublishedTaskOrThrow(Long taskId) {
-        CourseTask task = courseTaskMapper.selectById(taskId);
-        if (task == null || !Objects.equals(task.getStatus(), TASK_STATUS_PUBLISHED)) {
-            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "course task not found");
+    private CourseExam getPublishedExamOrThrow(Long examId) {
+        CourseExam exam = courseExamMapper.selectById(examId);
+        if (exam == null || !Objects.equals(exam.getStatus(), EXAM_STATUS_PUBLISHED)) {
+            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "course exam not found");
         }
-        return task;
+        return exam;
     }
 
-    private CourseTask getTaskOrThrow(Long taskId) {
-        CourseTask task = courseTaskMapper.selectById(taskId);
-        if (task == null) {
-            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "course task not found");
+    private CourseExam getExamOrThrow(Long examId) {
+        CourseExam exam = courseExamMapper.selectById(examId);
+        if (exam == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "course exam not found");
         }
-        return task;
+        return exam;
     }
 
-    private TaskSubmission getSubmissionOrThrow(Long submissionId) {
-        TaskSubmission submission = getById(submissionId);
+    private ExamSubmission getSubmissionOrThrow(Long submissionId) {
+        ExamSubmission submission = getById(submissionId);
         if (submission == null) {
-            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "task submission not found");
+            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "exam submission not found");
         }
         return submission;
     }
@@ -562,9 +582,9 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
         return writeJsonSilently(storedAnswers);
     }
 
-    private Map<Long, StoredAnswer> buildSubmissionStoredAnswerMap(List<TaskQuestion> questions, Map<Long, List<String>> answerMap) {
+    private Map<Long, StoredAnswer> buildSubmissionStoredAnswerMap(List<ExamQuestion> questions, Map<Long, List<String>> answerMap) {
         Map<Long, StoredAnswer> storedAnswerMap = new java.util.LinkedHashMap<>();
-        for (TaskQuestion question : questions) {
+        for (ExamQuestion question : questions) {
             List<String> answers = answerMap.getOrDefault(question.getId(), List.of());
             Integer earnedScore = null;
             if (SUPPORTED_QUESTION_TYPES.contains(question.getQuestionType())) {
@@ -617,7 +637,7 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
                 .toList();
     }
 
-    private TaskSubmissionVO toSubmissionVO(TaskSubmission entity) {
+    private TaskSubmissionVO toSubmissionVO(ExamSubmission entity) {
         if (entity == null) {
             return null;
         }
@@ -663,7 +683,7 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
         return member.getMobile();
     }
 
-    private void validateSubjectiveScore(TaskQuestion question, Integer score) {
+    private void validateSubjectiveScore(ExamQuestion question, Integer score) {
         if (score == null || score < 0 || score > (question.getScore() == null ? 0 : question.getScore())) {
             throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "subjective score is invalid");
         }

@@ -7,13 +7,16 @@ import com.education.platform.task.vo.CourseTaskMemberDetailVO;
 import com.education.platform.task.vo.CourseTaskMemberListVO;
 import com.education.platform.task.vo.TaskSubmissionVO;
 import jakarta.validation.Valid;
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -29,8 +32,11 @@ public class CourseTaskMemberController {
     }
 
     @GetMapping("/course-tasks/{taskId}")
-    public Result<CourseTaskMemberDetailVO> detail(@PathVariable Long taskId) {
-        return Result.success(taskSubmissionService.getCurrentMemberTaskDetail(taskId));
+    public Result<CourseTaskMemberDetailVO> detail(
+            @PathVariable Long taskId,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startedAt
+    ) {
+        return Result.success(taskSubmissionService.getCurrentMemberTaskDetail(taskId, startedAt));
     }
 
     @GetMapping("/course-tasks/{taskId}/my-submissions")

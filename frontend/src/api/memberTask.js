@@ -7,10 +7,11 @@ export function getMemberCourseTaskList(courseId) {
   })
 }
 
-export function getMemberTaskDetail(taskId) {
+export function getMemberTaskDetail(taskId, params) {
   return request({
     url: `/member/course-tasks/${taskId}`,
-    method: 'get'
+    method: 'get',
+    params
   })
 }
 

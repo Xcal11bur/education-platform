@@ -9,13 +9,14 @@ import com.education.platform.task.vo.CourseTaskMemberListVO;
 import com.education.platform.task.vo.TaskSubmissionVO;
 import com.education.platform.task.vo.TaskSubmissionTeacherDetailVO;
 import com.education.platform.task.vo.TaskSubmissionTeacherVO;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface TaskSubmissionService extends IService<TaskSubmission> {
 
     List<CourseTaskMemberListVO> listCurrentMemberCourseTasks(Long courseId);
 
-    CourseTaskMemberDetailVO getCurrentMemberTaskDetail(Long taskId);
+    CourseTaskMemberDetailVO getCurrentMemberTaskDetail(Long taskId, LocalDateTime startedAt);
 
     List<TaskSubmissionVO> listCurrentMemberTaskSubmissions(Long taskId);
 

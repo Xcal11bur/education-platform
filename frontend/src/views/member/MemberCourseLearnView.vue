@@ -65,11 +65,7 @@
                 :key="chapter.id"
                 class="chapter-card"
               >
-                <button
-                  class="chapter-head"
-                  type="button"
-                  @click="toggleChapter(chapter.id)"
-                >
+                <button class="chapter-head" type="button" @click="toggleChapter(chapter.id)">
                   <div class="chapter-head-main">
                     <el-icon class="chapter-toggle" :class="{ 'is-collapsed': !isChapterExpanded(chapter.id) }">
                       <ArrowDown />
@@ -89,9 +85,7 @@
                     <div class="section-main">
                       <span class="section-order">{{ chapterIndex + 1 }}.{{ sectionIndex + 1 }}</span>
                       <span class="section-title">{{ displaySectionTitle(section, chapterIndex, sectionIndex) }}</span>
-                      <el-tag v-if="section.isFreeTrial === 1" size="small" effect="plain">
-                        试看
-                      </el-tag>
+                      <el-tag v-if="section.isFreeTrial === 1" size="small" effect="plain">试听</el-tag>
                     </div>
                   </button>
                 </div>
@@ -104,11 +98,7 @@
               </article>
             </div>
 
-            <el-empty
-              v-else-if="!loading"
-              description="暂无课程章节"
-              :image-size="80"
-            />
+            <el-empty v-else-if="!loading" description="暂无课程章节" :image-size="80" />
           </div>
         </template>
 
@@ -130,16 +120,12 @@
                   :show-text="false"
                   color="#3b82f6"
                 />
-                <span>{{ completedTaskCount }}/{{ memberTasks.length }}</span>
+                <span>{{ completedAssignmentCount }}/{{ assignmentTasks.length }}</span>
               </div>
             </div>
 
-            <div v-if="filteredTasks.length" class="assignment-list">
-              <article
-                v-for="task in filteredTasks"
-                :key="task.id"
-                class="assignment-card"
-              >
+            <div v-if="filteredAssignmentTasks.length" class="assignment-list">
+              <article v-for="task in filteredAssignmentTasks" :key="task.id" class="assignment-card">
                 <div class="assignment-main">
                   <div class="assignment-badge">作业</div>
                   <div class="assignment-copy">
@@ -155,18 +141,10 @@
                       <span>{{ task.totalScore }} 分 / {{ task.questionCount }} 题</span>
                     </div>
                     <div class="assignment-actions">
-                      <el-button
-                        type="primary"
-                        text
-                        @click="openTaskAnswer(task)"
-                      >
+                      <el-button type="primary" text @click="openTaskAnswer(task)">
                         {{ task.completed ? (task.canSubmit ? '再次作答' : '查看详情') : '开始答题' }}
                       </el-button>
-                      <el-button
-                        v-if="task.completed"
-                        text
-                        @click="openTaskReview(task)"
-                      >
+                      <el-button v-if="task.completed" text @click="openTaskReview(task)">
                         解析分析
                       </el-button>
                     </div>
@@ -185,11 +163,77 @@
               </article>
             </div>
 
-            <el-empty
-              v-else
-              description="当前筛选条件下暂无作业"
-              :image-size="72"
-            />
+            <el-empty v-else description="当前筛选条件下暂无作业" :image-size="72" />
+          </div>
+        </template>
+
+        <template v-else-if="activeMenu === 'exams'">
+          <div class="content-card">
+            <div class="assignment-toolbar">
+              <div class="assignment-filter">
+                <span class="toolbar-label">筛选</span>
+                <el-radio-group v-model="taskFilter" size="small">
+                  <el-radio-button label="all">全部</el-radio-button>
+                  <el-radio-button label="completed">已完成</el-radio-button>
+                  <el-radio-button label="pending">未完成</el-radio-button>
+                </el-radio-group>
+              </div>
+              <div class="assignment-progress">
+                <el-progress
+                  :percentage="taskProgressPercent"
+                  :stroke-width="10"
+                  :show-text="false"
+                  color="#3b82f6"
+                />
+                <span>{{ completedExamCount }}/{{ examTasks.length }}</span>
+              </div>
+            </div>
+
+            <div v-if="filteredExamTasks.length" class="assignment-list">
+              <article
+                v-for="task in filteredExamTasks"
+                :key="task.id"
+                class="assignment-card"
+              >
+                <div class="assignment-main">
+                  <div class="assignment-badge">考试</div>
+                  <div class="assignment-copy">
+                    <div class="assignment-title-row">
+                      <h3>{{ task.title }}</h3>
+                      <el-tag :type="taskStateMeta(task).type" effect="plain">
+                        {{ taskStatusLabel(task) }}
+                      </el-tag>
+                    </div>
+                    <div class="assignment-meta">
+                      <span>开放时间 {{ formatDateTime(task.startTime) }}</span>
+                      <span>截止时间 {{ formatDateTime(task.endTime) }}</span>
+                      <span>总时长 {{ formatDurationMinutes(task.durationMinutes) }}</span>
+                      <span>{{ task.totalScore }} 分 / {{ task.questionCount }} 题</span>
+                    </div>
+                    <div class="assignment-actions">
+                      <el-button type="primary" text @click="openExamAnswer(task)">
+                        {{ examActionLabel(task) }}
+                      </el-button>
+                      <el-button v-if="task.completed" text @click="openExamReview(task)">
+                        查看详情
+                      </el-button>
+                    </div>
+                  </div>
+                </div>
+                <div class="assignment-side">
+                  <div class="assignment-side-item">
+                    <span>得分</span>
+                    <strong>{{ formatTaskScore(task) }}</strong>
+                  </div>
+                  <div class="assignment-side-item">
+                    <span>剩余次数</span>
+                    <strong>{{ task.remainingAttempts }}</strong>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <el-empty v-else description="当前筛选条件下暂无考试" :image-size="72" />
           </div>
         </template>
 
@@ -220,11 +264,7 @@
               </a>
             </div>
 
-            <el-empty
-              v-else
-              description="当前课程暂无资料"
-              :image-size="72"
-            />
+            <el-empty v-else description="当前课程暂无资料" :image-size="72" />
           </div>
         </template>
 
@@ -240,11 +280,12 @@
 
 <script setup>
 import { ArrowDown, Collection, Document, EditPen, Reading } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getPortalCourseDetail, getPortalCourseMaterials } from '@/api/course'
 import { getMemberCourseTaskList } from '@/api/memberTask'
+import { getMemberCourseExamList } from '@/api/memberExam'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
@@ -262,6 +303,7 @@ const course = ref({
 })
 const courseMaterials = ref([])
 const memberTasks = ref([])
+const memberExams = ref([])
 
 const menuItems = [
   { key: 'chapters', label: '章节', icon: Reading },
@@ -275,7 +317,6 @@ const displayName = computed(
 )
 
 const avatarUrl = computed(() => authStore.profile?.avatar || '')
-
 const chapters = computed(() => course.value.chapters || [])
 
 const sectionCount = computed(() =>
@@ -297,25 +338,33 @@ const courseCoverStyle = computed(() => {
   }
 })
 
-const filteredTasks = computed(() => {
-  if (taskFilter.value === 'completed') {
-    return memberTasks.value.filter((task) => task.completed)
-  }
-  if (taskFilter.value === 'pending') {
-    return memberTasks.value.filter((task) => !task.completed)
-  }
-  return memberTasks.value
-})
+const assignmentTasks = computed(() => memberTasks.value)
+const examTasks = computed(() => memberExams.value)
 
-const completedTaskCount = computed(() =>
-  memberTasks.value.filter((task) => task.completed).length
+const filteredAssignmentTasks = computed(() => filterTasksByStatus(assignmentTasks.value))
+const filteredExamTasks = computed(() => filterTasksByStatus(examTasks.value))
+
+const completedAssignmentCount = computed(() =>
+  assignmentTasks.value.filter((task) => task.completed).length
 )
 
+const completedExamCount = computed(() =>
+  examTasks.value.filter((task) => task.completed).length
+)
+
+const activeTaskCollection = computed(() => (
+  activeMenu.value === 'exams' ? examTasks.value : assignmentTasks.value
+))
+
+const activeCompletedTaskCount = computed(() => (
+  activeMenu.value === 'exams' ? completedExamCount.value : completedAssignmentCount.value
+))
+
 const taskProgressPercent = computed(() => {
-  if (!memberTasks.value.length) {
+  if (!activeTaskCollection.value.length) {
     return 0
   }
-  return Math.round((completedTaskCount.value / memberTasks.value.length) * 100)
+  return Math.round((activeCompletedTaskCount.value / activeTaskCollection.value.length) * 100)
 })
 
 function materialTypeText(type) {
@@ -362,6 +411,84 @@ function formatDateTime(value) {
     .replace(/Z$/, '')
 }
 
+function formatDurationMinutes(value) {
+  const totalMinutes = Number(value || 0)
+  if (!totalMinutes) {
+    return '--'
+  }
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  if (hours && minutes) {
+    return `${hours} 小时 ${minutes} 分钟`
+  }
+  if (hours) {
+    return `${hours} 小时`
+  }
+  return `${minutes} 分钟`
+}
+
+function buildExamStorageKey(taskId) {
+  return `member_exam_session_${taskId}`
+}
+
+function formatSessionDateTime(date = new Date()) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+}
+
+function parseSessionDateTime(value) {
+  if (!value) {
+    return null
+  }
+  const normalized = String(value).replace(' ', 'T')
+  const date = new Date(normalized)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function readExamSession(taskId) {
+  return localStorage.getItem(buildExamStorageKey(taskId)) || ''
+}
+
+function saveExamSession(taskId, startedAt) {
+  localStorage.setItem(buildExamStorageKey(taskId), startedAt)
+}
+
+function clearExamSession(taskId) {
+  localStorage.removeItem(buildExamStorageKey(taskId))
+}
+
+function isExamSessionActive(task) {
+  const startedAt = parseSessionDateTime(readExamSession(task.id))
+  if (!startedAt) {
+    return false
+  }
+  const expiresAt = startedAt.getTime() + Number(task.durationMinutes || 0) * 60 * 1000
+  return Date.now() < expiresAt
+}
+
+function cleanupExamSessions(tasks) {
+  for (const task of tasks) {
+    if (task.completed || !isExamSessionActive(task)) {
+      clearExamSession(task.id)
+    }
+  }
+}
+
+function filterTasksByStatus(tasks) {
+  if (taskFilter.value === 'completed') {
+    return tasks.filter((task) => task.completed)
+  }
+  if (taskFilter.value === 'pending') {
+    return tasks.filter((task) => !task.completed)
+  }
+  return tasks
+}
+
 function taskStateMeta(task) {
   if (task.completed && task.latestReviewStatus === 0) {
     return { label: '待批改', type: 'warning' }
@@ -375,7 +502,7 @@ function taskStateMeta(task) {
   if (startTime && now < startTime) {
     return { label: '未开始', type: 'warning' }
   }
-  if (endTime && now > endTime) {
+  if (endTime && now > endTime && !isExamSessionActive(task)) {
     return { label: '已截止', type: 'danger' }
   }
   if (!task.canSubmit && task.remainingAttempts <= 0) {
@@ -398,12 +525,25 @@ function formatTaskScore(task) {
   return `${task.latestScore ?? 0} / ${task.totalScore}`
 }
 
+function examActionLabel(task) {
+  if (!task.canSubmit) {
+    return '查看详情'
+  }
+  if (isExamSessionActive(task)) {
+    return '继续考试'
+  }
+  if (task.completed) {
+    return '再次考试'
+  }
+  return '进入考试'
+}
+
 function displayChapterTitle(chapter, chapterIndex) {
   const title = String(chapter?.title || '').trim()
   if (!title) {
-    return `第${chapterIndex + 1}章`
+    return `第 ${chapterIndex + 1} 章`
   }
-  return title.replace(/^\s*章节\s*\d+\s*[:：-]?\s*/i, '')
+  return title.replace(/^\s*章节\s*\d+\s*[:：]?\s*/i, '')
 }
 
 function displaySectionTitle(section, chapterIndex, sectionIndex) {
@@ -416,7 +556,7 @@ function displaySectionTitle(section, chapterIndex, sectionIndex) {
     new RegExp(`^${chapterIndex + 1}\\.${sectionIndex + 1}\\s*`),
     new RegExp(`^${chapterIndex + 1}[-_.]${sectionIndex + 1}\\s*`),
     /^\d+\.\d+\s*/,
-    /^第\s*\d+\s*节\s*[:：-]?\s*/
+    /^第\s*\d+\s*节\s*[:：]?\s*/
   ]
 
   return orderPatterns.reduce((value, pattern) => value.replace(pattern, '').trim(), title)
@@ -452,11 +592,50 @@ function selectMenu(key) {
 
 function openTaskAnswer(task) {
   const query = task.canSubmit ? { mode: 'answer' } : { mode: 'review' }
-  router.push(`/member/courses/${route.params.id}/learn/tasks/${task.id}${query.mode ? `?mode=${query.mode}` : ''}`)
+  router.push({
+    path: `/member/courses/${route.params.id}/learn/tasks/${task.id}`,
+    query
+  })
 }
 
 function openTaskReview(task) {
-  router.push(`/member/courses/${route.params.id}/learn/tasks/${task.id}?mode=review`)
+  router.push({
+    path: `/member/courses/${route.params.id}/learn/tasks/${task.id}`,
+    query: { mode: 'review' }
+  })
+}
+
+async function openExamAnswer(task) {
+  if (!task.canSubmit) {
+    openExamReview(task)
+    return
+  }
+
+  const existingStartedAt = isExamSessionActive(task) ? readExamSession(task.id) : ''
+  const startedAt = existingStartedAt || formatSessionDateTime()
+
+  await ElMessageBox.confirm(
+    `确认进入考试吗？总时长 ${formatDurationMinutes(task.durationMinutes)}。${existingStartedAt ? '当前将继续上次计时。' : '进入后将立即开始计时。'}`,
+    '进入考试',
+    { type: 'warning' }
+  )
+
+  saveExamSession(task.id, startedAt)
+  router.push({
+    path: `/member/courses/${route.params.id}/learn/exams/${task.id}`,
+    query: {
+      mode: 'answer',
+      startedAt
+    }
+  })
+}
+
+function openExamReview(task) {
+  clearExamSession(task.id)
+  router.push({
+    path: `/member/courses/${route.params.id}/learn/exams/${task.id}`,
+    query: { mode: 'review' }
+  })
 }
 
 async function fetchCourseDetail() {
@@ -486,6 +665,12 @@ async function fetchMemberTasks() {
   memberTasks.value = data || []
 }
 
+async function fetchMemberExams() {
+  const { data } = await getMemberCourseExamList(route.params.id)
+  memberExams.value = data || []
+  cleanupExamSessions(memberExams.value)
+}
+
 function handleLogout() {
   authStore.logout()
   router.push('/login')
@@ -507,7 +692,7 @@ watch(
 onMounted(async () => {
   const allowed = await fetchCourseDetail()
   if (allowed) {
-    await Promise.all([fetchCourseMaterials(), fetchMemberTasks()])
+    await Promise.all([fetchCourseMaterials(), fetchMemberTasks(), fetchMemberExams()])
   }
 })
 </script>

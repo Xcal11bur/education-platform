@@ -7,6 +7,6 @@ import org.apache.ibatis.annotations.Param;
 
 public interface TaskSubmissionMapper extends BaseMapper<TaskSubmission> {
 
-    @Delete("DELETE FROM task_submission WHERE task_id = #{taskId}")
+    @Delete("DELETE FROM homework_submission WHERE task_id = #{taskId}")
     int hardDeleteByTaskId(@Param("taskId") Long taskId);
 }

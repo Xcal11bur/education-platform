@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <div class="page-title-row">
-          <el-button link type="primary" @click="goBack">返回作业管理</el-button>
+          <el-button link type="primary" @click="goBack">返回{{ entityName }}管理</el-button>
           <h2 class="page-title">{{ headerTitle }}</h2>
         </div>
       </div>
@@ -11,7 +11,7 @@
 
     <div v-if="taskInfo" class="task-summary-grid">
       <div class="summary-item">
-        <span class="summary-label">作业状态</span>
+        <span class="summary-label">{{ entityName }}状态</span>
         <el-tag :type="taskInfo.status === 1 ? 'success' : 'info'">
           {{ taskInfo.status === 1 ? '已发布' : '草稿' }}
         </el-tag>
@@ -184,10 +184,19 @@ import {
   getTeacherTaskSubmissionList,
   reviewTeacherTaskSubmission
 } from '@/api/teacherTaskSubmission'
+import { getTeacherExamDetail } from '@/api/teacherExam'
+import {
+  getTeacherExamSubmissionDetail,
+  getTeacherExamSubmissionList,
+  reviewTeacherExamSubmission
+} from '@/api/teacherExamSubmission'
 
 const route = useRoute()
 const router = useRouter()
-const taskId = Number(route.params.taskId)
+const isExamScene = computed(() => route.meta?.scene === 'exam')
+const taskId = computed(() => Number(route.params.examId || route.params.taskId))
+const entityName = computed(() => (isExamScene.value ? '考试' : '作业'))
+const backPath = computed(() => (isExamScene.value ? '/teacher/course-management/exams' : '/teacher/course-management/tasks'))
 
 const taskInfo = ref(null)
 const submissions = ref([])
@@ -213,6 +222,22 @@ const drawerTitle = computed(() => {
 const hasSubjectiveQuestions = computed(() =>
   (submissionDetail.value?.questions || []).some((item) => item.questionType === 4)
 )
+
+function getDetailRequest() {
+  return isExamScene.value ? getTeacherExamDetail : getTeacherTaskDetail
+}
+
+function getSubmissionListRequest() {
+  return isExamScene.value ? getTeacherExamSubmissionList : getTeacherTaskSubmissionList
+}
+
+function getSubmissionDetailRequest() {
+  return isExamScene.value ? getTeacherExamSubmissionDetail : getTeacherTaskSubmissionDetail
+}
+
+function getSubmissionReviewRequest() {
+  return isExamScene.value ? reviewTeacherExamSubmission : reviewTeacherTaskSubmission
+}
 
 function questionTypeText(value) {
   return value === 1 ? '单选题' : value === 3 ? '判断题' : value === 4 ? '主观题' : '题目'
@@ -280,18 +305,18 @@ function resetReviewState() {
 }
 
 async function fetchTaskInfo() {
-  const { data } = await getTeacherTaskDetail(taskId)
+  const { data } = await getDetailRequest()(taskId.value)
   taskInfo.value = data
 }
 
 async function fetchSubmissions() {
-  const { data } = await getTeacherTaskSubmissionList(taskId)
+  const { data } = await getSubmissionListRequest()(taskId.value)
   submissions.value = data || []
 }
 
 async function openSubmission(row) {
   resetReviewState()
-  const { data } = await getTeacherTaskSubmissionDetail(row.id)
+  const { data } = await getSubmissionDetailRequest()(row.id)
   submissionDetail.value = data
   reviewComment.value = data.reviewComment || ''
   for (const question of data.questions || []) {
@@ -316,7 +341,7 @@ async function submitReview() {
   }
   saving.value = true
   try {
-    await reviewTeacherTaskSubmission(submissionDetail.value.id, payload)
+    await getSubmissionReviewRequest()(submissionDetail.value.id, payload)
     ElMessage.success('批改已保存')
     drawerVisible.value = false
     await fetchSubmissions()
@@ -326,7 +351,7 @@ async function submitReview() {
 }
 
 function goBack() {
-  router.push('/teacher/course-management/tasks')
+  router.push(backPath.value)
 }
 
 onMounted(async () => {

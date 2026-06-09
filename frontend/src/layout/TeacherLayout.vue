@@ -38,6 +38,7 @@
           <el-menu-item index="/teacher/course-management/chapters">课程章节</el-menu-item>
           <el-menu-item index="/teacher/course-management/materials">课程资料</el-menu-item>
           <el-menu-item index="/teacher/course-management/tasks">作业管理</el-menu-item>
+          <el-menu-item index="/teacher/course-management/exams">考试管理</el-menu-item>
         </el-sub-menu>
       </el-menu>
     </aside>

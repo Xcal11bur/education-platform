@@ -1,4 +1,4 @@
-package com.education.platform.task.entity;
+package com.education.platform.exam.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.education.platform.common.model.BaseEntity;
@@ -7,8 +7,8 @@ import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("homework_question")
-public class TaskQuestion extends BaseEntity {
+@TableName("exam_question")
+public class ExamQuestion extends BaseEntity {
 
     private Long taskId;
     private Integer questionType;
