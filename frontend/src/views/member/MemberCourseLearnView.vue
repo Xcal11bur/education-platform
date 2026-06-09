@@ -793,39 +793,39 @@ onMounted(async () => {
 }
 
 .assignment-list {
-  margin-top: 18px;
+  margin-top: 14px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .assignment-card {
-  padding: 18px 20px;
+  padding: 14px 16px;
   border: 1px solid #e5e7eb;
   border-radius: 16px;
   background: #fff;
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: space-between;
-  gap: 18px;
+  gap: 14px;
 }
 
 .assignment-main {
   min-width: 0;
   display: flex;
-  align-items: flex-start;
-  gap: 16px;
+  align-items: center;
+  gap: 14px;
 }
 
 .assignment-badge {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
   background: #e5e7eb;
   color: #6b7280;
   display: grid;
   place-items: center;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -844,21 +844,21 @@ onMounted(async () => {
 .assignment-title-row h3 {
   margin: 0;
   color: #1f2d3d;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .assignment-meta {
-  margin-top: 8px;
+  margin-top: 6px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   flex-wrap: wrap;
   color: #909399;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .assignment-actions {
-  margin-top: 10px;
+  margin-top: 6px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -866,13 +866,13 @@ onMounted(async () => {
 }
 
 .assignment-side {
-  min-width: 160px;
-  padding-left: 18px;
+  min-width: 132px;
+  padding-left: 16px;
   border-left: 1px solid #eef2f7;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 18px;
+  gap: 12px;
 }
 
 .assignment-side-item span {
@@ -883,9 +883,9 @@ onMounted(async () => {
 
 .assignment-side-item strong {
   display: block;
-  margin-top: 8px;
+  margin-top: 6px;
   color: #1f2d3d;
-  font-size: 24px;
+  font-size: 18px;
   line-height: 1;
 }
 
@@ -938,17 +938,18 @@ onMounted(async () => {
 @media (max-width: 1100px) {
   .assignment-card {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .assignment-side {
     min-width: 0;
     padding-left: 0;
-    padding-top: 14px;
+    padding-top: 12px;
     border-left: 0;
     border-top: 1px solid #eef2f7;
     flex-direction: row;
     justify-content: flex-start;
-    gap: 24px;
+    gap: 20px;
   }
 }
 
@@ -998,12 +999,13 @@ onMounted(async () => {
   }
 
   .assignment-card {
-    padding: 16px;
+    padding: 14px;
   }
 
   .assignment-main {
     flex-direction: column;
-    gap: 12px;
+    align-items: flex-start;
+    gap: 10px;
   }
 }
 </style>

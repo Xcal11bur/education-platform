@@ -31,6 +31,12 @@
             <h1>{{ taskDetail?.title || '作业详情' }}</h1>
           </div>
           <div class="task-head-actions">
+            <div v-if="taskDetail?.submitted && taskDetail?.latestSubmission" class="task-score-panel" :class="scoreStatusClass">
+              <span class="task-score-label">{{ scoreStatusText }}</span>
+              <strong class="task-score-value">
+                {{ taskDetail.latestSubmission.score ?? 0 }} / {{ taskDetail.totalScore ?? 0 }}
+              </strong>
+            </div>
             <el-tag :type="pageStatus.type" effect="plain">
               {{ pageStatus.label }}
             </el-tag>
@@ -59,7 +65,7 @@
 
             <div class="question-options">
               <template v-if="isAnswerMode">
-                <el-radio-group v-model="answerMap[question.id]">
+                <el-radio-group v-model="answerMap[question.id]" class="question-radio-group">
                   <div
                     v-for="option in parseOptions(question.optionsJson)"
                     :key="option.label"
@@ -166,6 +172,13 @@ const pageStatus = computed(() => {
   }
   return { label: '不可作答', type: 'info' }
 })
+const isPassed = computed(() => {
+  const score = Number(taskDetail.value?.latestSubmission?.score ?? -1)
+  const passScore = Number(taskDetail.value?.passScore ?? 0)
+  return score >= 0 && score >= passScore
+})
+const scoreStatusText = computed(() => (isPassed.value ? '已及格' : '未及格'))
+const scoreStatusClass = computed(() => (isPassed.value ? 'is-passed' : 'is-failed'))
 
 const questionGroups = computed(() => {
   const groupMap = new Map()
@@ -419,6 +432,54 @@ onMounted(async () => {
   gap: 20px;
 }
 
+.task-head-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.task-score-panel {
+  min-width: 180px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.task-score-panel.is-passed {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.task-score-panel.is-failed {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.task-score-label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.task-score-panel.is-passed .task-score-label,
+.task-score-panel.is-passed .task-score-value {
+  color: #15803d;
+}
+
+.task-score-panel.is-failed .task-score-label,
+.task-score-panel.is-failed .task-score-value {
+  color: #dc2626;
+}
+
+.task-score-value {
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 800;
+}
+
 .task-kicker {
   color: #409eff;
   font-size: 13px;
@@ -474,10 +535,34 @@ onMounted(async () => {
   gap: 12px;
 }
 
+.question-radio-group {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
 .option-line {
   color: #1f2937;
   font-size: 16px;
   line-height: 1.8;
+}
+
+.question-radio-group .option-line {
+  display: block;
+}
+
+.question-radio-group .option-line :deep(.el-radio) {
+  display: flex;
+  align-items: flex-start;
+  margin-right: 0;
+  white-space: normal;
+}
+
+.question-radio-group .option-line :deep(.el-radio__label) {
+  white-space: normal;
+  line-height: 1.8;
+  padding-left: 10px;
 }
 
 .answer-result-card {
@@ -522,6 +607,9 @@ onMounted(async () => {
 
 .task-sidebar {
   padding: 36px 24px;
+  align-self: start;
+  position: sticky;
+  top: 20px;
 }
 
 .sidebar-card {
@@ -571,6 +659,7 @@ onMounted(async () => {
 
   .task-sidebar {
     padding-top: 0;
+    position: static;
   }
 }
 
@@ -581,6 +670,12 @@ onMounted(async () => {
 
   .task-stage-head {
     flex-direction: column;
+  }
+
+  .task-head-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .task-meta-row {
