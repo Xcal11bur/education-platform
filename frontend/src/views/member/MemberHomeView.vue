@@ -121,7 +121,7 @@
                 <div class="banner-summary">{{ currentBanner.summary }}</div>
                 <div class="banner-meta">
                   <span>{{ currentBanner.teacherName || '平台课程' }}</span>
-                  <span>{{ currentBanner.learners }} 人学习</span>
+                  <span>{{ currentBanner.learners }} 人报名</span>
                 </div>
               </div>
 
@@ -171,7 +171,6 @@
         <div class="section-head">
           <div>
             <h2>热门课程</h2>
-            <p>按学习人数排序，展示当前最受欢迎的 8 门课程</p>
           </div>
           <el-button plain @click="router.push('/member/courses')">查看全部</el-button>
         </div>
@@ -192,7 +191,7 @@
               </div>
               <div class="course-cover-bottom">
                 <div class="course-cover-code">{{ course.code }}</div>
-                <div class="course-cover-meta">{{ course.learners }} 人学习</div>
+                <div class="course-cover-meta">{{ course.learners }} 人报名</div>
               </div>
             </div>
             <div class="course-body">
@@ -203,11 +202,7 @@
               <p>{{ course.summary }}</p>
               <div class="course-meta-row">
                 <span class="course-teacher">{{ course.teacherName || '平台课程' }}</span>
-                <span class="course-learners">{{ course.learners }} 人学习</span>
-              </div>
-              <div class="course-meta">
-                <span class="course-action">查看课程</span>
-                <span class="course-arrow">›</span>
+                <span class="course-learners">{{ course.learners }} 人报名</span>
               </div>
             </div>
           </article>
@@ -1042,7 +1037,7 @@ onBeforeUnmount(() => {
 
 .course-cover {
   position: relative;
-  height: 176px;
+  height: 168px;
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -1102,7 +1097,7 @@ onBeforeUnmount(() => {
 }
 
 .course-body {
-  padding: 18px;
+  padding: 16px 18px;
 }
 
 .course-body-top {
@@ -1121,7 +1116,7 @@ onBeforeUnmount(() => {
 }
 
 .course-body h3 {
-  margin: 10px 0 10px;
+  margin: 10px 0 8px;
   font-size: 17px;
   line-height: 1.35;
   color: #303133;
@@ -1129,22 +1124,22 @@ onBeforeUnmount(() => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: 46px;
+  min-height: 0;
 }
 
 .course-body p {
   margin: 0;
   color: #606266;
   line-height: 1.6;
-  min-height: 66px;
+  min-height: 48px;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
 .course-meta-row {
-  margin-top: 16px;
+  margin-top: 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1156,33 +1151,6 @@ onBeforeUnmount(() => {
 .course-teacher,
 .course-learners {
   white-space: nowrap;
-}
-
-.course-meta {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid #eef2f7;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.course-action {
-  color: #2563eb;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.course-arrow {
-  color: #93a4b8;
-  font-size: 18px;
-  transition: transform 0.24s ease, color 0.24s ease;
-}
-
-.course-card:hover .course-arrow {
-  transform: translateX(3px);
-  color: #2563eb;
 }
 
 @media (max-width: 1180px) {

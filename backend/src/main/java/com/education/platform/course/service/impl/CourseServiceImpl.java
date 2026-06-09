@@ -171,7 +171,8 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
                 .like(StringUtils.hasText(queryDTO.getTitle()), Course::getTitle, queryDTO.getTitle())
                 .eq(queryDTO.getTeacherId() != null, Course::getTeacherId, queryDTO.getTeacherId())
                 .eq(queryDTO.getCategoryLevel2Id() != null, Course::getCategoryLevel2Id, queryDTO.getCategoryLevel2Id())
-                .orderByDesc(Course::getSort, Course::getId)
+                .orderByDesc(Course::getStudyCount)
+                .orderByAsc(Course::getId)
                 .page(new Page<>(queryDTO.getPageNum(), queryDTO.getPageSize()));
         List<CourseVO> list = fillCourseVOs(page.getRecords());
         return PageResponse.<CourseVO>builder()

@@ -74,7 +74,7 @@
                 <strong>{{ difficultyText }}</strong>
               </div>
               <div class="meta-item">
-                <span class="meta-label">学习人数</span>
+                <span class="meta-label">报名人数</span>
                 <strong>{{ course.studyCount || 0 }} 人</strong>
               </div>
             </div>
