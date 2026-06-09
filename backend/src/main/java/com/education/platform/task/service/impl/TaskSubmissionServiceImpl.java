@@ -352,9 +352,10 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
                 List<String> myAnswer = storedAnswer == null ? List.of() : storedAnswer.answer();
                 vo.setMyAnswerJson(writeJsonSilently(myAnswer));
                 vo.setEarnedScore(storedAnswer == null ? null : storedAnswer.earnedScore());
-                vo.setReviewPending(Objects.equals(question.getQuestionType(), QUESTION_TYPE_SUBJECTIVE)
-                        && !Objects.equals(latestSubmission.getReviewStatus(), REVIEWED_STATUS));
-                vo.setAnalysis(question.getAnalysis());
+                boolean reviewPending = Objects.equals(question.getQuestionType(), QUESTION_TYPE_SUBJECTIVE)
+                        && !Objects.equals(latestSubmission.getReviewStatus(), REVIEWED_STATUS);
+                vo.setReviewPending(reviewPending);
+                vo.setAnalysis(reviewPending ? null : question.getAnalysis());
             }
             return vo;
         }).toList();

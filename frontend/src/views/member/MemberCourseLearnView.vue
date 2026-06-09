@@ -366,6 +366,9 @@ function taskStateMeta(task) {
   if (task.completed && task.latestReviewStatus === 0) {
     return { label: '待批改', type: 'warning' }
   }
+  if (task.completed && task.latestReviewStatus === 1) {
+    return { label: '已完成', type: 'success' }
+  }
   const now = Date.now()
   const startTime = task.startTime ? new Date(task.startTime).getTime() : null
   const endTime = task.endTime ? new Date(task.endTime).getTime() : null
