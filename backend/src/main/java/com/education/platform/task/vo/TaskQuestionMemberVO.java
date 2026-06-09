@@ -12,6 +12,7 @@ public class TaskQuestionMemberVO {
     private Integer score;
     private Integer sort;
     private String myAnswerJson;
+    private String correctAnswerJson;
     private Integer earnedScore;
     private Boolean reviewPending;
     private String analysis;

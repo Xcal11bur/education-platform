@@ -1,6 +1,5 @@
 package com.education.platform.task.dto;
 
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import lombok.Data;
@@ -10,7 +9,6 @@ public class TaskSubmissionReviewDTO {
 
     private String reviewComment;
 
-    @NotEmpty(message = "questionScores must not be empty")
     private List<QuestionScoreDTO> questionScores;
 
     @Data

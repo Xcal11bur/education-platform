@@ -162,12 +162,11 @@
         <div class="drawer-footer">
           <el-button @click="drawerVisible = false">关闭</el-button>
           <el-button
-            v-if="hasSubjectiveQuestions"
             type="primary"
             :loading="saving"
             @click="submitReview"
           >
-            保存批改
+            {{ hasSubjectiveQuestions ? '保存批改' : '保存评语' }}
           </el-button>
         </div>
       </template>

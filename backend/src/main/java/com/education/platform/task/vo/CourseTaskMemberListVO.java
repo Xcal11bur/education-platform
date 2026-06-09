@@ -11,7 +11,6 @@ public class CourseTaskMemberListVO {
     private Long courseId;
     private String courseTitle;
     private String title;
-    private String description;
     private Integer totalScore;
     private Integer passScore;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

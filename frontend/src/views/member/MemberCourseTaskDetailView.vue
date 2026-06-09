@@ -54,6 +54,14 @@
           <span>剩余次数 {{ taskDetail?.remainingAttempts ?? 0 }}</span>
         </div>
 
+        <div
+          v-if="!isAnswerMode && taskDetail?.latestSubmission?.reviewComment"
+          class="task-review-comment-card"
+        >
+          <div class="task-review-comment-title">教师评语</div>
+          <div class="task-review-comment-content">{{ taskDetail.latestSubmission.reviewComment }}</div>
+        </div>
+
         <div class="question-section">
           <section
             v-for="(question, index) in taskDetail?.questions || []"
@@ -110,7 +118,12 @@
             <template v-if="!isAnswerMode">
               <div class="answer-result-card">
                 <div class="answer-copy">
-                  {{ question.questionType === 4 ? '批改结果' : `我的答案：${formatMyAnswer(question)}` }}
+                  <div>
+                    {{ question.questionType === 4 ? '批改结果' : `我的答案：${formatMyAnswer(question)}` }}
+                  </div>
+                  <div v-if="showCorrectAnswer(question)" class="answer-correct">
+                    正确答案：{{ formatCorrectAnswer(question) }}
+                  </div>
                 </div>
                 <div class="answer-score">
                   {{ question.reviewPending ? '待批改' : `${question.earnedScore ?? 0} 分` }}
@@ -316,6 +329,27 @@ function formatMyAnswer(question) {
   const options = parseOptions(question.optionsJson)
   const selectedOption = options.find((item) => item.label === answer)
   return selectedOption ? `${answer}. ${selectedOption.content}` : answer
+}
+
+function formatCorrectAnswer(question) {
+  const answers = parseAnswer(question.correctAnswerJson)
+  const answer = answers[0]
+  if (!answer) {
+    return '--'
+  }
+  if (question.questionType === 4) {
+    return stripHtml(answer) || '--'
+  }
+  if (question.questionType === 3) {
+    return answer === 'T' ? '正确' : '错误'
+  }
+  const options = parseOptions(question.optionsJson)
+  const selectedOption = options.find((item) => item.label === answer)
+  return selectedOption ? `${answer}. ${selectedOption.content}` : answer
+}
+
+function showCorrectAnswer(question) {
+  return !question.reviewPending && parseAnswer(question.correctAnswerJson).length > 0
 }
 
 function formatSubjectiveAnswer(question) {
@@ -555,6 +589,27 @@ onMounted(async () => {
   font-size: 14px;
 }
 
+.task-review-comment-card {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.task-review-comment-title {
+  margin-bottom: 10px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.task-review-comment-content {
+  color: #1f2937;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
 .question-section {
   margin-top: 28px;
   display: flex;
@@ -629,9 +684,16 @@ onMounted(async () => {
 }
 
 .answer-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   color: #111827;
   font-size: 16px;
   font-weight: 700;
+}
+
+.answer-correct {
+  color: #15803d;
 }
 
 .answer-score {

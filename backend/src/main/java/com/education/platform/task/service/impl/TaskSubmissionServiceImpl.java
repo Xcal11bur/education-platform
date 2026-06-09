@@ -271,7 +271,10 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
         List<TaskQuestion> questions = listTaskQuestions(task.getId());
         Map<Long, TaskQuestion> questionMap = questions.stream().collect(Collectors.toMap(TaskQuestion::getId, Function.identity()));
         Map<Long, StoredAnswer> storedAnswerMap = parseStoredAnswers(submission.getAnswersJson());
-        Map<Long, Integer> reviewScoreMap = request.getQuestionScores().stream().collect(Collectors.toMap(
+        List<TaskSubmissionReviewDTO.QuestionScoreDTO> questionScores = request.getQuestionScores() == null
+                ? List.of()
+                : request.getQuestionScores();
+        Map<Long, Integer> reviewScoreMap = questionScores.stream().collect(Collectors.toMap(
                 TaskSubmissionReviewDTO.QuestionScoreDTO::getQuestionId,
                 TaskSubmissionReviewDTO.QuestionScoreDTO::getScore,
                 (left, right) -> right
@@ -304,7 +307,7 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
             subjectiveScore += score;
         }
 
-        for (TaskSubmissionReviewDTO.QuestionScoreDTO item : request.getQuestionScores()) {
+        for (TaskSubmissionReviewDTO.QuestionScoreDTO item : questionScores) {
             TaskQuestion question = questionMap.get(item.getQuestionId());
             if (question == null) {
                 throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "question not found in task");
@@ -355,6 +358,7 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
                 boolean reviewPending = Objects.equals(question.getQuestionType(), QUESTION_TYPE_SUBJECTIVE)
                         && !Objects.equals(latestSubmission.getReviewStatus(), REVIEWED_STATUS);
                 vo.setReviewPending(reviewPending);
+                vo.setCorrectAnswerJson(reviewPending ? null : question.getAnswerJson());
                 vo.setAnalysis(reviewPending ? null : question.getAnalysis());
             }
             return vo;

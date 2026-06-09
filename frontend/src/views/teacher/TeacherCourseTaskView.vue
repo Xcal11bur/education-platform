@@ -126,9 +126,6 @@
             <el-radio :value="1">发布</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="作业说明">
-          <el-input v-model="form.description" type="textarea" :rows="5" maxlength="1000" show-word-limit />
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -171,7 +168,6 @@ const query = reactive({
 const defaultForm = () => ({
   courseId: null,
   title: '',
-  description: '',
   totalScore: 100,
   passScore: 60,
   startTime: '',
@@ -224,7 +220,6 @@ async function openEdit(id) {
   Object.assign(form, {
     courseId: data.courseId,
     title: data.title,
-    description: data.description || '',
     totalScore: data.totalScore ?? 100,
     passScore: data.passScore ?? 60,
     startTime: data.startTime || '',
