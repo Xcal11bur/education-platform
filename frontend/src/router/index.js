@@ -38,6 +38,12 @@ const router = createRouter({
       meta: { title: '课程学习', roles: ['MEMBER'] }
     },
     {
+      path: '/member/courses/:id/learn/tasks/:taskId',
+      name: 'MemberCourseTaskDetail',
+      component: () => import('@/views/member/MemberCourseTaskDetailView.vue'),
+      meta: { title: '作业详情', roles: ['MEMBER'] }
+    },
+    {
       path: '/member/courses/:id/learn/sections/:sectionId',
       name: 'MemberCourseSectionLearn',
       component: () => import('@/views/member/MemberCourseSectionLearnView.vue'),

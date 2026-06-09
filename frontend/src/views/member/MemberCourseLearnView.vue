@@ -42,7 +42,7 @@
           class="menu-item"
           :class="{ 'is-active': activeMenu === item.key }"
           type="button"
-          @click="activeMenu = item.key"
+          @click="selectMenu(item.key)"
         >
           <el-icon class="menu-icon">
             <component :is="item.icon" />
@@ -112,6 +112,87 @@
           </div>
         </template>
 
+        <template v-else-if="activeMenu === 'assignments'">
+          <div class="content-card">
+            <div class="assignment-toolbar">
+              <div class="assignment-filter">
+                <span class="toolbar-label">筛选</span>
+                <el-radio-group v-model="taskFilter" size="small">
+                  <el-radio-button label="all">全部</el-radio-button>
+                  <el-radio-button label="completed">已完成</el-radio-button>
+                  <el-radio-button label="pending">未完成</el-radio-button>
+                </el-radio-group>
+              </div>
+              <div class="assignment-progress">
+                <el-progress
+                  :percentage="taskProgressPercent"
+                  :stroke-width="10"
+                  :show-text="false"
+                  color="#3b82f6"
+                />
+                <span>{{ completedTaskCount }}/{{ memberTasks.length }}</span>
+              </div>
+            </div>
+
+            <div v-if="filteredTasks.length" class="assignment-list">
+              <article
+                v-for="task in filteredTasks"
+                :key="task.id"
+                class="assignment-card"
+              >
+                <div class="assignment-main">
+                  <div class="assignment-badge">作业</div>
+                  <div class="assignment-copy">
+                    <div class="assignment-title-row">
+                      <h3>{{ task.title }}</h3>
+                      <el-tag :type="task.completed ? 'success' : taskStateMeta(task).type" effect="plain">
+                        {{ task.completed ? '已完成' : taskStateMeta(task).label }}
+                      </el-tag>
+                    </div>
+                    <div class="assignment-meta">
+                      <span>开放时间 {{ formatDateTime(task.startTime) }}</span>
+                      <span>截止时间 {{ formatDateTime(task.endTime) }}</span>
+                      <span>{{ task.totalScore }} 分 / {{ task.questionCount }} 题</span>
+                    </div>
+                    <div class="assignment-actions">
+                      <el-button
+                        type="primary"
+                        text
+                        @click="openTaskAnswer(task)"
+                      >
+                        {{ task.completed ? (task.canSubmit ? '再次作答' : '查看详情') : '开始答题' }}
+                      </el-button>
+                      <el-button
+                        v-if="task.completed"
+                        text
+                        @click="openTaskReview(task)"
+                      >
+                        解析分析
+                      </el-button>
+                    </div>
+                  </div>
+                </div>
+                <div class="assignment-side">
+                  <div class="assignment-side-item">
+                    <span>得分</span>
+                    <strong>{{ task.completed ? `${task.latestScore ?? 0} / ${task.totalScore}` : '--' }}</strong>
+                  </div>
+                  <div class="assignment-side-item">
+                    <span>剩余次数</span>
+                    <strong>{{ task.remainingAttempts }}</strong>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <el-empty
+              v-else
+              description="当前筛选条件下暂无作业"
+              :image-size="72"
+            />
+          </div>
+        </template>
+
         <template v-else-if="activeMenu === 'materials'">
           <div class="content-card">
             <div class="block-head">
@@ -160,10 +241,11 @@
 <script setup>
 import { ArrowDown, Collection, Document, EditPen, Reading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
 import { getPortalCourseDetail, getPortalCourseMaterials } from '@/api/course'
+import { getMemberCourseTaskList } from '@/api/memberTask'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
@@ -171,6 +253,7 @@ const authStore = useAuthStore()
 
 const loading = ref(false)
 const activeMenu = ref('chapters')
+const taskFilter = ref('all')
 const expandedChapterIds = ref([])
 const course = ref({
   title: '',
@@ -178,6 +261,7 @@ const course = ref({
   chapters: []
 })
 const courseMaterials = ref([])
+const memberTasks = ref([])
 
 const menuItems = [
   { key: 'chapters', label: '章节', icon: Reading },
@@ -213,6 +297,27 @@ const courseCoverStyle = computed(() => {
   }
 })
 
+const filteredTasks = computed(() => {
+  if (taskFilter.value === 'completed') {
+    return memberTasks.value.filter((task) => task.completed)
+  }
+  if (taskFilter.value === 'pending') {
+    return memberTasks.value.filter((task) => !task.completed)
+  }
+  return memberTasks.value
+})
+
+const completedTaskCount = computed(() =>
+  memberTasks.value.filter((task) => task.completed).length
+)
+
+const taskProgressPercent = computed(() => {
+  if (!memberTasks.value.length) {
+    return 0
+  }
+  return Math.round((completedTaskCount.value / memberTasks.value.length) * 100)
+})
+
 function materialTypeText(type) {
   return {
     1: '文档',
@@ -245,6 +350,32 @@ function formatUploadTime(value) {
     .replace(/\.\d+$/, '')
     .replace(/Z$/, '')
   return normalized.length > 16 ? normalized.slice(0, 16) : normalized
+}
+
+function formatDateTime(value) {
+  if (!value) {
+    return '--'
+  }
+  return String(value)
+    .replace('T', ' ')
+    .replace(/\.\d+$/, '')
+    .replace(/Z$/, '')
+}
+
+function taskStateMeta(task) {
+  const now = Date.now()
+  const startTime = task.startTime ? new Date(task.startTime).getTime() : null
+  const endTime = task.endTime ? new Date(task.endTime).getTime() : null
+  if (startTime && now < startTime) {
+    return { label: '未开始', type: 'warning' }
+  }
+  if (endTime && now > endTime) {
+    return { label: '已截止', type: 'danger' }
+  }
+  if (!task.canSubmit && task.remainingAttempts <= 0) {
+    return { label: '次数已用完', type: 'info' }
+  }
+  return { label: '待完成', type: 'info' }
 }
 
 function displayChapterTitle(chapter, chapterIndex) {
@@ -291,6 +422,23 @@ function openSection(sectionId) {
   router.push(`/member/courses/${route.params.id}/learn/sections/${sectionId}`)
 }
 
+function selectMenu(key) {
+  activeMenu.value = key
+  router.replace({
+    path: `/member/courses/${route.params.id}/learn`,
+    query: { ...route.query, tab: key }
+  })
+}
+
+function openTaskAnswer(task) {
+  const query = task.canSubmit ? { mode: 'answer' } : { mode: 'review' }
+  router.push(`/member/courses/${route.params.id}/learn/tasks/${task.id}${query.mode ? `?mode=${query.mode}` : ''}`)
+}
+
+function openTaskReview(task) {
+  router.push(`/member/courses/${route.params.id}/learn/tasks/${task.id}?mode=review`)
+}
+
 async function fetchCourseDetail() {
   loading.value = true
   try {
@@ -313,6 +461,11 @@ async function fetchCourseMaterials() {
   courseMaterials.value = data || []
 }
 
+async function fetchMemberTasks() {
+  const { data } = await getMemberCourseTaskList(route.params.id)
+  memberTasks.value = data || []
+}
+
 function handleLogout() {
   authStore.logout()
   router.push('/login')
@@ -322,10 +475,19 @@ function goProfile() {
   router.push('/member/profile')
 }
 
+watch(
+  () => route.query.tab,
+  (value) => {
+    const menuKey = String(value || 'chapters')
+    activeMenu.value = menuItems.some((item) => item.key === menuKey) ? menuKey : 'chapters'
+  },
+  { immediate: true }
+)
+
 onMounted(async () => {
   const allowed = await fetchCourseDetail()
   if (allowed) {
-    await fetchCourseMaterials()
+    await Promise.all([fetchCourseMaterials(), fetchMemberTasks()])
   }
 })
 </script>
@@ -598,6 +760,135 @@ onMounted(async () => {
   font-weight: 500;
 }
 
+.assignment-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.assignment-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.toolbar-label {
+  color: #909399;
+  font-size: 13px;
+}
+
+.assignment-progress {
+  width: min(340px, 100%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.assignment-progress span {
+  color: #606266;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.assignment-list {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.assignment-card {
+  padding: 18px 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #fff;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.assignment-main {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.assignment-badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #e5e7eb;
+  color: #6b7280;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.assignment-copy {
+  min-width: 0;
+}
+
+.assignment-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.assignment-title-row h3 {
+  margin: 0;
+  color: #1f2d3d;
+  font-size: 18px;
+}
+
+.assignment-meta {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  color: #909399;
+  font-size: 13px;
+}
+
+.assignment-actions {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.assignment-side {
+  min-width: 160px;
+  padding-left: 18px;
+  border-left: 1px solid #eef2f7;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+}
+
+.assignment-side-item span {
+  display: block;
+  color: #909399;
+  font-size: 12px;
+}
+
+.assignment-side-item strong {
+  display: block;
+  margin-top: 8px;
+  color: #1f2d3d;
+  font-size: 24px;
+  line-height: 1;
+}
+
 .material-list {
   margin-top: 18px;
   display: flex;
@@ -644,6 +935,23 @@ onMounted(async () => {
   font-size: 13px;
 }
 
+@media (max-width: 1100px) {
+  .assignment-card {
+    flex-direction: column;
+  }
+
+  .assignment-side {
+    min-width: 0;
+    padding-left: 0;
+    padding-top: 14px;
+    border-left: 0;
+    border-top: 1px solid #eef2f7;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 24px;
+  }
+}
+
 @media (max-width: 960px) {
   .learn-shell {
     grid-template-columns: 1fr;
@@ -653,8 +961,14 @@ onMounted(async () => {
     position: static;
   }
 
-  .block-head {
+  .block-head,
+  .assignment-toolbar {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .assignment-progress {
+    width: 100%;
   }
 }
 
@@ -681,6 +995,15 @@ onMounted(async () => {
 
   .chapter-head {
     padding: 12px 14px;
+  }
+
+  .assignment-card {
+    padding: 16px;
+  }
+
+  .assignment-main {
+    flex-direction: column;
+    gap: 12px;
   }
 }
 </style>

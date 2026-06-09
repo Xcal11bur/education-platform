@@ -1,5 +1,6 @@
 package com.education.platform.task.vo;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDateTime;
 import lombok.Data;
 
@@ -17,6 +18,8 @@ public class TaskSubmissionVO {
     private Integer score;
     private Integer reviewStatus;
     private String reviewComment;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime submittedAt;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime reviewedAt;
 }
