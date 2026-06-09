@@ -104,6 +104,12 @@ const router = createRouter({
           meta: { title: '课程分类', roles: ['ADMIN'] }
         },
         {
+          path: 'course-reviews',
+          name: 'CourseReviews',
+          component: () => import('@/views/reviews/CourseReviewView.vue'),
+          meta: { title: '课程评价', roles: ['ADMIN'] }
+        },
+        {
           path: 'courses',
           name: 'Courses',
           component: () => import('@/views/courses/CourseListView.vue'),

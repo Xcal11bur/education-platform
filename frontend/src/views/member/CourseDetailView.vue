@@ -150,7 +150,90 @@
             </el-tab-pane>
 
             <el-tab-pane label="课程评价" name="reviews">
-              <el-empty description="课程评价功能开发中" :image-size="80" />
+              <div class="review-panel">
+                <div class="review-summary-card">
+                  <div class="review-score-main">
+                    <strong>{{ reviewSummary.avgScore?.toFixed?.(1) || '0.0' }}</strong>
+                    <span>综合评分</span>
+                  </div>
+                  <div class="review-summary-meta">
+                    <div class="summary-line">共 {{ reviewSummary.reviewCount || 0 }} 条已通过评价</div>
+                    <div
+                      v-for="score in [5, 4, 3, 2, 1]"
+                      :key="score"
+                      class="summary-bar-row"
+                    >
+                      <span>{{ score }} 分</span>
+                      <el-progress
+                        :percentage="distributionPercent(score)"
+                        :show-text="false"
+                        :stroke-width="10"
+                        color="#409eff"
+                      />
+                      <strong>{{ reviewSummary.scoreDistribution?.[score] || 0 }}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="reviewSummary.canReview" class="review-form-card">
+                  <div class="review-form-head">
+                    <h3>发表评价</h3>
+                    <span>提交后需管理员审核</span>
+                  </div>
+                  <el-form ref="reviewFormRef" :model="reviewForm" :rules="reviewRules" label-width="78px">
+                    <el-form-item label="评分" prop="score">
+                      <el-rate v-model="reviewForm.score" />
+                    </el-form-item>
+                    <el-form-item label="评价内容">
+                      <el-input
+                        v-model="reviewForm.content"
+                        type="textarea"
+                        :rows="4"
+                        maxlength="500"
+                        show-word-limit
+                        placeholder="分享你的学习体验"
+                      />
+                    </el-form-item>
+                    <el-form-item label="匿名评价">
+                      <el-switch v-model="reviewAnonymous" />
+                    </el-form-item>
+                    <el-form-item>
+                      <el-button type="primary" :loading="reviewSubmitting" @click="submitReview">
+                        提交评价
+                      </el-button>
+                    </el-form-item>
+                  </el-form>
+                </div>
+
+                <div v-else-if="course.enrolled && reviewSummary.hasReviewed" class="review-tip-card">
+                  你已提交过评价，当前状态：
+                  {{ myReviewStatusText }}
+                </div>
+
+                <div v-else-if="!course.enrolled" class="review-tip-card">
+                  报名课程后可发表评价。
+                </div>
+
+                <div class="review-list">
+                  <article v-for="item in reviews" :key="item.id" class="review-item">
+                    <div class="review-item-head">
+                      <div class="review-author">
+                        <el-avatar :size="42" :src="resolvedReviewAvatar(item)">
+                          {{ (item.memberDisplayName || '学').slice(0, 1).toUpperCase() }}
+                        </el-avatar>
+                        <div class="review-author-copy">
+                          <strong>{{ item.memberDisplayName || '学员' }}</strong>
+                          <span>{{ formatDateTime(item.createdAt) }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <el-rate :model-value="item.score" disabled />
+                    <p>{{ item.content || '该学员未填写文字评价。' }}</p>
+                  </article>
+
+                  <el-empty v-if="!reviews.length && !reviewLoading" description="暂无课程评价" :image-size="72" />
+                </div>
+              </div>
             </el-tab-pane>
           </el-tabs>
         </div>
@@ -192,6 +275,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { enrollCourse, getPortalCourseDetail } from '@/api/course'
+import { getPortalCourseReviews, getPortalCourseReviewSummary, submitCourseReview } from '@/api/courseReview'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
@@ -202,6 +286,19 @@ const loading = ref(false)
 const enrolling = ref(false)
 const activeTab = ref('chapters')
 const expandedChapterIds = ref([])
+const reviewLoading = ref(false)
+const reviewSubmitting = ref(false)
+const reviewFormRef = ref()
+const reviews = ref([])
+const reviewAnonymous = ref(false)
+const reviewSummary = ref({
+  avgScore: 0,
+  reviewCount: 0,
+  scoreDistribution: {},
+  canReview: false,
+  hasReviewed: false,
+  myReviewStatus: null
+})
 const course = ref({
   teacher: null,
   categoryLevel1: null,
@@ -209,6 +306,10 @@ const course = ref({
   chapters: [],
   enrolled: false,
   lastStudySectionId: null
+})
+const reviewForm = ref({
+  score: 5,
+  content: ''
 })
 
 const chapters = computed(() => course.value.chapters || [])
@@ -239,6 +340,20 @@ const priceText = computed(() => {
   const price = Number(course.value.price || 0)
   return price > 0 ? `¥ ${price.toFixed(2)}` : '免费'
 })
+
+const myReviewStatusText = computed(() => {
+  return (
+    {
+      0: '待审核',
+      1: '已通过',
+      2: '已拒绝'
+    }[reviewSummary.value.myReviewStatus] || '未知'
+  )
+})
+
+const reviewRules = {
+  score: [{ required: true, message: '请选择评分', trigger: 'change' }]
+}
 
 function displayChapterTitle(chapter, chapterIndex) {
   const title = String(chapter?.title || '').trim()
@@ -318,6 +433,7 @@ async function handlePrimaryAction() {
     const { data } = await enrollCourse(route.params.id)
     course.value.enrolled = true
     course.value.studyCount = Number(course.value.studyCount || 0) + (data ? 1 : 0)
+    await fetchReviewData()
     ElMessage.success(data ? '报名成功' : '您已报名该课程')
   } finally {
     enrolling.value = false
@@ -340,6 +456,63 @@ function goProfile() {
   router.push('/member/profile')
 }
 
+function distributionPercent(score) {
+  const total = Number(reviewSummary.value.reviewCount || 0)
+  if (!total) {
+    return 0
+  }
+  const count = Number(reviewSummary.value.scoreDistribution?.[score] || 0)
+  return Math.round((count / total) * 100)
+}
+
+function formatDateTime(value) {
+  if (!value) {
+    return '--'
+  }
+  return String(value).replace('T', ' ').replace(/\.\d+$/, '').replace(/Z$/, '')
+}
+
+function resolvedReviewAvatar(item) {
+  return item?.memberAvatar || ''
+}
+
+async function fetchReviewData() {
+  reviewLoading.value = true
+  try {
+    const [{ data: summary }, { data: reviewPage }] = await Promise.all([
+      getPortalCourseReviewSummary(route.params.id),
+      getPortalCourseReviews(route.params.id, { pageNum: 1, pageSize: 10 })
+    ])
+    reviewSummary.value = summary || {
+      avgScore: 0,
+      reviewCount: 0,
+      scoreDistribution: {}
+    }
+    reviews.value = reviewPage?.list || []
+  } finally {
+    reviewLoading.value = false
+  }
+}
+
+async function submitReview() {
+  await reviewFormRef.value.validate()
+  reviewSubmitting.value = true
+  try {
+    await submitCourseReview({
+      courseId: course.value.id,
+      score: reviewForm.value.score,
+      content: reviewForm.value.content?.trim() || '',
+      anonymousFlag: reviewAnonymous.value ? 1 : 0
+    })
+    ElMessage.success('评价已提交，待审核')
+    reviewForm.value = { score: 5, content: '' }
+    reviewAnonymous.value = false
+    await fetchReviewData()
+  } finally {
+    reviewSubmitting.value = false
+  }
+}
+
 async function fetchCourseDetail() {
   loading.value = true
   try {
@@ -356,7 +529,10 @@ async function fetchCourseDetail() {
   }
 }
 
-onMounted(fetchCourseDetail)
+onMounted(async () => {
+  await fetchCourseDetail()
+  await fetchReviewData()
+})
 </script>
 
 <style scoped>
@@ -561,6 +737,148 @@ onMounted(fetchCourseDetail)
   padding: 0 24px 24px;
 }
 
+.review-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.review-summary-card,
+.review-form-card,
+.review-tip-card,
+.review-item {
+  border: 1px solid #ebeef5;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.review-summary-card {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 20px;
+  padding: 20px;
+}
+
+.review-score-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.review-score-main strong {
+  font-size: 42px;
+  color: #1f2d3d;
+  line-height: 1;
+}
+
+.review-score-main span {
+  margin-top: 10px;
+  color: #909399;
+  font-size: 13px;
+}
+
+.review-summary-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.summary-line {
+  color: #606266;
+  font-size: 14px;
+}
+
+.summary-bar-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 36px;
+  align-items: center;
+  gap: 12px;
+}
+
+.summary-bar-row span,
+.summary-bar-row strong {
+  color: #606266;
+  font-size: 13px;
+}
+
+.review-form-card {
+  padding: 20px;
+}
+
+.review-form-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.review-form-head h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #1f2d3d;
+}
+
+.review-form-head span,
+.review-tip-card {
+  color: #909399;
+  font-size: 13px;
+}
+
+.review-tip-card {
+  padding: 16px 18px;
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.review-item {
+  padding: 18px 20px;
+}
+
+.review-item-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.review-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.review-author-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.review-author-copy strong {
+  color: #1f2d3d;
+}
+
+.review-author-copy span {
+  color: #909399;
+  font-size: 12px;
+}
+
+.review-item p {
+  margin: 10px 0 0;
+  color: #606266;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
 .chapter-list {
   display: flex;
   flex-direction: column;
@@ -737,6 +1055,10 @@ onMounted(fetchCourseDetail)
   }
 
   .meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .review-summary-card {
     grid-template-columns: 1fr;
   }
 

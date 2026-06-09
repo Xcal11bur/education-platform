@@ -38,6 +38,10 @@
           <el-icon><Grid /></el-icon>
           <span>课程分类</span>
         </el-menu-item>
+        <el-menu-item index="/course-reviews">
+          <el-icon><ChatLineRound /></el-icon>
+          <span>课程评价</span>
+        </el-menu-item>
         <el-sub-menu index="course-hub">
           <template #title>
             <el-icon><Reading /></el-icon>
