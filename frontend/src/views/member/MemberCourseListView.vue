@@ -124,8 +124,6 @@
               <div class="course-cover" :style="buildCourseCoverStyle(course.coverUrl)">
                 <div class="course-cover-overlay"></div>
                 <div class="course-cover-top">
-                  <el-tag size="small" effect="dark" class="course-badge">{{ course.badge }}</el-tag>
-                  <div class="course-index">{{ course.code }}</div>
                 </div>
               </div>
               <div class="course-body">
@@ -134,7 +132,7 @@
                 <p>{{ course.summary }}</p>
                 <div class="course-meta">
                   <span>{{ course.teacherName || '平台课程' }}</span>
-                  <span>{{ course.learners }} 人学习</span>
+                  <span>{{ course.learners }} 人报名</span>
                 </div>
               </div>
             </article>
@@ -279,19 +277,9 @@ function goCourseDetail(id) {
   router.push(`/member/courses/${id}`)
 }
 
-function buildCourseCode(id) {
-  return `C-${String(id).padStart(3, '0')}`
-}
-
-function buildCourseBadge(index) {
-  return ['热门推荐', '精品课程', '进阶专题', '管理专题'][index % 4]
-}
-
-function mapPortalCourse(course, index = 0) {
+function mapPortalCourse(course) {
   return {
     id: course.id,
-    code: buildCourseCode(course.id),
-    badge: buildCourseBadge(index),
     categoryLevel1Id: course.categoryLevel1Id,
     categoryLevel2Id: course.categoryLevel2Id,
     category: [course.categoryLevel1Name, course.categoryLevel2Name].filter(Boolean).join(' / '),
@@ -358,7 +346,7 @@ async function fetchPortalCourses() {
       pageSize: 100
     })
 
-    portalCourses.value = (data?.list || []).map((course, index) => mapPortalCourse(course, index))
+    portalCourses.value = (data?.list || []).map((course) => mapPortalCourse(course))
   } finally {
     loading.value = false
   }
@@ -704,22 +692,8 @@ watch(filteredCourses, (courses) => {
   z-index: 1;
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
-}
-
-.course-badge {
-  border: 0;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
-}
-
-.course-index {
-  position: relative;
-  z-index: 1;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.88);
-  font-weight: 700;
-  letter-spacing: 0.06em;
 }
 
 .course-body {

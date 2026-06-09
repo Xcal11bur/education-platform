@@ -186,11 +186,9 @@
             <div class="course-cover" :style="buildCourseCoverStyle(course.coverUrl)">
               <div class="course-cover-overlay"></div>
               <div class="course-cover-top">
-                <el-tag size="small" effect="dark" class="course-badge">{{ course.badge }}</el-tag>
                 <div class="course-rank-badge">TOP {{ String(index + 1).padStart(2, '0') }}</div>
               </div>
               <div class="course-cover-bottom">
-                <div class="course-cover-code">{{ course.code }}</div>
                 <div class="course-cover-meta">{{ course.learners }} 人报名</div>
               </div>
             </div>
@@ -345,20 +343,10 @@ function goCourseDetail(id) {
   router.push(`/member/courses/${id}`)
 }
 
-function buildCourseCode(id) {
-  return `C-${String(id).padStart(3, '0')}`
-}
-
-function buildCourseBadge(index) {
-  return ['热门推荐', '精品课程', '进阶专题', '管理专题'][index % 4]
-}
-
-function mapPortalCourse(course, index = 0) {
+function mapPortalCourse(course) {
   const resolvedId = course.courseId || course.id
   return {
     id: resolvedId,
-    code: buildCourseCode(resolvedId),
-    badge: buildCourseBadge(index),
     categoryLevel2Id: course.categoryLevel2Id,
     category: [course.categoryLevel1Name, course.categoryLevel2Name].filter(Boolean).join(' / '),
     title: course.title,
@@ -451,12 +439,12 @@ async function fetchPortalCourses() {
     pageSize: 100
   })
 
-  portalCourses.value = (data?.list || []).map((course, index) => mapPortalCourse(course, index))
+  portalCourses.value = (data?.list || []).map((course) => mapPortalCourse(course))
 }
 
 async function fetchBannerCourses() {
   const { data } = await getPortalCourseBanners()
-  bannerCourses.value = (data || []).map((course, index) => mapPortalCourse(course, index))
+  bannerCourses.value = (data || []).map((course) => mapPortalCourse(course))
   activeBannerIndex.value = 0
   startBannerRotation()
 }
@@ -1059,7 +1047,7 @@ onBeforeUnmount(() => {
   z-index: 1;
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
 }
 
@@ -1068,13 +1056,8 @@ onBeforeUnmount(() => {
   z-index: 1;
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
-}
-
-.course-badge {
-  border: 0;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
 }
 
 .course-rank-badge {
@@ -1088,7 +1071,6 @@ onBeforeUnmount(() => {
   letter-spacing: 0.04em;
 }
 
-.course-cover-code,
 .course-cover-meta {
   color: rgba(255, 255, 255, 0.9);
   font-size: 12px;
