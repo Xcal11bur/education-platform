@@ -226,8 +226,7 @@ const authStore = useAuthStore()
 const navItems = [
   { key: 'home', label: '首页' },
   { key: 'courses', label: '课程学习' },
-  { key: 'practice', label: '在线实训' },
-  { key: 'certification', label: '能力认证' },
+  { key: 'certification', label: '我的任务' },
   { key: 'community', label: '交流社区' }
 ]
 

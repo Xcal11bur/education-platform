@@ -154,9 +154,6 @@
           </el-form-item>
         </el-form>
 
-        <div v-else class="placeholder-panel">
-          <el-empty description="收件箱内容后续完善" :image-size="90" />
-        </div>
       </section>
     </main>
 
@@ -193,7 +190,7 @@
 </template>
 
 <script setup>
-import { Collection, Message, User } from '@element-plus/icons-vue'
+import { Collection, User } from '@element-plus/icons-vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -248,8 +245,7 @@ const passwordForm = reactive({
 
 const menuItems = [
   { key: 'courses', label: '我的课程', icon: Collection },
-  { key: 'info', label: '个人信息', icon: User },
-  { key: 'inbox', label: '收件箱', icon: Message }
+  { key: 'info', label: '个人信息', icon: User }
 ]
 
 const displayName = computed(
