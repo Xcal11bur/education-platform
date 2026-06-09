@@ -1,13 +1,13 @@
 <template>
   <div class="layout-shell">
     <aside class="layout-sidebar">
-      <div class="brand-block">
-        <div class="brand-mark">E</div>
+      <button class="brand-block" type="button" @click="router.push('/dashboard')">
+        <img class="brand-logo" :src="brandLogo" alt="教育云平台 logo" />
         <div>
           <div class="brand-title">教育云平台</div>
           <div class="brand-subtitle">Admin Console</div>
         </div>
-      </div>
+      </button>
 
       <el-menu
         :default-active="activeMenu"
@@ -86,6 +86,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import brandLogo from '@/assets/education-cloud-logo.jpg'
 
 const route = useRoute()
 const router = useRouter()
@@ -125,17 +126,19 @@ function handleLogout() {
   align-items: center;
   gap: 12px;
   padding: 8px 10px 24px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
 }
 
-.brand-mark {
+.brand-logo {
   width: 42px;
   height: 42px;
   border-radius: 12px;
-  display: grid;
-  place-items: center;
-  font-size: 20px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #409eff, #2f68ff);
+  object-fit: cover;
 }
 
 .brand-title {

@@ -2,8 +2,8 @@
   <div class="learn-page">
     <header class="learn-topbar">
       <button class="brand-button" type="button" @click="router.push('/member-home')">
-        <div class="brand-mark">E</div>
-        <div class="brand-copy">教育平台</div>
+        <img class="brand-logo" :src="brandLogo" alt="教育云平台 logo" />
+        <div class="brand-copy">教育云平台</div>
       </button>
 
       <div class="learn-topbar-right">
@@ -283,6 +283,7 @@ import { getPortalCourseDetail, getPortalCourseMaterials } from '@/api/course'
 import { getMemberCourseTaskList } from '@/api/memberTask'
 import { getMemberCourseExamList } from '@/api/memberExam'
 import { useAuthStore } from '@/stores/auth'
+import brandLogo from '@/assets/education-cloud-logo.jpg'
 
 const route = useRoute()
 const router = useRouter()
@@ -718,16 +719,11 @@ onMounted(async () => {
   cursor: pointer;
 }
 
-.brand-mark {
+.brand-logo {
   width: 38px;
   height: 38px;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #ef4444, #f97316);
-  color: #fff;
-  font-size: 18px;
-  font-weight: 800;
+  border-radius: 10px;
+  object-fit: cover;
 }
 
 .brand-copy {

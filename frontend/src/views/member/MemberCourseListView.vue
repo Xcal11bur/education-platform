@@ -1,9 +1,10 @@
 <template>
   <div class="member-course-page">
     <header class="topbar">
-      <div class="brand-block">
-        <div class="brand-title">教育平台</div>
-      </div>
+      <button class="brand-block" type="button" @click="router.push('/member-home')">
+        <img class="brand-logo" :src="brandLogo" alt="教育云平台 logo" />
+        <div class="brand-title">教育云平台</div>
+      </button>
 
       <el-menu
         :default-active="activeNav"
@@ -167,6 +168,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getPortalCategoryTree } from '@/api/category'
 import { getPortalCourseList } from '@/api/course'
+import brandLogo from '@/assets/education-cloud-logo.jpg'
 
 const router = useRouter()
 const route = useRoute()
@@ -417,7 +419,19 @@ watch(filteredCourses, (courses) => {
 .brand-block {
   display: flex;
   align-items: center;
+  gap: 12px;
   min-width: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.brand-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  object-fit: cover;
 }
 
 .brand-title {

@@ -2,7 +2,8 @@
   <div class="profile-page">
     <header class="profile-header">
       <button class="brand-button" type="button" @click="router.push('/member-home')">
-        教育平台
+        <img class="brand-logo" :src="brandLogo" alt="教育云平台 logo" />
+        <span>教育云平台</span>
       </button>
 
       <div class="header-right">
@@ -198,6 +199,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { getMemberCourseList, unenrollCourse } from '@/api/course'
+import brandLogo from '@/assets/education-cloud-logo.jpg'
 import {
   getMemberProfile,
   updateMemberMobile,
@@ -506,8 +508,18 @@ function revokeAvatarPreview() {
 }
 
 .brand-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
   font-size: 20px;
   font-weight: 800;
+}
+
+.brand-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  object-fit: cover;
 }
 
 .header-right {
