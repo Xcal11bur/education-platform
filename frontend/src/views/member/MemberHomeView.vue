@@ -226,7 +226,7 @@ const authStore = useAuthStore()
 const navItems = [
   { key: 'home', label: '首页' },
   { key: 'courses', label: '课程学习' },
-  { key: 'certification', label: '我的任务' },
+  { key: 'tasks', label: '我的任务' },
   { key: 'community', label: '交流社区' }
 ]
 
@@ -248,6 +248,9 @@ const displayName = computed(
 const avatarUrl = computed(() => authStore.profile?.avatar || '')
 
 const activeNav = computed(() => {
+  if (route.path.startsWith('/member/tasks')) {
+    return 'tasks'
+  }
   if (route.path.startsWith('/member/courses')) {
     return 'courses'
   }
@@ -315,7 +318,8 @@ const activeCourseMenuStyle = computed(() => {
 function handleNavSelect(key) {
   const routeMap = {
     home: '/member-home',
-    courses: '/member/courses'
+    courses: '/member/courses',
+    tasks: '/member/tasks'
   }
   if (routeMap[key]) {
     router.push(routeMap[key])

@@ -177,8 +177,7 @@ const authStore = useAuthStore()
 const navItems = [
   { key: 'home', label: '首页' },
   { key: 'courses', label: '课程学习' },
-  { key: 'practice', label: '在线实训' },
-  { key: 'certification', label: '能力认证' },
+  { key: 'tasks', label: '我的任务' },
   { key: 'community', label: '交流社区' }
 ]
 
@@ -192,7 +191,12 @@ const sortMode = ref('hot')
 const pageNum = ref(1)
 const pageSize = ref(8)
 
-const activeNav = computed(() => 'courses')
+const activeNav = computed(() => {
+  if (route.path.startsWith('/member/tasks')) {
+    return 'tasks'
+  }
+  return 'courses'
+})
 
 const displayName = computed(
   () => authStore.profile?.displayName || authStore.profile?.username || '学员'
@@ -259,7 +263,8 @@ const pagedCourses = computed(() => {
 function handleNavSelect(key) {
   const routeMap = {
     home: '/member-home',
-    courses: '/member/courses'
+    courses: '/member/courses',
+    tasks: '/member/tasks'
   }
   if (routeMap[key]) {
     router.push(routeMap[key])
