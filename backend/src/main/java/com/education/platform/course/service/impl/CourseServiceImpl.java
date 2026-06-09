@@ -1,9 +1,7 @@
 package com.education.platform.course.service.impl;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.education.platform.common.exception.BusinessException;
@@ -41,6 +39,8 @@ import com.education.platform.exam.entity.CourseExam;
 import com.education.platform.exam.mapper.CourseExamMapper;
 import com.education.platform.task.entity.CourseTask;
 import com.education.platform.task.mapper.CourseTaskMapper;
+import com.education.platform.task.mapper.TaskQuestionMapper;
+import com.education.platform.task.mapper.TaskSubmissionMapper;
 import com.education.platform.teacher.entity.Teacher;
 import com.education.platform.teacher.mapper.TeacherMapper;
 import java.math.BigDecimal;
@@ -78,6 +78,10 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     private final CourseReviewMapper courseReviewMapper;
     private final CourseTaskMapper courseTaskMapper;
     private final CourseExamMapper courseExamMapper;
+    private final TaskQuestionMapper taskQuestionMapper;
+    private final TaskSubmissionMapper taskSubmissionMapper;
+    private final com.education.platform.exam.mapper.ExamQuestionMapper examQuestionMapper;
+    private final com.education.platform.exam.mapper.ExamSubmissionMapper examSubmissionMapper;
 
     public CourseServiceImpl(TeacherMapper teacherMapper,
                              com.education.platform.course.mapper.CourseCategoryMapper courseCategoryMapper,
@@ -92,7 +96,11 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
                              CourseEnrollmentMapper courseEnrollmentMapper,
                              CourseReviewMapper courseReviewMapper,
                              CourseTaskMapper courseTaskMapper,
-                             CourseExamMapper courseExamMapper) {
+                             CourseExamMapper courseExamMapper,
+                             TaskQuestionMapper taskQuestionMapper,
+                             TaskSubmissionMapper taskSubmissionMapper,
+                             com.education.platform.exam.mapper.ExamQuestionMapper examQuestionMapper,
+                             com.education.platform.exam.mapper.ExamSubmissionMapper examSubmissionMapper) {
         this.teacherMapper = teacherMapper;
         this.courseCategoryMapper = courseCategoryMapper;
         this.courseChapterService = courseChapterService;
@@ -107,6 +115,10 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         this.courseReviewMapper = courseReviewMapper;
         this.courseTaskMapper = courseTaskMapper;
         this.courseExamMapper = courseExamMapper;
+        this.taskQuestionMapper = taskQuestionMapper;
+        this.taskSubmissionMapper = taskSubmissionMapper;
+        this.examQuestionMapper = examQuestionMapper;
+        this.examSubmissionMapper = examSubmissionMapper;
     }
 
     @Override
@@ -176,8 +188,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     @Transactional(rollbackFor = Exception.class)
     public void deleteCourse(Long id) {
         Course course = getCourseOrThrow(id);
-        ensureCourseHasNoDependencies(course.getId());
-        removeById(course.getId());
+        deleteCourseCascade(course.getId());
     }
 
     @Override
@@ -211,8 +222,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     @Transactional(rollbackFor = Exception.class)
     public void deleteTeacherCourse(Long id) {
         Course course = teacherCourseAccessService.getCurrentTeacherCourse(id);
-        ensureCourseHasNoDependencies(course.getId());
-        removeById(course.getId());
+        deleteCourseCascade(course.getId());
     }
 
     private void applyPublishStatus(Course course, Integer publishStatus) {
@@ -375,38 +385,35 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         validateCourseRequest(toSaveDTO(course));
     }
 
-    private void ensureCourseHasNoDependencies(Long courseId) {
-        if (hasCourseDependency(courseBannerMapper, CourseBanner::getCourseId, courseId)) {
-            throw new BusinessException(ResultCode.CONFLICT.getCode(), "course has banners and cannot be deleted");
+    private void deleteCourseCascade(Long courseId) {
+        List<Long> taskIds = courseTaskMapper.selectList(
+                Wrappers.<CourseTask>lambdaQuery()
+                        .eq(CourseTask::getCourseId, courseId)
+        ).stream().map(CourseTask::getId).filter(Objects::nonNull).toList();
+        for (Long taskId : taskIds) {
+            taskSubmissionMapper.hardDeleteByTaskId(taskId);
+            taskQuestionMapper.hardDeleteByTaskId(taskId);
+            courseTaskMapper.hardDeleteById(taskId);
         }
-        if (hasCourseDependency(courseChapterMapper, CourseChapter::getCourseId, courseId)) {
-            throw new BusinessException(ResultCode.CONFLICT.getCode(), "course has chapters and cannot be deleted");
-        }
-        if (hasCourseDependency(courseSectionMapper, CourseSection::getCourseId, courseId)) {
-            throw new BusinessException(ResultCode.CONFLICT.getCode(), "course has sections and cannot be deleted");
-        }
-        if (hasCourseDependency(courseSectionContentMapper, CourseSectionContent::getCourseId, courseId)) {
-            throw new BusinessException(ResultCode.CONFLICT.getCode(), "course has section contents and cannot be deleted");
-        }
-        if (hasCourseDependency(courseMaterialMapper, CourseMaterial::getCourseId, courseId)) {
-            throw new BusinessException(ResultCode.CONFLICT.getCode(), "course has materials and cannot be deleted");
-        }
-        if (hasCourseDependency(courseEnrollmentMapper, CourseEnrollment::getCourseId, courseId)) {
-            throw new BusinessException(ResultCode.CONFLICT.getCode(), "course has enrollments and cannot be deleted");
-        }
-        if (hasCourseDependency(courseReviewMapper, CourseReview::getCourseId, courseId)) {
-            throw new BusinessException(ResultCode.CONFLICT.getCode(), "course has reviews and cannot be deleted");
-        }
-        if (hasCourseDependency(courseTaskMapper, CourseTask::getCourseId, courseId)) {
-            throw new BusinessException(ResultCode.CONFLICT.getCode(), "course has homeworks and cannot be deleted");
-        }
-        if (hasCourseDependency(courseExamMapper, CourseExam::getCourseId, courseId)) {
-            throw new BusinessException(ResultCode.CONFLICT.getCode(), "course has exams and cannot be deleted");
-        }
-    }
 
-    private <T> boolean hasCourseDependency(BaseMapper<T> mapper, SFunction<T, Long> field, Long courseId) {
-        return mapper.selectCount(Wrappers.<T>lambdaQuery().eq(field, courseId)) > 0;
+        List<Long> examIds = courseExamMapper.selectList(
+                Wrappers.<CourseExam>lambdaQuery()
+                        .eq(CourseExam::getCourseId, courseId)
+        ).stream().map(CourseExam::getId).filter(Objects::nonNull).toList();
+        for (Long examId : examIds) {
+            examSubmissionMapper.hardDeleteByTaskId(examId);
+            examQuestionMapper.hardDeleteByTaskId(examId);
+            courseExamMapper.hardDeleteById(examId);
+        }
+
+        courseBannerMapper.delete(Wrappers.<CourseBanner>lambdaQuery().eq(CourseBanner::getCourseId, courseId));
+        courseReviewMapper.delete(Wrappers.<CourseReview>lambdaQuery().eq(CourseReview::getCourseId, courseId));
+        courseEnrollmentMapper.delete(Wrappers.<CourseEnrollment>lambdaQuery().eq(CourseEnrollment::getCourseId, courseId));
+        courseMaterialMapper.delete(Wrappers.<CourseMaterial>lambdaQuery().eq(CourseMaterial::getCourseId, courseId));
+        courseSectionContentMapper.delete(Wrappers.<CourseSectionContent>lambdaQuery().eq(CourseSectionContent::getCourseId, courseId));
+        courseSectionMapper.delete(Wrappers.<CourseSection>lambdaQuery().eq(CourseSection::getCourseId, courseId));
+        courseChapterMapper.delete(Wrappers.<CourseChapter>lambdaQuery().eq(CourseChapter::getCourseId, courseId));
+        removeById(courseId);
     }
 
     private CourseSaveDTO toSaveDTO(Course course) {
