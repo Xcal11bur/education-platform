@@ -89,6 +89,13 @@ export function updateCoursePublishStatus(id, data) {
   })
 }
 
+export function deleteCourse(id) {
+  return request({
+    url: `/admin/courses/${id}`,
+    method: 'delete'
+  })
+}
+
 export function uploadCourseCoverFile(file) {
   const formData = new FormData()
   formData.append('file', file)

@@ -39,6 +39,13 @@ export function updateTeacherCoursePublishStatus(id, data) {
   })
 }
 
+export function deleteTeacherCourse(id) {
+  return request({
+    url: `/teacher/courses/${id}`,
+    method: 'delete'
+  })
+}
+
 export function uploadTeacherCourseCoverFile(file) {
   const formData = new FormData()
   formData.append('file', file)

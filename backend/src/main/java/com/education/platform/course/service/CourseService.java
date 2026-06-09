@@ -25,11 +25,15 @@ public interface CourseService extends IService<Course> {
 
     void updatePublishStatus(Long id, Integer publishStatus);
 
+    void deleteCourse(Long id);
+
     void createTeacherCourse(CourseSaveDTO request);
 
     void updateTeacherCourse(Long id, CourseSaveDTO request);
 
     void updateTeacherPublishStatus(Long id, Integer publishStatus);
+
+    void deleteTeacherCourse(Long id);
 
     PageResponse<CourseVO> pagePortalCourses(CourseQueryDTO queryDTO);
 

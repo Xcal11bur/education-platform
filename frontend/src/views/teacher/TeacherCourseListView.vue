@@ -39,7 +39,7 @@
         </template>
       </el-table-column>
       <el-table-column prop="studyCount" label="学习人数" width="110" />
-      <el-table-column label="操作" width="330" fixed="right">
+      <el-table-column label="操作" width="390" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openEdit(row.id)">编辑</el-button>
           <el-button link type="primary" @click="goChapters(row.id)">章节</el-button>
@@ -51,6 +51,7 @@
           >
             {{ row.publishStatus === 1 ? '下架' : '上架' }}
           </el-button>
+          <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -131,11 +132,12 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { getPortalCategoryTree } from '@/api/category'
 import {
   createTeacherCourse,
+  deleteTeacherCourse,
   getTeacherCourseDetail,
   getTeacherCourseList,
   updateTeacherCourse,
@@ -366,6 +368,21 @@ async function togglePublish(row) {
   const publishStatus = row.publishStatus === 1 ? 2 : 1
   await updateTeacherCoursePublishStatus(row.id, { publishStatus })
   ElMessage.success(publishStatus === 1 ? '课程已上架' : '课程已下架')
+  fetchCourses()
+}
+
+async function handleDelete(row) {
+  await ElMessageBox.confirm(
+    `确定删除课程“${row.title}”吗？删除后不可恢复。`,
+    '删除课程',
+    {
+      type: 'warning',
+      confirmButtonText: '确认删除',
+      cancelButtonText: '取消'
+    }
+  )
+  await deleteTeacherCourse(row.id)
+  ElMessage.success('课程已删除')
   fetchCourses()
 }
 
