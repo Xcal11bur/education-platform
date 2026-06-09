@@ -483,8 +483,7 @@ public class ExamSubmissionServiceImpl extends ServiceImpl<ExamSubmissionMapper,
     }
 
     private int getRemainingAttempts(CourseExam exam, int usedAttempts) {
-        int totalAttempts = Math.max(1, (exam.getAllowRetakeCount() == null ? 0 : exam.getAllowRetakeCount()) + 1);
-        return Math.max(0, totalAttempts - usedAttempts);
+        return Math.max(0, 1 - usedAttempts);
     }
 
     private void ensureCourseEnrolled(Long courseId) {

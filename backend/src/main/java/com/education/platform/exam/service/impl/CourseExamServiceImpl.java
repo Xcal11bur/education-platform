@@ -138,9 +138,6 @@ public class CourseExamServiceImpl extends ServiceImpl<CourseExamMapper, CourseE
         if (request.getDurationMinutes() == null || request.getDurationMinutes() <= 0) {
             throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "durationMinutes must be greater than 0");
         }
-        if (request.getAllowRetakeCount() != null && request.getAllowRetakeCount() < 0) {
-            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "allowRetakeCount must not be less than 0");
-        }
         if (request.getStatus() != null && !EXAM_STATUS.contains(request.getStatus())) {
             throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "status must be 0 or 1");
         }
@@ -162,9 +159,7 @@ public class CourseExamServiceImpl extends ServiceImpl<CourseExamMapper, CourseE
         if (exam.getPassScore() == null) {
             exam.setPassScore(60);
         }
-        if (exam.getAllowRetakeCount() == null) {
-            exam.setAllowRetakeCount(1);
-        }
+        exam.setAllowRetakeCount(0);
         if (exam.getStatus() == null) {
             exam.setStatus(0);
         }

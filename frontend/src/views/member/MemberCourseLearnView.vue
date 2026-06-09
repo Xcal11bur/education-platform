@@ -156,8 +156,8 @@
                     <strong>{{ formatTaskScore(task) }}</strong>
                   </div>
                   <div class="assignment-side-item">
-                    <span>剩余次数</span>
-                    <strong>{{ task.remainingAttempts }}</strong>
+                    <span>已考次数</span>
+                    <strong>{{ task.usedAttempts }}/1</strong>
                   </div>
                 </div>
               </article>
@@ -531,9 +531,6 @@ function examActionLabel(task) {
   }
   if (isExamSessionActive(task)) {
     return '继续考试'
-  }
-  if (task.completed) {
-    return '再次考试'
   }
   return '进入考试'
 }

@@ -120,7 +120,7 @@
         <el-form-item v-if="isExamScene" label="限时(分钟)">
           <el-input-number v-model="form.durationMinutes" :min="1" :max="1440" />
         </el-form-item>
-        <el-form-item label="可补交次数">
+        <el-form-item v-if="!isExamScene" label="可补交次数">
           <el-input-number v-model="form.allowRetakeCount" :min="0" :max="20" />
         </el-form-item>
         <el-form-item label="状态">
@@ -267,7 +267,7 @@ async function openEdit(id) {
     startTime: data.startTime || '',
     endTime: data.endTime || '',
     durationMinutes: data.durationMinutes ?? null,
-    allowRetakeCount: data.allowRetakeCount ?? 1,
+    allowRetakeCount: data.allowRetakeCount ?? (isExamScene.value ? 0 : 1),
     status: data.status ?? 0
   })
   dialogVisible.value = true
@@ -284,7 +284,7 @@ async function submitForm() {
       passScore: form.passScore,
       startTime: form.startTime || null,
       endTime: form.endTime || null,
-      allowRetakeCount: form.allowRetakeCount,
+      allowRetakeCount: isExamScene.value ? 0 : form.allowRetakeCount,
       status: form.status,
       ...(isExamScene.value ? { durationMinutes: form.durationMinutes || null } : {})
     }
