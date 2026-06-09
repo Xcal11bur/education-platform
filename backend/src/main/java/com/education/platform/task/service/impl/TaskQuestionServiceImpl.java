@@ -30,6 +30,7 @@ public class TaskQuestionServiceImpl extends ServiceImpl<TaskQuestionMapper, Tas
 
     private static final int QUESTION_TYPE_SINGLE = 1;
     private static final int QUESTION_TYPE_JUDGE = 3;
+    private static final int QUESTION_TYPE_SUBJECTIVE = 4;
     private static final String JUDGE_TRUE = "T";
     private static final String JUDGE_FALSE = "F";
 
@@ -118,6 +119,9 @@ public class TaskQuestionServiceImpl extends ServiceImpl<TaskQuestionMapper, Tas
             if (request.getQuestionType() == QUESTION_TYPE_SINGLE) {
                 return normalizeSingleChoice(request);
             }
+            if (request.getQuestionType() == QUESTION_TYPE_SUBJECTIVE) {
+                return normalizeSubjective(request);
+            }
             return normalizeJudge(request);
         } catch (JsonProcessingException ex) {
             throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "question payload is invalid");
@@ -126,8 +130,10 @@ public class TaskQuestionServiceImpl extends ServiceImpl<TaskQuestionMapper, Tas
 
     private void validateBasicRequest(TaskQuestionSaveDTO request) {
         if (request.getQuestionType() == null
-                || (request.getQuestionType() != QUESTION_TYPE_SINGLE && request.getQuestionType() != QUESTION_TYPE_JUDGE)) {
-            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "questionType must be single or judge");
+                || (request.getQuestionType() != QUESTION_TYPE_SINGLE
+                && request.getQuestionType() != QUESTION_TYPE_JUDGE
+                && request.getQuestionType() != QUESTION_TYPE_SUBJECTIVE)) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "questionType must be single, judge or subjective");
         }
         if (request.getScore() == null || request.getScore() <= 0) {
             throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "score must be greater than 0");
@@ -198,6 +204,14 @@ public class TaskQuestionServiceImpl extends ServiceImpl<TaskQuestionMapper, Tas
                 objectMapper.writeValueAsString(options),
                 objectMapper.writeValueAsString(List.of(answer))
         );
+    }
+
+    private NormalizedQuestion normalizeSubjective(TaskQuestionSaveDTO request) throws JsonProcessingException {
+        String referenceAnswer = normalizeText(request.getAnswerJson());
+        if (referenceAnswer == null) {
+            return new NormalizedQuestion(null, null);
+        }
+        return new NormalizedQuestion(null, objectMapper.writeValueAsString(List.of(referenceAnswer)));
     }
 
     private void refreshTaskAfterQuestionChange(Long taskId) {

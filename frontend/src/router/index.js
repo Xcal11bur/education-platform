@@ -200,6 +200,16 @@ const router = createRouter({
             activeMenu: '/teacher/course-management/tasks',
             roles: ['TEACHER']
           }
+        },
+        {
+          path: 'course-management/tasks/:taskId/submissions',
+          name: 'TeacherTaskSubmissions',
+          component: () => import('@/views/teacher/TeacherTaskSubmissionView.vue'),
+          meta: {
+            title: '提交记录',
+            activeMenu: '/teacher/course-management/tasks',
+            roles: ['TEACHER']
+          }
         }
       ]
     }

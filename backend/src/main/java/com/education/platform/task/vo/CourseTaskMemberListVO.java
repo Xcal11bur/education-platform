@@ -22,6 +22,7 @@ public class CourseTaskMemberListVO {
     private Integer questionCount;
     private Boolean completed;
     private Integer latestScore;
+    private Integer latestReviewStatus;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime latestSubmittedAt;
     private Integer usedAttempts;

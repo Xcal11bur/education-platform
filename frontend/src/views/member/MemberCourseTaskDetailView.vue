@@ -31,7 +31,11 @@
             <h1>{{ taskDetail?.title || '作业详情' }}</h1>
           </div>
           <div class="task-head-actions">
-            <div v-if="taskDetail?.submitted && taskDetail?.latestSubmission" class="task-score-panel" :class="scoreStatusClass">
+            <div
+              v-if="taskDetail?.submitted && taskDetail?.latestSubmission && taskDetail?.latestSubmission?.reviewStatus === 1"
+              class="task-score-panel"
+              :class="scoreStatusClass"
+            >
               <span class="task-score-label">{{ scoreStatusText }}</span>
               <strong class="task-score-value">
                 {{ taskDetail.latestSubmission.score ?? 0 }} / {{ taskDetail.totalScore ?? 0 }}
@@ -64,7 +68,7 @@
             </div>
 
             <div class="question-options">
-              <template v-if="isAnswerMode">
+              <template v-if="isAnswerMode && question.questionType !== 4">
                 <el-radio-group v-model="answerMap[question.id]" class="question-radio-group">
                   <div
                     v-for="option in parseOptions(question.optionsJson)"
@@ -77,23 +81,40 @@
                   </div>
                 </el-radio-group>
               </template>
+              <template v-else-if="isAnswerMode">
+                <RichTextEditor
+                  v-model="answerMap[question.id]"
+                  placeholder="请输入你的作答内容"
+                  :min-height="240"
+                />
+              </template>
               <template v-else>
-                <div
-                  v-for="option in parseOptions(question.optionsJson)"
-                  :key="option.label"
-                  class="option-line"
-                >
-                  {{ option.label }}. {{ option.content }}
-                </div>
+                <template v-if="question.questionType !== 4">
+                  <div
+                    v-for="option in parseOptions(question.optionsJson)"
+                    :key="option.label"
+                    class="option-line"
+                  >
+                    {{ option.label }}. {{ option.content }}
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="subjective-review-card">
+                    <div class="subjective-review-title">我的作答</div>
+                    <div class="subjective-review-content" v-html="formatSubjectiveAnswer(question)"></div>
+                  </div>
+                </template>
               </template>
             </div>
 
             <template v-if="!isAnswerMode">
               <div class="answer-result-card">
                 <div class="answer-copy">
-                  我的答案：{{ formatMyAnswer(question) }}
+                  {{ question.questionType === 4 ? '批改结果' : `我的答案：${formatMyAnswer(question)}` }}
                 </div>
-                <div class="answer-score">{{ question.earnedScore ?? 0 }} 分</div>
+                <div class="answer-score">
+                  {{ question.reviewPending ? '待批改' : `${question.earnedScore ?? 0} 分` }}
+                </div>
               </div>
               <div v-if="question.analysis" class="analysis-block">
                 解析：{{ question.analysis }}
@@ -143,6 +164,7 @@
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import RichTextEditor from '@/components/RichTextEditor.vue'
 import { getMemberTaskDetail, submitMemberTask } from '@/api/memberTask'
 import { useAuthStore } from '@/stores/auth'
 
@@ -163,6 +185,9 @@ const isAnswerMode = computed(() => route.query.mode === 'answer' && taskDetail.
 const pageStatus = computed(() => {
   if (isAnswerMode.value) {
     return { label: '答题中', type: 'primary' }
+  }
+  if (taskDetail.value?.submitted && taskDetail.value?.latestSubmission?.reviewStatus === 0) {
+    return { label: '待批改', type: 'warning' }
   }
   if (taskDetail.value?.submitted) {
     return { label: '已提交', type: 'success' }
@@ -200,7 +225,7 @@ const questionGroups = computed(() => {
 })
 
 function questionTypeText(value) {
-  return value === 1 ? '单选题' : value === 3 ? '判断题' : '题目'
+  return value === 1 ? '单选题' : value === 3 ? '判断题' : value === 4 ? '主观题' : '题目'
 }
 
 function parseOptions(value) {
@@ -258,6 +283,10 @@ function findQuestionIndex(questionId) {
 
 function isQuestionAnswered(questionId) {
   if (isAnswerMode.value) {
+    const question = (taskDetail.value?.questions || []).find((item) => item.id === questionId)
+    if (question?.questionType === 4) {
+      return isRichTextFilled(answerMap[questionId])
+    }
     return Boolean(answerMap[questionId])
   }
   const question = (taskDetail.value?.questions || []).find((item) => item.id === questionId)
@@ -278,12 +307,28 @@ function formatMyAnswer(question) {
   if (!answer) {
     return '--'
   }
+  if (question.questionType === 4) {
+    return stripHtml(answer) || '--'
+  }
   if (question.questionType === 3) {
     return answer === 'T' ? '正确' : '错误'
   }
   const options = parseOptions(question.optionsJson)
   const selectedOption = options.find((item) => item.label === answer)
   return selectedOption ? `${answer}. ${selectedOption.content}` : answer
+}
+
+function formatSubjectiveAnswer(question) {
+  const answer = parseAnswer(question.myAnswerJson)[0]
+  return answer || '<p>暂无作答内容</p>'
+}
+
+function stripHtml(value) {
+  return String(value || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
+}
+
+function isRichTextFilled(value) {
+  return stripHtml(value).length > 0
 }
 
 function initAnswerMap() {
@@ -317,7 +362,12 @@ function buildAnswersPayload() {
 }
 
 function validateBeforeSubmit() {
-  const unanswered = (taskDetail.value?.questions || []).find((question) => !answerMap[question.id])
+  const unanswered = (taskDetail.value?.questions || []).find((question) => {
+    if (question.questionType === 4) {
+      return !isRichTextFilled(answerMap[question.id])
+    }
+    return !answerMap[question.id]
+  })
   if (unanswered) {
     ElMessage.warning('请先完成全部题目')
     scrollToQuestion(unanswered.id)
@@ -588,6 +638,34 @@ onMounted(async () => {
   color: #0f172a;
   font-size: 22px;
   font-weight: 800;
+}
+
+.subjective-review-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 18px;
+  background: #fff;
+}
+
+.subjective-review-title {
+  margin-bottom: 10px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.subjective-review-content {
+  color: #1f2937;
+  line-height: 1.8;
+}
+
+.subjective-review-content :deep(p) {
+  margin: 8px 0;
+}
+
+.subjective-review-content :deep(ul),
+.subjective-review-content :deep(ol) {
+  padding-left: 22px;
 }
 
 .analysis-block {

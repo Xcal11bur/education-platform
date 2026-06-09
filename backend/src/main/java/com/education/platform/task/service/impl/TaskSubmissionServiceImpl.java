@@ -9,6 +9,10 @@ import com.education.platform.common.result.ResultCode;
 import com.education.platform.course.entity.Course;
 import com.education.platform.course.mapper.CourseMapper;
 import com.education.platform.course.service.CourseEnrollmentService;
+import com.education.platform.course.service.TeacherCourseAccessService;
+import com.education.platform.member.entity.Member;
+import com.education.platform.member.mapper.MemberMapper;
+import com.education.platform.task.dto.TaskSubmissionReviewDTO;
 import com.education.platform.task.dto.TaskSubmissionSaveDTO;
 import com.education.platform.task.entity.CourseTask;
 import com.education.platform.task.entity.TaskQuestion;
@@ -21,6 +25,9 @@ import com.education.platform.task.vo.CourseTaskMemberDetailVO;
 import com.education.platform.task.vo.CourseTaskMemberListVO;
 import com.education.platform.task.vo.TaskQuestionMemberVO;
 import com.education.platform.task.vo.TaskSubmissionVO;
+import com.education.platform.task.vo.TaskSubmissionQuestionTeacherVO;
+import com.education.platform.task.vo.TaskSubmissionTeacherDetailVO;
+import com.education.platform.task.vo.TaskSubmissionTeacherVO;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -47,14 +54,18 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
 
     private static final String ROLE_MEMBER = "MEMBER";
     private static final int TASK_STATUS_PUBLISHED = 1;
+    private static final int REVIEW_PENDING_STATUS = 0;
     private static final int REVIEWED_STATUS = 1;
     private static final Set<Integer> SUPPORTED_QUESTION_TYPES = Set.of(1, 3);
+    private static final int QUESTION_TYPE_SUBJECTIVE = 4;
 
     private final ObjectMapper objectMapper;
     private final CourseMapper courseMapper;
     private final CourseTaskMapper courseTaskMapper;
     private final TaskQuestionMapper taskQuestionMapper;
     private final CourseEnrollmentService courseEnrollmentService;
+    private final TeacherCourseAccessService teacherCourseAccessService;
+    private final MemberMapper memberMapper;
 
     @Override
     public List<CourseTaskMemberListVO> listCurrentMemberCourseTasks(Long courseId) {
@@ -85,7 +96,10 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
 
             TaskSubmission latestSubmission = latestSubmissionMap.get(task.getId());
             vo.setCompleted(latestSubmission != null);
-            vo.setLatestScore(latestSubmission == null ? null : latestSubmission.getScore());
+            vo.setLatestReviewStatus(latestSubmission == null ? null : latestSubmission.getReviewStatus());
+            vo.setLatestScore(latestSubmission == null || !Objects.equals(latestSubmission.getReviewStatus(), REVIEWED_STATUS)
+                    ? null
+                    : latestSubmission.getScore());
             vo.setLatestSubmittedAt(latestSubmission == null ? null : latestSubmission.getSubmittedAt());
 
             int usedAttempts = usedAttemptsMap.getOrDefault(task.getId(), 0);
@@ -154,22 +168,161 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
         }
 
         Map<Long, List<String>> answerMap = parseSubmissionAnswers(request.getAnswersJson());
-        int objectiveScore = calculateObjectiveScore(questions, answerMap);
+        Map<Long, StoredAnswer> storedAnswerMap = buildSubmissionStoredAnswerMap(questions, answerMap);
+        int objectiveScore = calculateObjectiveScore(questions, storedAnswerMap);
+        boolean hasSubjectiveQuestion = questions.stream().anyMatch(question -> Objects.equals(question.getQuestionType(), QUESTION_TYPE_SUBJECTIVE));
         LocalDateTime now = LocalDateTime.now();
 
         TaskSubmission submission = new TaskSubmission();
         submission.setTaskId(taskId);
         submission.setMemberId(memberId);
         submission.setAttemptNo(usedAttempts + 1);
-        submission.setAnswersJson(buildStoredAnswersJson(answerMap));
+        submission.setAnswersJson(buildStoredAnswersJson(storedAnswerMap));
         submission.setAttachmentUrl(normalizeText(request.getAttachmentUrl()));
         submission.setObjectiveScore(objectiveScore);
         submission.setSubjectiveScore(0);
         submission.setScore(objectiveScore);
-        submission.setReviewStatus(REVIEWED_STATUS);
+        submission.setReviewStatus(hasSubjectiveQuestion ? REVIEW_PENDING_STATUS : REVIEWED_STATUS);
         submission.setSubmittedAt(now);
-        submission.setReviewedAt(now);
+        submission.setReviewedAt(hasSubjectiveQuestion ? null : now);
         save(submission);
+    }
+
+    @Override
+    public List<TaskSubmissionTeacherVO> listTeacherTaskSubmissions(Long taskId) {
+        CourseTask task = getTaskOrThrow(taskId);
+        teacherCourseAccessService.getCurrentTeacherCourse(task.getCourseId());
+
+        List<TaskSubmission> submissions = lambdaQuery()
+                .eq(TaskSubmission::getTaskId, taskId)
+                .orderByDesc(TaskSubmission::getSubmittedAt)
+                .orderByDesc(TaskSubmission::getId)
+                .list();
+        if (submissions.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, Member> memberMap = listMembersByIds(submissions.stream()
+                .map(TaskSubmission::getMemberId)
+                .filter(Objects::nonNull)
+                .toList());
+
+        return submissions.stream().map(submission -> {
+            TaskSubmissionTeacherVO vo = new TaskSubmissionTeacherVO();
+            BeanUtils.copyProperties(submission, vo);
+            vo.setTaskTitle(task.getTitle());
+            Member member = memberMap.get(submission.getMemberId());
+            if (member != null) {
+                vo.setMemberName(getMemberDisplayName(member));
+                vo.setMemberMobile(member.getMobile());
+            }
+            return vo;
+        }).toList();
+    }
+
+    @Override
+    public TaskSubmissionTeacherDetailVO getTeacherTaskSubmissionDetail(Long submissionId) {
+        TaskSubmission submission = getSubmissionOrThrow(submissionId);
+        CourseTask task = getTaskOrThrow(submission.getTaskId());
+        teacherCourseAccessService.getCurrentTeacherCourse(task.getCourseId());
+
+        Member member = memberMapper.selectById(submission.getMemberId());
+        List<TaskQuestion> questions = listTaskQuestions(task.getId());
+        Map<Long, StoredAnswer> storedAnswerMap = parseStoredAnswers(submission.getAnswersJson());
+
+        TaskSubmissionTeacherDetailVO vo = new TaskSubmissionTeacherDetailVO();
+        BeanUtils.copyProperties(submission, vo);
+        vo.setTaskTitle(task.getTitle());
+        vo.setCourseId(task.getCourseId());
+        vo.setCourseTitle(getCourseTitle(task.getCourseId()));
+        vo.setTotalScore(task.getTotalScore());
+        vo.setPassScore(task.getPassScore());
+        if (member != null) {
+            vo.setMemberName(getMemberDisplayName(member));
+            vo.setMemberMobile(member.getMobile());
+        }
+        vo.setQuestions(questions.stream().map(question -> {
+            TaskSubmissionQuestionTeacherVO questionVO = new TaskSubmissionQuestionTeacherVO();
+            questionVO.setQuestionId(question.getId());
+            questionVO.setQuestionType(question.getQuestionType());
+            questionVO.setStem(question.getStem());
+            questionVO.setOptionsJson(question.getOptionsJson());
+            questionVO.setAnswerJson(question.getAnswerJson());
+            questionVO.setAnalysis(question.getAnalysis());
+            questionVO.setScore(question.getScore());
+            questionVO.setSort(question.getSort());
+            StoredAnswer storedAnswer = storedAnswerMap.get(question.getId());
+            if (storedAnswer != null) {
+                questionVO.setMemberAnswerJson(writeJsonSilently(storedAnswer.answer()));
+                questionVO.setEarnedScore(storedAnswer.earnedScore());
+            }
+            return questionVO;
+        }).toList());
+        return vo;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void reviewTeacherTaskSubmission(Long submissionId, TaskSubmissionReviewDTO request) {
+        TaskSubmission submission = getSubmissionOrThrow(submissionId);
+        CourseTask task = getTaskOrThrow(submission.getTaskId());
+        teacherCourseAccessService.getCurrentTeacherCourse(task.getCourseId());
+
+        List<TaskQuestion> questions = listTaskQuestions(task.getId());
+        Map<Long, TaskQuestion> questionMap = questions.stream().collect(Collectors.toMap(TaskQuestion::getId, Function.identity()));
+        Map<Long, StoredAnswer> storedAnswerMap = parseStoredAnswers(submission.getAnswersJson());
+        Map<Long, Integer> reviewScoreMap = request.getQuestionScores().stream().collect(Collectors.toMap(
+                TaskSubmissionReviewDTO.QuestionScoreDTO::getQuestionId,
+                TaskSubmissionReviewDTO.QuestionScoreDTO::getScore,
+                (left, right) -> right
+        ));
+
+        int objectiveScore = 0;
+        int subjectiveScore = 0;
+        for (TaskQuestion question : questions) {
+            StoredAnswer storedAnswer = storedAnswerMap.get(question.getId());
+            if (storedAnswer == null) {
+                continue;
+            }
+            if (SUPPORTED_QUESTION_TYPES.contains(question.getQuestionType())) {
+                int earnedScore = storedAnswer.earnedScore() == null
+                        ? (isCorrectAnswer(question, storedAnswer.answer()) ? (question.getScore() == null ? 0 : question.getScore()) : 0)
+                        : storedAnswer.earnedScore();
+                storedAnswerMap.put(question.getId(), new StoredAnswer(question.getId(), storedAnswer.answer(), earnedScore));
+                objectiveScore += earnedScore;
+                continue;
+            }
+            if (!Objects.equals(question.getQuestionType(), QUESTION_TYPE_SUBJECTIVE)) {
+                continue;
+            }
+            Integer score = reviewScoreMap.get(question.getId());
+            if (score == null) {
+                throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "missing subjective question score");
+            }
+            validateSubjectiveScore(question, score);
+            storedAnswerMap.put(question.getId(), new StoredAnswer(question.getId(), storedAnswer.answer(), score));
+            subjectiveScore += score;
+        }
+
+        for (TaskSubmissionReviewDTO.QuestionScoreDTO item : request.getQuestionScores()) {
+            TaskQuestion question = questionMap.get(item.getQuestionId());
+            if (question == null) {
+                throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "question not found in task");
+            }
+            if (!Objects.equals(question.getQuestionType(), QUESTION_TYPE_SUBJECTIVE)) {
+                continue;
+            }
+            validateSubjectiveScore(question, item.getScore());
+        }
+
+        submission.setAnswersJson(buildStoredAnswersJson(storedAnswerMap));
+        submission.setObjectiveScore(objectiveScore);
+        submission.setSubjectiveScore(subjectiveScore);
+        submission.setScore(objectiveScore + subjectiveScore);
+        submission.setReviewStatus(REVIEWED_STATUS);
+        submission.setReviewComment(normalizeText(request.getReviewComment()));
+        submission.setReviewedAt(LocalDateTime.now());
+        updateById(submission);
     }
 
     private List<TaskQuestion> listTaskQuestions(Long taskId) {
@@ -182,7 +335,7 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
     }
 
     private List<TaskQuestionMemberVO> buildMemberQuestionVOs(List<TaskQuestion> questions, TaskSubmission latestSubmission) {
-        Map<Long, List<String>> submissionAnswerMap = latestSubmission == null
+        Map<Long, StoredAnswer> submissionAnswerMap = latestSubmission == null
                 ? Map.of()
                 : parseStoredAnswers(latestSubmission.getAnswersJson());
 
@@ -195,25 +348,26 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
             vo.setScore(question.getScore());
             vo.setSort(question.getSort());
             if (latestSubmission != null) {
-                List<String> myAnswer = submissionAnswerMap.getOrDefault(question.getId(), List.of());
+                StoredAnswer storedAnswer = submissionAnswerMap.get(question.getId());
+                List<String> myAnswer = storedAnswer == null ? List.of() : storedAnswer.answer();
                 vo.setMyAnswerJson(writeJsonSilently(myAnswer));
-                vo.setEarnedScore(isCorrectAnswer(question, myAnswer) ? question.getScore() : 0);
+                vo.setEarnedScore(storedAnswer == null ? null : storedAnswer.earnedScore());
+                vo.setReviewPending(Objects.equals(question.getQuestionType(), QUESTION_TYPE_SUBJECTIVE)
+                        && !Objects.equals(latestSubmission.getReviewStatus(), REVIEWED_STATUS));
                 vo.setAnalysis(question.getAnalysis());
             }
             return vo;
         }).toList();
     }
 
-    private int calculateObjectiveScore(List<TaskQuestion> questions, Map<Long, List<String>> answerMap) {
+    private int calculateObjectiveScore(List<TaskQuestion> questions, Map<Long, StoredAnswer> answerMap) {
         int score = 0;
         for (TaskQuestion question : questions) {
             if (!SUPPORTED_QUESTION_TYPES.contains(question.getQuestionType())) {
                 continue;
             }
-            List<String> answers = answerMap.getOrDefault(question.getId(), List.of());
-            if (isCorrectAnswer(question, answers)) {
-                score += question.getScore() == null ? 0 : question.getScore();
-            }
+            StoredAnswer storedAnswer = answerMap.get(question.getId());
+            score += storedAnswer == null || storedAnswer.earnedScore() == null ? 0 : storedAnswer.earnedScore();
         }
         return score;
     }
@@ -319,6 +473,22 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
         return task;
     }
 
+    private CourseTask getTaskOrThrow(Long taskId) {
+        CourseTask task = courseTaskMapper.selectById(taskId);
+        if (task == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "course task not found");
+        }
+        return task;
+    }
+
+    private TaskSubmission getSubmissionOrThrow(Long submissionId) {
+        TaskSubmission submission = getById(submissionId);
+        if (submission == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "task submission not found");
+        }
+        return submission;
+    }
+
     private String getCourseTitle(Long courseId) {
         if (courseId == null) {
             return null;
@@ -359,7 +529,7 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
         }
     }
 
-    private Map<Long, List<String>> parseStoredAnswers(String answersJson) {
+    private Map<Long, StoredAnswer> parseStoredAnswers(String answersJson) {
         if (!StringUtils.hasText(answersJson)) {
             return Map.of();
         }
@@ -368,7 +538,7 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
             });
             return storedAnswers.stream().collect(Collectors.toMap(
                     StoredAnswer::questionId,
-                    item -> normalizeAnswerValues(item.answer()),
+                    item -> new StoredAnswer(item.questionId(), normalizeAnswerValues(item.answer()), item.earnedScore()),
                     (left, right) -> right
             ));
         } catch (JsonProcessingException ex) {
@@ -376,12 +546,25 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
         }
     }
 
-    private String buildStoredAnswersJson(Map<Long, List<String>> answerMap) {
+    private String buildStoredAnswersJson(Map<Long, StoredAnswer> answerMap) {
         List<StoredAnswer> storedAnswers = answerMap.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
-                .map(entry -> new StoredAnswer(entry.getKey(), normalizeAnswerValues(entry.getValue())))
+                .map(Map.Entry::getValue)
                 .toList();
         return writeJsonSilently(storedAnswers);
+    }
+
+    private Map<Long, StoredAnswer> buildSubmissionStoredAnswerMap(List<TaskQuestion> questions, Map<Long, List<String>> answerMap) {
+        Map<Long, StoredAnswer> storedAnswerMap = new java.util.LinkedHashMap<>();
+        for (TaskQuestion question : questions) {
+            List<String> answers = answerMap.getOrDefault(question.getId(), List.of());
+            Integer earnedScore = null;
+            if (SUPPORTED_QUESTION_TYPES.contains(question.getQuestionType())) {
+                earnedScore = isCorrectAnswer(question, answers) ? (question.getScore() == null ? 0 : question.getScore()) : 0;
+            }
+            storedAnswerMap.put(question.getId(), new StoredAnswer(question.getId(), answers, earnedScore));
+        }
+        return storedAnswerMap;
     }
 
     private List<String> normalizeAnswerNode(JsonNode answerNode) {
@@ -450,6 +633,34 @@ public class TaskSubmissionServiceImpl extends ServiceImpl<TaskSubmissionMapper,
         }
     }
 
-    private record StoredAnswer(Long questionId, List<String> answer) {
+    private Map<Long, Member> listMembersByIds(Collection<Long> memberIds) {
+        if (memberIds == null || memberIds.isEmpty()) {
+            return Map.of();
+        }
+        return memberMapper.selectList(
+                Wrappers.<Member>lambdaQuery().in(Member::getId, memberIds)
+        ).stream().collect(Collectors.toMap(Member::getId, Function.identity()));
+    }
+
+    private String getMemberDisplayName(Member member) {
+        if (member == null) {
+            return null;
+        }
+        if (StringUtils.hasText(member.getNickname())) {
+            return member.getNickname().trim();
+        }
+        if (StringUtils.hasText(member.getRealName())) {
+            return member.getRealName().trim();
+        }
+        return member.getMobile();
+    }
+
+    private void validateSubjectiveScore(TaskQuestion question, Integer score) {
+        if (score == null || score < 0 || score > (question.getScore() == null ? 0 : question.getScore())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "subjective score is invalid");
+        }
+    }
+
+    private record StoredAnswer(Long questionId, List<String> answer, Integer earnedScore) {
     }
 }

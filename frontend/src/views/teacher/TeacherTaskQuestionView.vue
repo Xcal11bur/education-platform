@@ -63,6 +63,7 @@
           <el-radio-group v-model="form.questionType">
             <el-radio :value="1">单选题</el-radio>
             <el-radio :value="3">判断题</el-radio>
+            <el-radio :value="4">主观题</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="题干">
@@ -104,12 +105,21 @@
             </el-radio-group>
           </el-form-item>
         </template>
-        <template v-else>
+        <template v-else-if="form.questionType === 3">
           <el-form-item label="正确答案">
             <el-radio-group v-model="form.answer">
               <el-radio value="T">正确</el-radio>
               <el-radio value="F">错误</el-radio>
             </el-radio-group>
+          </el-form-item>
+        </template>
+        <template v-else>
+          <el-form-item label="参考答案">
+            <RichTextEditor
+              v-model="form.subjectiveAnswer"
+              placeholder="可选，输入参考答案或评分要点"
+              :min-height="180"
+            />
           </el-form-item>
         </template>
         <el-form-item label="分值">
@@ -138,6 +148,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import RichTextEditor from '@/components/RichTextEditor.vue'
 import { getTeacherTaskDetail } from '@/api/teacherTask'
 import {
   createTeacherTaskQuestion,
@@ -171,6 +182,7 @@ const defaultForm = () => ({
   stem: '',
   options: optionLabels.map((label) => ({ label, content: '' })),
   answer: 'A',
+  subjectiveAnswer: '',
   score: 5,
   analysis: ''
 })
@@ -183,7 +195,7 @@ function resetForm() {
 }
 
 function questionTypeText(value) {
-  return value === 1 ? '单选题' : value === 3 ? '判断题' : '未知'
+  return value === 1 ? '单选题' : value === 3 ? '判断题' : value === 4 ? '主观题' : '未知'
 }
 
 function parseJsonArray(value) {
@@ -204,6 +216,9 @@ function formatAnswer(row) {
   }
   if (row.questionType === 3) {
     return answer === 'T' ? '正确' : '错误'
+  }
+  if (row.questionType === 4) {
+    return answer ? '已设置参考答案' : '--'
   }
   const options = parseJsonArray(row.optionsJson)
   const selectedOption = options.find((item) => item.label === answer)
@@ -248,6 +263,7 @@ function openEdit(row) {
     stem: row.stem || '',
     options: mappedOptions,
     answer: answers[0] || (row.questionType === 3 ? 'T' : 'A'),
+    subjectiveAnswer: row.questionType === 4 ? (answers[0] || '') : '',
     score: row.score || 5,
     analysis: row.analysis || ''
   })
@@ -278,6 +294,10 @@ function validateForm() {
     ElMessage.warning('请选择判断题答案')
     return false
   }
+  if (form.questionType === 4 && !stripHtml(form.subjectiveAnswer)) {
+    ElMessage.warning('请输入主观题参考答案或评分要点')
+    return false
+  }
   return true
 }
 
@@ -300,12 +320,22 @@ function buildPayload() {
     return payload
   }
 
+  if (form.questionType === 4) {
+    payload.optionsJson = null
+    payload.answerJson = form.subjectiveAnswer.trim()
+    return payload
+  }
+
   payload.optionsJson = JSON.stringify([
     { label: 'T', content: '正确' },
     { label: 'F', content: '错误' }
   ])
   payload.answerJson = JSON.stringify([form.answer])
   return payload
+}
+
+function stripHtml(value) {
+  return String(value || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
 }
 
 async function submitForm() {

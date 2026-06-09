@@ -145,8 +145,8 @@
                   <div class="assignment-copy">
                     <div class="assignment-title-row">
                       <h3>{{ task.title }}</h3>
-                      <el-tag :type="task.completed ? 'success' : taskStateMeta(task).type" effect="plain">
-                        {{ task.completed ? '已完成' : taskStateMeta(task).label }}
+                      <el-tag :type="taskStateMeta(task).type" effect="plain">
+                        {{ taskStatusLabel(task) }}
                       </el-tag>
                     </div>
                     <div class="assignment-meta">
@@ -175,7 +175,7 @@
                 <div class="assignment-side">
                   <div class="assignment-side-item">
                     <span>得分</span>
-                    <strong>{{ task.completed ? `${task.latestScore ?? 0} / ${task.totalScore}` : '--' }}</strong>
+                    <strong>{{ formatTaskScore(task) }}</strong>
                   </div>
                   <div class="assignment-side-item">
                     <span>剩余次数</span>
@@ -363,6 +363,9 @@ function formatDateTime(value) {
 }
 
 function taskStateMeta(task) {
+  if (task.completed && task.latestReviewStatus === 0) {
+    return { label: '待批改', type: 'warning' }
+  }
   const now = Date.now()
   const startTime = task.startTime ? new Date(task.startTime).getTime() : null
   const endTime = task.endTime ? new Date(task.endTime).getTime() : null
@@ -376,6 +379,20 @@ function taskStateMeta(task) {
     return { label: '次数已用完', type: 'info' }
   }
   return { label: '待完成', type: 'info' }
+}
+
+function taskStatusLabel(task) {
+  return task.completed ? taskStateMeta(task).label || '已完成' : taskStateMeta(task).label
+}
+
+function formatTaskScore(task) {
+  if (!task.completed) {
+    return '--'
+  }
+  if (task.latestReviewStatus === 0) {
+    return '待批改'
+  }
+  return `${task.latestScore ?? 0} / ${task.totalScore}`
 }
 
 function displayChapterTitle(chapter, chapterIndex) {
