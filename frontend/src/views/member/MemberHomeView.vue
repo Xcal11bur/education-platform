@@ -107,7 +107,13 @@
         </div>
 
         <div class="banner-panel">
-          <div class="banner-surface" :style="bannerSurfaceStyle" @click="handleBannerClick">
+          <div
+            class="banner-surface"
+            :style="bannerSurfaceStyle"
+            @click="handleBannerClick"
+            @mouseenter="stopBannerRotation"
+            @mouseleave="startBannerRotation"
+          >
             <div v-if="currentBanner" class="banner-layout">
               <div class="banner-track">
                 <div class="banner-category">{{ currentBanner.category || '热门课程' }}</div>
@@ -119,19 +125,38 @@
                 </div>
               </div>
 
-              <div v-if="bannerCourses.length > 1" class="banner-indicators">
-                <button
-                  v-for="(item, index) in bannerCourses"
-                  :key="item.id"
-                  class="banner-dot"
-                  :class="{ 'is-active': index === activeBannerIndex }"
-                  :style="buildBannerDotStyle(item.coverUrl)"
-                  type="button"
-                  @click.stop="selectBanner(index)"
-                >
-                  <span>{{ String(index + 1).padStart(2, '0') }}</span>
-                </button>
-              </div>
+              <button
+                v-if="bannerCourses.length > 1"
+                class="banner-nav-button is-prev"
+                type="button"
+                aria-label="上一张轮播图"
+                @click.stop="goPrevBanner"
+              >
+                &#8249;
+              </button>
+              <button
+                v-if="bannerCourses.length > 1"
+                class="banner-nav-button is-next"
+                type="button"
+                aria-label="下一张轮播图"
+                @click.stop="goNextBanner"
+              >
+                &#8250;
+              </button>
+            </div>
+
+            <div v-if="bannerCourses.length > 1" class="banner-pagination">
+              <button
+                v-for="(item, index) in bannerCourses"
+                :key="item.id"
+                class="banner-page-dot"
+                :class="{ 'is-active': index === activeBannerIndex }"
+                type="button"
+                :aria-label="`切换到第 ${index + 1} 张轮播图`"
+                @click.stop="selectBanner(index)"
+              >
+                <span>{{ index + 1 }}</span>
+              </button>
             </div>
 
             <div v-else class="banner-track">
@@ -373,20 +398,25 @@ function selectBanner(index) {
   startBannerRotation()
 }
 
+function goPrevBanner() {
+  if (bannerCourses.value.length <= 1) {
+    return
+  }
+  activeBannerIndex.value = (activeBannerIndex.value - 1 + bannerCourses.value.length) % bannerCourses.value.length
+  startBannerRotation()
+}
+
+function goNextBanner() {
+  if (bannerCourses.value.length <= 1) {
+    return
+  }
+  activeBannerIndex.value = (activeBannerIndex.value + 1) % bannerCourses.value.length
+  startBannerRotation()
+}
+
 function handleBannerClick() {
   if (currentBanner.value?.id) {
     goCourseDetail(currentBanner.value.id)
-  }
-}
-
-function buildBannerDotStyle(coverUrl) {
-  if (!coverUrl) {
-    return {}
-  }
-  return {
-    backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.12), rgba(15, 23, 42, 0.42)), url(${coverUrl})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center'
   }
 }
 
@@ -776,6 +806,7 @@ onBeforeUnmount(() => {
   position: relative;
   isolation: isolate;
   cursor: pointer;
+  overflow: hidden;
 }
 
 .banner-surface::before {
@@ -801,7 +832,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   justify-content: flex-end;
   align-items: flex-start;
-  max-width: min(560px, 100%);
+  max-width: min(620px, calc(100% - 120px));
 }
 
 .banner-layout {
@@ -810,7 +841,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex: 1;
   align-items: flex-end;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 20px;
 }
 
@@ -829,9 +860,13 @@ onBeforeUnmount(() => {
 .banner-main-copy {
   font-size: clamp(30px, 4vw, 46px);
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1.08;
   color: #fff;
   text-shadow: 0 6px 18px rgba(7, 17, 34, 0.38);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .banner-summary {
@@ -840,6 +875,10 @@ onBeforeUnmount(() => {
   font-size: 14px;
   line-height: 1.7;
   text-shadow: 0 4px 12px rgba(7, 17, 34, 0.32);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .banner-meta {
@@ -860,37 +899,79 @@ onBeforeUnmount(() => {
   text-transform: uppercase;
 }
 
-.banner-indicators {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: flex-end;
+.banner-nav-button {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(12, 21, 36, 0.18);
+  color: rgba(255, 255, 255, 0.56);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transform: translateY(-50%);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 12px 30px rgba(7, 17, 34, 0.1);
+  opacity: 0.62;
+  transition: background-color 0.2s ease, transform 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+  font-size: 36px;
+  line-height: 1;
 }
 
-.banner-dot {
-  width: 78px;
-  height: 52px;
-  border: 1px solid rgba(255, 255, 255, 0.26);
-  border-radius: 12px;
-  background-color: rgba(255, 255, 255, 0.16);
-  color: rgba(255, 255, 255, 0.92);
+.banner-nav-button:hover {
+  background: rgba(12, 21, 36, 0.52);
+  border-color: rgba(255, 255, 255, 0.38);
+  color: rgba(255, 255, 255, 0.96);
+  opacity: 1;
+  box-shadow: 0 16px 36px rgba(7, 17, 34, 0.22);
+}
+
+.banner-nav-button.is-prev {
+  left: 18px;
+}
+
+.banner-nav-button.is-next {
+  right: 18px;
+}
+
+.banner-pagination {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  z-index: 3;
+  transform: translateX(-50%);
   display: flex;
-  align-items: flex-end;
-  justify-content: flex-start;
-  padding: 8px 10px;
-  font-size: 12px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(7, 17, 34, 0.26);
+  backdrop-filter: blur(10px);
+}
+
+.banner-page-dot {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  color: rgba(255, 255, 255, 0.9);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
-  transition: transform 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
-  opacity: 0.72;
+  transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 }
 
-.banner-dot:hover,
-.banner-dot.is-active {
-  transform: translateX(-4px);
-  border-color: rgba(255, 255, 255, 0.9);
-  opacity: 1;
+.banner-page-dot:hover,
+.banner-page-dot.is-active {
+  background: #ffffff;
+  color: #1d4ed8;
+  transform: scale(1.08);
 }
 
 .course-section {
@@ -1072,13 +1153,25 @@ onBeforeUnmount(() => {
   }
 
   .banner-layout {
-    flex-direction: column;
-    align-items: flex-start;
+    align-items: flex-end;
   }
 
-  .banner-indicators {
-    flex-direction: row;
-    align-items: center;
+  .banner-track {
+    max-width: min(100%, calc(100% - 96px));
+  }
+
+  .banner-nav-button {
+    width: 42px;
+    height: 42px;
+    font-size: 32px;
+  }
+
+  .banner-nav-button.is-prev {
+    left: 14px;
+  }
+
+  .banner-nav-button.is-next {
+    right: 14px;
   }
 }
 
@@ -1098,6 +1191,30 @@ onBeforeUnmount(() => {
 
   .course-body p {
     min-height: 0;
+  }
+
+  .banner-main-copy {
+    font-size: 28px;
+  }
+
+  .banner-summary {
+    -webkit-line-clamp: 2;
+  }
+
+  .banner-track {
+    max-width: calc(100% - 88px);
+  }
+
+  .banner-pagination {
+    bottom: 12px;
+    gap: 8px;
+    padding: 6px 12px;
+  }
+
+  .banner-page-dot {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
   }
 }
 </style>
