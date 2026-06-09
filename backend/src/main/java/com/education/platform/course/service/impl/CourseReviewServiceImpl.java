@@ -80,6 +80,18 @@ public class CourseReviewServiceImpl extends ServiceImpl<CourseReviewMapper, Cou
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteCurrentMemberReview(Long courseId) {
+        Long memberId = getCurrentMemberId();
+        getPublishedCourseOrThrow(courseId);
+        CourseReview review = getCurrentMemberReview(courseId, memberId);
+        if (review == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "course review not found");
+        }
+        removeById(review.getId());
+    }
+
+    @Override
     public PageResponse<CourseReviewAdminVO> pageAdminReviews(CourseReviewQueryDTO queryDTO) {
         IPage<CourseReview> page = lambdaQuery()
                 .eq(queryDTO.getCourseId() != null, CourseReview::getCourseId, queryDTO.getCourseId())
@@ -107,6 +119,13 @@ public class CourseReviewServiceImpl extends ServiceImpl<CourseReviewMapper, Cou
         review.setStatus(status);
         review.setReviewedAt(LocalDateTime.now());
         updateById(review);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteReview(Long id) {
+        CourseReview review = getReviewOrThrow(id);
+        removeById(review.getId());
     }
 
     @Override

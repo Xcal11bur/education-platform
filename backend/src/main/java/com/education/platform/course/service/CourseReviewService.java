@@ -13,9 +13,13 @@ public interface CourseReviewService extends IService<CourseReview> {
 
     void submitCurrentMemberReview(CourseReviewSaveDTO request);
 
+    void deleteCurrentMemberReview(Long courseId);
+
     PageResponse<CourseReviewAdminVO> pageAdminReviews(CourseReviewQueryDTO queryDTO);
 
     void updateReviewStatus(Long id, Integer status);
+
+    void deleteReview(Long id);
 
     PageResponse<CourseReviewPortalVO> pagePortalReviews(CourseReviewQueryDTO queryDTO);
 

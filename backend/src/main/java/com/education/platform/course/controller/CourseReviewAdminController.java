@@ -8,6 +8,7 @@ import com.education.platform.course.service.CourseReviewService;
 import com.education.platform.course.vo.CourseReviewAdminVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,6 +32,12 @@ public class CourseReviewAdminController {
     @PutMapping("/{id}/status")
     public Result<Void> updateStatus(@PathVariable Long id, @Valid @RequestBody StatusUpdateDTO request) {
         courseReviewService.updateReviewStatus(id, request.getStatus());
+        return Result.success();
+    }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        courseReviewService.deleteReview(id);
         return Result.success();
     }
 }

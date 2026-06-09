@@ -153,6 +153,12 @@
               <div class="review-panel">
                 <div class="review-summary-card">
                   <div class="review-score-main">
+                    <el-rate
+                      :model-value="Number(reviewSummary.avgScore || 0)"
+                      disabled
+                      allow-half
+                      class="summary-score-stars"
+                    />
                     <strong>{{ reviewSummary.avgScore?.toFixed?.(1) || '0.0' }}</strong>
                     <span>综合评分</span>
                   </div>
@@ -206,8 +212,17 @@
                 </div>
 
                 <div v-else-if="course.enrolled && reviewSummary.hasReviewed" class="review-tip-card">
-                  你已提交过评价，当前状态：
-                  {{ myReviewStatusText }}
+                  <div class="review-tip-row">
+                    <span>你已提交过评价，当前状态：{{ myReviewStatusText }}</span>
+                    <el-button
+                      link
+                      type="danger"
+                      :loading="reviewDeleting"
+                      @click="deleteMyReview"
+                    >
+                      删除评价
+                    </el-button>
+                  </div>
                 </div>
 
                 <div v-else-if="!course.enrolled" class="review-tip-card">
@@ -281,7 +296,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { enrollCourse, getPortalCourseDetail } from '@/api/course'
-import { getPortalCourseReviews, getPortalCourseReviewSummary, submitCourseReview } from '@/api/courseReview'
+import {
+  deleteMemberCourseReview,
+  getPortalCourseReviews,
+  getPortalCourseReviewSummary,
+  submitCourseReview
+} from '@/api/courseReview'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
@@ -294,6 +314,7 @@ const activeTab = ref('chapters')
 const expandedChapterIds = ref([])
 const reviewLoading = ref(false)
 const reviewSubmitting = ref(false)
+const reviewDeleting = ref(false)
 const reviewFormRef = ref()
 const reviews = ref([])
 const reviewAnonymous = ref(false)
@@ -559,6 +580,26 @@ async function submitReview() {
   }
 }
 
+async function deleteMyReview() {
+  await ElMessageBox.confirm(
+    '确认删除你当前课程的这条评价吗？删除后可重新提交。',
+    '删除评价',
+    {
+      type: 'warning',
+      confirmButtonText: '确认删除',
+      cancelButtonText: '取消'
+    }
+  )
+  reviewDeleting.value = true
+  try {
+    await deleteMemberCourseReview(course.value.id)
+    ElMessage.success('评价已删除')
+    await fetchReviewData()
+  } finally {
+    reviewDeleting.value = false
+  }
+}
+
 async function fetchCourseDetail() {
   loading.value = true
   try {
@@ -815,6 +856,10 @@ onMounted(async () => {
   padding: 18px;
 }
 
+.summary-score-stars {
+  margin-bottom: 12px;
+}
+
 .review-score-main strong {
   font-size: 42px;
   color: #1f2d3d;
@@ -877,6 +922,13 @@ onMounted(async () => {
 
 .review-tip-card {
   padding: 16px 18px;
+}
+
+.review-tip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .review-list {

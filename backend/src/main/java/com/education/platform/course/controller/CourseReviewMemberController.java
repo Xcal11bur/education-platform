@@ -6,7 +6,9 @@ import com.education.platform.course.service.CourseReviewService;
 import com.education.platform.course.vo.CourseReviewSummaryVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,6 +25,12 @@ public class CourseReviewMemberController {
     @PostMapping
     public Result<Void> create(@Valid @RequestBody CourseReviewSaveDTO request) {
         courseReviewService.submitCurrentMemberReview(request);
+        return Result.success();
+    }
+
+    @DeleteMapping("/{courseId}")
+    public Result<Void> delete(@PathVariable Long courseId) {
+        courseReviewService.deleteCurrentMemberReview(courseId);
         return Result.success();
     }
 

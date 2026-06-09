@@ -42,11 +42,6 @@
           <el-rate :model-value="row.score" disabled show-score text-color="#f59e0b" />
         </template>
       </el-table-column>
-      <el-table-column prop="content" label="评价内容" min-width="260" show-overflow-tooltip>
-        <template #default="{ row }">
-          {{ row.content || '未填写评价内容' }}
-        </template>
-      </el-table-column>
       <el-table-column label="匿名" width="90">
         <template #default="{ row }">
           {{ row.anonymousFlag === 1 ? '是' : '否' }}
@@ -60,8 +55,11 @@
       <el-table-column label="提交时间" width="180">
         <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="180" fixed="right">
+      <el-table-column label="操作" width="240" fixed="right">
         <template #default="{ row }">
+          <el-button link type="primary" @click="openContentDialog(row)">
+            查看内容
+          </el-button>
           <el-button
             v-if="row.status !== 1"
             link
@@ -77,6 +75,9 @@
             @click="updateStatus(row, 2)"
           >
             拒绝
+          </el-button>
+          <el-button link type="danger" @click="removeReview(row)">
+            删除
           </el-button>
         </template>
       </el-table-column>
@@ -97,18 +98,31 @@
       <div class="empty-icon-box">↑</div>
       <p>请先选择一门课程</p>
     </div>
+
+    <el-dialog
+      v-model="contentDialogVisible"
+      title="评价内容"
+      width="520px"
+      destroy-on-close
+    >
+      <div class="review-content-dialog">
+        {{ activeReviewContent || '未填写评价内容' }}
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCourseList } from '@/api/course'
-import { getCourseReviewList, updateCourseReviewStatus } from '@/api/courseReview'
+import { deleteCourseReview, getCourseReviewList, updateCourseReviewStatus } from '@/api/courseReview'
 
 const reviews = ref([])
 const total = ref(0)
 const courseOptions = ref([])
+const contentDialogVisible = ref(false)
+const activeReviewContent = ref('')
 
 const query = reactive({
   pageNum: 1,
@@ -179,6 +193,29 @@ async function updateStatus(row, status) {
   fetchReviews()
 }
 
+function openContentDialog(row) {
+  activeReviewContent.value = row.content || ''
+  contentDialogVisible.value = true
+}
+
+async function removeReview(row) {
+  await ElMessageBox.confirm(
+    `确认删除学员“${row.memberNickname || row.memberMobile || '-'}”的这条评价吗？`,
+    '删除评价',
+    {
+      type: 'warning',
+      confirmButtonText: '确认删除',
+      cancelButtonText: '取消'
+    }
+  )
+  await deleteCourseReview(row.id)
+  ElMessage.success('评价已删除')
+  if (reviews.value.length === 1 && query.pageNum > 1) {
+    query.pageNum -= 1
+  }
+  fetchReviews()
+}
+
 onMounted(async () => {
   await fetchCourses()
   await fetchReviews()
@@ -206,6 +243,14 @@ onMounted(async () => {
 .empty-state {
   text-align: center;
   padding: 60px 0;
+}
+
+.review-content-dialog {
+  min-height: 96px;
+  color: #606266;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .empty-icon-box {

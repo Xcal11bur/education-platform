@@ -8,6 +8,13 @@ export function submitCourseReview(data) {
   })
 }
 
+export function deleteMemberCourseReview(courseId) {
+  return request({
+    url: `/member/course-reviews/${courseId}`,
+    method: 'delete'
+  })
+}
+
 export function getPortalCourseReviews(courseId, params) {
   return request({
     url: `/portal/courses/${courseId}/reviews`,
@@ -36,5 +43,12 @@ export function updateCourseReviewStatus(id, data) {
     url: `/admin/course-reviews/${id}/status`,
     method: 'put',
     data
+  })
+}
+
+export function deleteCourseReview(id) {
+  return request({
+    url: `/admin/course-reviews/${id}`,
+    method: 'delete'
   })
 }
