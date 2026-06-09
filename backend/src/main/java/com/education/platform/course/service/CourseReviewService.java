@@ -22,4 +22,6 @@ public interface CourseReviewService extends IService<CourseReview> {
     CourseReviewSummaryVO getPortalReviewSummary(Long courseId);
 
     CourseReviewSummaryVO getCurrentMemberReviewSummary(Long courseId);
+
+    String getPortalReviewAvatarUrl(Long reviewId);
 }

@@ -26,6 +26,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/captcha").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/portal/courses/reviews/*/avatar").permitAll()
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/auth/admin/login",
                                 "/api/v1/auth/teacher/login",

@@ -11,5 +11,7 @@ public class CourseReviewPortalVO {
     private String content;
     private String memberDisplayName;
     private String memberAvatar;
+    private String avatar;
+    private String memberAvatarProxy;
     private LocalDateTime createdAt;
 }

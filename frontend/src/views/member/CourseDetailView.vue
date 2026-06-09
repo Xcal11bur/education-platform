@@ -218,9 +218,15 @@
                   <article v-for="item in reviews" :key="item.id" class="review-item">
                     <div class="review-item-head">
                       <div class="review-author">
-                        <el-avatar :size="42" :src="resolvedReviewAvatar(item)">
-                          {{ (item.memberDisplayName || '学').slice(0, 1).toUpperCase() }}
-                        </el-avatar>
+                        <div class="review-avatar" :class="{ 'is-fallback': !shouldShowReviewAvatarImage(item) }">
+                          <img
+                            v-if="shouldShowReviewAvatarImage(item)"
+                            :src="resolvedReviewAvatar(item)"
+                            :alt="`${item.memberDisplayName || '学员'}头像`"
+                            @error="handleReviewAvatarError(item.id)"
+                          />
+                          <span v-else>{{ (item.memberDisplayName || '学').slice(0, 1).toUpperCase() }}</span>
+                        </div>
                         <div class="review-author-copy">
                           <strong>{{ item.memberDisplayName || '学员' }}</strong>
                           <span>{{ formatDateTime(item.createdAt) }}</span>
@@ -291,6 +297,7 @@ const reviewSubmitting = ref(false)
 const reviewFormRef = ref()
 const reviews = ref([])
 const reviewAnonymous = ref(false)
+const reviewAvatarErrorMap = ref({})
 const reviewSummary = ref({
   avgScore: 0,
   reviewCount: 0,
@@ -472,8 +479,46 @@ function formatDateTime(value) {
   return String(value).replace('T', ' ').replace(/\.\d+$/, '').replace(/Z$/, '')
 }
 
+function normalizeAssetUrl(value) {
+  const url = String(value || '').trim()
+  if (!url) {
+    return ''
+  }
+  if (/^(https?:)?\/\//i.test(url) || /^data:/i.test(url) || /^blob:/i.test(url)) {
+    return url
+  }
+  if (url.startsWith('/')) {
+    return url
+  }
+  return `/${url.replace(/^\/+/, '')}`
+}
+
 function resolvedReviewAvatar(item) {
-  return item?.memberAvatar || ''
+  if (item?.id && item?.memberDisplayName !== '匿名用户') {
+    return `/api/v1/portal/courses/reviews/${item.id}/avatar`
+  }
+  return normalizeAssetUrl(
+    item?.memberAvatarProxy
+      || item?.memberAvatar
+      || item?.avatar
+      || item?.member?.avatar
+      || ''
+  )
+}
+
+function shouldShowReviewAvatarImage(item) {
+  const avatar = resolvedReviewAvatar(item)
+  return Boolean(avatar) && !reviewAvatarErrorMap.value[item?.id]
+}
+
+function handleReviewAvatarError(reviewId) {
+  if (!reviewId || reviewAvatarErrorMap.value[reviewId]) {
+    return
+  }
+  reviewAvatarErrorMap.value = {
+    ...reviewAvatarErrorMap.value,
+    [reviewId]: true
+  }
 }
 
 async function fetchReviewData() {
@@ -489,6 +534,7 @@ async function fetchReviewData() {
       scoreDistribution: {}
     }
     reviews.value = reviewPage?.list || []
+    reviewAvatarErrorMap.value = {}
   } finally {
     reviewLoading.value = false
   }
@@ -855,6 +901,32 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.review-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex: 0 0 42px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  display: grid;
+  place-items: center;
+}
+
+.review-avatar.is-fallback {
+  background: #d1d5db;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.review-avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 .review-author-copy {

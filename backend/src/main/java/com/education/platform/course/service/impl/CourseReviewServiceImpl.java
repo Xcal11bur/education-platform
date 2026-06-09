@@ -138,6 +138,22 @@ public class CourseReviewServiceImpl extends ServiceImpl<CourseReviewMapper, Cou
         return buildReviewSummary(courseId, getCurrentMemberId());
     }
 
+    @Override
+    public String getPortalReviewAvatarUrl(Long reviewId) {
+        CourseReview review = getReviewOrThrow(reviewId);
+        if (!Objects.equals(review.getStatus(), REVIEW_STATUS_APPROVED)) {
+            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "course review not found");
+        }
+        if (Objects.equals(review.getAnonymousFlag(), 1)) {
+            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "review avatar not found");
+        }
+        Member member = memberMapper.selectById(review.getMemberId());
+        if (member == null || !Objects.equals(member.getStatus(), MEMBER_STATUS_ENABLED) || !StringUtils.hasText(member.getAvatar())) {
+            throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "review avatar not found");
+        }
+        return member.getAvatar().trim();
+    }
+
     private CourseReviewSummaryVO buildReviewSummary(Long courseId, Long memberId) {
         List<CourseReview> approvedReviews = lambdaQuery()
                 .eq(CourseReview::getCourseId, courseId)
@@ -204,10 +220,18 @@ public class CourseReviewServiceImpl extends ServiceImpl<CourseReviewMapper, Cou
             Member member = memberMap.get(review.getMemberId());
             if (Objects.equals(review.getAnonymousFlag(), 1)) {
                 vo.setMemberDisplayName("匿名用户");
+                vo.setMemberAvatar(null);
+                vo.setAvatar(null);
+                vo.setMemberAvatarProxy(null);
             } else {
                 vo.setMemberDisplayName(member == null ? "学员" : resolveMemberDisplayName(member));
+                String avatar = member == null ? null : member.getAvatar();
+                vo.setMemberAvatar(avatar);
+                vo.setAvatar(avatar);
+                vo.setMemberAvatarProxy(StringUtils.hasText(avatar)
+                        ? "/api/v1/portal/courses/reviews/" + review.getId() + "/avatar"
+                        : null);
             }
-            vo.setMemberAvatar(member == null ? null : member.getAvatar());
             return vo;
         }).toList();
     }
