@@ -169,31 +169,45 @@
 
       <section class="course-section">
         <div class="section-head">
-          <h2>热门课程</h2>
+          <div>
+            <h2>热门课程</h2>
+            <p>按学习人数排序，展示当前最受欢迎的 8 门课程</p>
+          </div>
           <el-button plain @click="router.push('/member/courses')">查看全部</el-button>
         </div>
 
         <div class="course-grid">
           <article
-            v-for="course in hotCourses"
+            v-for="(course, index) in hotCourses"
             :key="course.id"
             class="course-card"
+            :class="[`is-rank-${Math.min(index + 1, 4)}`]"
             @click="goCourseDetail(course.id)"
           >
             <div class="course-cover" :style="buildCourseCoverStyle(course.coverUrl)">
               <div class="course-cover-overlay"></div>
               <div class="course-cover-top">
                 <el-tag size="small" effect="dark" class="course-badge">{{ course.badge }}</el-tag>
-                <div class="course-index">{{ course.code }}</div>
+                <div class="course-rank-badge">TOP {{ String(index + 1).padStart(2, '0') }}</div>
+              </div>
+              <div class="course-cover-bottom">
+                <div class="course-cover-code">{{ course.code }}</div>
+                <div class="course-cover-meta">{{ course.learners }} 人学习</div>
               </div>
             </div>
             <div class="course-body">
-              <div class="course-category">{{ course.category }}</div>
+              <div class="course-body-top">
+                <div class="course-category">{{ course.category }}</div>
+              </div>
               <h3>{{ course.title }}</h3>
               <p>{{ course.summary }}</p>
+              <div class="course-meta-row">
+                <span class="course-teacher">{{ course.teacherName || '平台课程' }}</span>
+                <span class="course-learners">{{ course.learners }} 人学习</span>
+              </div>
               <div class="course-meta">
-                <span>{{ course.teacherName || '平台课程' }}</span>
-                <span>{{ course.learners }} 人学习</span>
+                <span class="course-action">查看课程</span>
+                <span class="course-arrow">›</span>
               </div>
             </div>
           </article>
@@ -997,6 +1011,7 @@ onBeforeUnmount(() => {
 .section-head p {
   margin: 8px 0 0;
   color: #909399;
+  font-size: 13px;
 }
 
 .course-grid {
@@ -1009,20 +1024,25 @@ onBeforeUnmount(() => {
 .course-card {
   border: 1px solid #dcdfe6;
   background: rgba(255, 255, 255, 0.98);
-  border-radius: 12px;
+  border-radius: 18px;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease;
 }
 
 .course-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 26px rgba(31, 45, 61, 0.08);
+  transform: translateY(-4px);
+  border-color: #bfdbfe;
+  box-shadow: 0 16px 32px rgba(31, 45, 61, 0.1);
+}
+
+.course-card.is-rank-1 {
+  border-color: rgba(59, 130, 246, 0.28);
 }
 
 .course-cover {
   position: relative;
-  height: 170px;
+  height: 176px;
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -1048,22 +1068,48 @@ onBeforeUnmount(() => {
   gap: 12px;
 }
 
+.course-cover-bottom {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .course-badge {
   border: 0;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
 }
 
-.course-index {
+.course-rank-badge {
   position: relative;
-  z-index: 1;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(255, 255, 255, 0.94);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.course-cover-code,
+.course-cover-meta {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
 }
 
 .course-body {
   padding: 18px;
+}
+
+.course-body-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .course-category {
@@ -1071,13 +1117,19 @@ onBeforeUnmount(() => {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
+  line-height: 1.4;
 }
 
 .course-body h3 {
   margin: 10px 0 10px;
-  font-size: 18px;
-  line-height: 1.3;
+  font-size: 17px;
+  line-height: 1.35;
   color: #303133;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 46px;
 }
 
 .course-body p {
@@ -1085,9 +1137,13 @@ onBeforeUnmount(() => {
   color: #606266;
   line-height: 1.6;
   min-height: 66px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.course-meta {
+.course-meta-row {
   margin-top: 16px;
   display: flex;
   align-items: center;
@@ -1095,6 +1151,38 @@ onBeforeUnmount(() => {
   gap: 12px;
   color: #909399;
   font-size: 13px;
+}
+
+.course-teacher,
+.course-learners {
+  white-space: nowrap;
+}
+
+.course-meta {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #eef2f7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.course-action {
+  color: #2563eb;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.course-arrow {
+  color: #93a4b8;
+  font-size: 18px;
+  transition: transform 0.24s ease, color 0.24s ease;
+}
+
+.course-card:hover .course-arrow {
+  transform: translateX(3px);
+  color: #2563eb;
 }
 
 @media (max-width: 1180px) {
@@ -1190,6 +1278,10 @@ onBeforeUnmount(() => {
   }
 
   .course-body p {
+    min-height: 0;
+  }
+
+  .course-body h3 {
     min-height: 0;
   }
 
