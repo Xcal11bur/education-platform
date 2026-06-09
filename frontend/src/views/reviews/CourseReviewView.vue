@@ -1,7 +1,13 @@
 <template>
   <div class="page-card">
     <div class="filter-bar">
-      <el-select v-model="query.courseId" placeholder="选择课程" filterable style="width: 320px">
+      <el-select
+        v-model="query.courseId"
+        class="course-select"
+        placeholder="选择课程"
+        filterable
+        @change="handleCourseChange"
+      >
         <el-option
           v-for="item in courseOptions"
           :key="item.id"
@@ -9,12 +15,12 @@
           :value="item.id"
         />
       </el-select>
-      <el-select v-model="query.status" placeholder="状态" clearable>
+      <el-select v-model="query.status" class="compact-select" placeholder="状态" clearable>
         <el-option label="待审核" :value="0" />
         <el-option label="已通过" :value="1" />
         <el-option label="已拒绝" :value="2" />
       </el-select>
-      <el-select v-model="query.score" placeholder="评分" clearable>
+      <el-select v-model="query.score" class="compact-select" placeholder="评分" clearable>
         <el-option v-for="score in [5, 4, 3, 2, 1]" :key="score" :label="`${score} 分`" :value="score" />
       </el-select>
       <el-button type="primary" @click="fetchReviews">查询</el-button>
@@ -143,6 +149,11 @@ function rowIndex(index) {
   return (query.pageNum - 1) * query.pageSize + index + 1
 }
 
+function handleCourseChange() {
+  query.pageNum = 1
+  fetchReviews()
+}
+
 async function fetchCourses() {
   const { data } = await getCourseList({ pageNum: 1, pageSize: 100, publishStatus: 1 })
   courseOptions.value = data?.list || []
@@ -175,6 +186,23 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.course-select {
+  width: 320px;
+  flex: 0 1 320px;
+}
+
+.compact-select {
+  width: 160px;
+  flex: 0 0 160px;
+}
+
 .empty-state {
   text-align: center;
   padding: 60px 0;
@@ -196,5 +224,12 @@ onMounted(async () => {
 .empty-state p {
   color: #909399;
   font-size: 14px;
+}
+
+@media (max-width: 1400px) {
+  .course-select {
+    width: 280px;
+    flex-basis: 280px;
+  }
 }
 </style>
