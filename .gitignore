@@ -12,7 +12,6 @@ backend/target/
 # Environment files
 .env
 .env.*
-backend/src/main/resources/application-local.yml
 
 # IDE and OS files
 .idea/
