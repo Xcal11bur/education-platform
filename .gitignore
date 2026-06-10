@@ -12,6 +12,7 @@ backend/target/
 # Environment files
 .env
 .env.*
+!.env.example
 
 # IDE and OS files
 .idea/
