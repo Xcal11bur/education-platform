@@ -33,7 +33,7 @@
     <main class="detail-main">
       <div class="detail-layout">
         <section class="post-panel" v-loading="detailLoading">
-          <button class="back-button" type="button" @click="router.push('/member/community')">
+          <button class="back-button" type="button" @click="handleBack">
             <el-icon><ArrowLeft /></el-icon>
             <span>返回</span>
           </button>
@@ -268,6 +268,17 @@ function goProfile() {
 function handleLogout() {
   authStore.logout()
   router.push('/login')
+}
+
+function handleBack() {
+  if (route.query.from === 'profile' && typeof route.query.tab === 'string') {
+    router.push({
+      path: '/member/profile',
+      query: { tab: route.query.tab }
+    })
+    return
+  }
+  router.push('/member/community')
 }
 
 function formatDateTime(value) {

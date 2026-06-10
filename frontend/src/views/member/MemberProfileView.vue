@@ -293,7 +293,7 @@
 <script setup>
 import { Collection, Star, User } from '@element-plus/icons-vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { deleteCommunityPost, getMyCommunityPosts, getMyFavoriteCommunityPosts } from '@/api/community'
@@ -307,6 +307,7 @@ import {
   uploadMemberAvatar
 } from '@/api/member'
 
+const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -494,7 +495,13 @@ function goMyCourse(course) {
 }
 
 function goFavoritePost(postId) {
-  router.push(`/member/community/${postId}`)
+  router.push({
+    path: `/member/community/${postId}`,
+    query: {
+      from: 'profile',
+      tab: activeMenu.value
+    }
+  })
 }
 
 async function handleDeletePost(post) {
@@ -620,6 +627,9 @@ async function submitPassword() {
 }
 
 onMounted(async () => {
+  if (typeof route.query.tab === 'string' && menuItems.some((item) => item.key === route.query.tab)) {
+    activeMenu.value = route.query.tab
+  }
   await Promise.all([fetchProfile(), fetchMemberCourses()])
 })
 
