@@ -80,22 +80,49 @@ public class CommunityServiceImpl extends ServiceImpl<CommunityPostMapper, Commu
             return PageResponse.empty(queryDTO.getPageNum(), queryDTO.getPageSize());
         }
 
-        List<CommunityPost> posts = page.getRecords();
-        Set<Long> postIds = posts.stream().map(CommunityPost::getId).collect(Collectors.toSet());
-        Map<Long, Member> memberMap = listMembersByIds(posts.stream().map(CommunityPost::getMemberId).collect(Collectors.toSet()));
-        Map<Long, List<String>> imageMap = listImageMap(postIds);
-        Long currentMemberId = getCurrentMemberIdOrNull();
-        Set<Long> likedPostIds = currentMemberId == null ? Set.of() : listActionPostIds(currentMemberId, ACTION_TYPE_LIKE, postIds);
-        Set<Long> favoritedPostIds = currentMemberId == null ? Set.of() : listActionPostIds(currentMemberId, ACTION_TYPE_FAVORITE, postIds);
-
-        List<CommunityPostListVO> list = posts.stream()
-                .map(post -> toListVO(post, memberMap.get(post.getMemberId()), imageMap.get(post.getId()), likedPostIds, favoritedPostIds))
-                .toList();
+        List<CommunityPostListVO> list = buildPostListVOs(page.getRecords(), getCurrentMemberIdOrNull());
         return PageResponse.<CommunityPostListVO>builder()
                 .pageNum(page.getCurrent())
                 .pageSize(page.getSize())
                 .total(page.getTotal())
                 .list(list)
+                .build();
+    }
+
+    @Override
+    public PageResponse<CommunityPostListVO> pageCurrentMemberFavoritePosts(CommunityPostQueryDTO queryDTO) {
+        Long memberId = getCurrentMemberId();
+        IPage<CommunityPostAction> actionPage = communityPostActionMapper.selectPage(
+                new Page<>(queryDTO.getPageNum(), queryDTO.getPageSize()),
+                Wrappers.<CommunityPostAction>lambdaQuery()
+                        .eq(CommunityPostAction::getMemberId, memberId)
+                        .eq(CommunityPostAction::getActionType, ACTION_TYPE_FAVORITE)
+                        .orderByDesc(CommunityPostAction::getCreatedAt, CommunityPostAction::getId)
+        );
+        if (actionPage.getRecords().isEmpty()) {
+            return PageResponse.empty(queryDTO.getPageNum(), queryDTO.getPageSize());
+        }
+
+        List<Long> postIds = actionPage.getRecords().stream()
+                .map(CommunityPostAction::getPostId)
+                .distinct()
+                .toList();
+        Map<Long, CommunityPost> postMap = lambdaQuery()
+                .in(CommunityPost::getId, postIds)
+                .eq(CommunityPost::getStatus, POST_STATUS_PUBLISHED)
+                .list()
+                .stream()
+                .collect(Collectors.toMap(CommunityPost::getId, Function.identity()));
+        List<CommunityPost> posts = postIds.stream()
+                .map(postMap::get)
+                .filter(Objects::nonNull)
+                .toList();
+
+        return PageResponse.<CommunityPostListVO>builder()
+                .pageNum(actionPage.getCurrent())
+                .pageSize(actionPage.getSize())
+                .total(actionPage.getTotal())
+                .list(buildPostListVOs(posts, memberId))
                 .build();
     }
 
@@ -443,6 +470,20 @@ public class CommunityServiceImpl extends ServiceImpl<CommunityPostMapper, Commu
         vo.setLiked(hasAction(postId, memberId, ACTION_TYPE_LIKE));
         vo.setFavorited(hasAction(postId, memberId, ACTION_TYPE_FAVORITE));
         return vo;
+    }
+
+    private List<CommunityPostListVO> buildPostListVOs(List<CommunityPost> posts, Long currentMemberId) {
+        if (posts == null || posts.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> postIds = posts.stream().map(CommunityPost::getId).collect(Collectors.toSet());
+        Map<Long, Member> memberMap = listMembersByIds(posts.stream().map(CommunityPost::getMemberId).collect(Collectors.toSet()));
+        Map<Long, List<String>> imageMap = listImageMap(postIds);
+        Set<Long> likedPostIds = currentMemberId == null ? Set.of() : listActionPostIds(currentMemberId, ACTION_TYPE_LIKE, postIds);
+        Set<Long> favoritedPostIds = currentMemberId == null ? Set.of() : listActionPostIds(currentMemberId, ACTION_TYPE_FAVORITE, postIds);
+        return posts.stream()
+                .map(post -> toListVO(post, memberMap.get(post.getMemberId()), imageMap.get(post.getId()), likedPostIds, favoritedPostIds))
+                .toList();
     }
 
     private CommunityPost getPublishedPostOrThrow(Long postId) {

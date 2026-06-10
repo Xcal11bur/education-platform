@@ -86,6 +86,52 @@
           </div>
         </div>
 
+        <div v-else-if="activeMenu === 'favorites'" class="placeholder-panel">
+          <div v-loading="favoriteLoading">
+            <div v-if="favoritePosts.length" class="favorite-post-list">
+              <article
+                v-for="post in favoritePosts"
+                :key="post.id"
+                class="favorite-post-card"
+                @click="goFavoritePost(post.id)"
+              >
+                <div class="favorite-post-main">
+                  <div class="favorite-post-head">
+                    <div class="favorite-post-author">
+                      <el-avatar :size="38" :src="post.authorAvatar">
+                        {{ (post.authorName || '学').slice(0, 1).toUpperCase() }}
+                      </el-avatar>
+                      <div class="favorite-post-author-copy">
+                        <strong>{{ post.authorName || '学员' }}</strong>
+                        <span>{{ formatDateTime(post.createdAt) }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <h3>{{ post.title }}</h3>
+                  <p>{{ post.content }}</p>
+
+                  <div class="favorite-post-meta">
+                    <span>评论 {{ post.commentCount || 0 }}</span>
+                    <span>点赞 {{ post.likeCount || 0 }}</span>
+                    <span>收藏 {{ post.favoriteCount || 0 }}</span>
+                  </div>
+                </div>
+
+                <div v-if="post.images?.length" class="favorite-post-side">
+                  <img :src="post.images[0]" :alt="`${post.title} 配图`" />
+                </div>
+              </article>
+            </div>
+
+            <el-empty
+              v-else
+              description="还没有收藏的帖子"
+              :image-size="90"
+            />
+          </div>
+        </div>
+
         <el-form
           v-else-if="activeMenu === 'info'"
           ref="profileFormRef"
@@ -190,11 +236,12 @@
 </template>
 
 <script setup>
-import { Collection, User } from '@element-plus/icons-vue'
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { Collection, Star, User } from '@element-plus/icons-vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { getMyFavoriteCommunityPosts } from '@/api/community'
 import { getMemberCourseList, unenrollCourse } from '@/api/course'
 import brandLogo from '@/assets/education-cloud-logo.jpg'
 import {
@@ -216,6 +263,8 @@ const avatarError = ref('')
 const avatarPreviewUrl = ref('')
 const courseLoading = ref(false)
 const memberCourses = ref([])
+const favoriteLoading = ref(false)
+const favoritePosts = ref([])
 const mobileDialogVisible = ref(false)
 const passwordDialogVisible = ref(false)
 const mobileSaving = ref(false)
@@ -245,7 +294,8 @@ const passwordForm = reactive({
 
 const menuItems = [
   { key: 'courses', label: '我的课程', icon: Collection },
-  { key: 'info', label: '个人信息', icon: User }
+  { key: 'info', label: '个人信息', icon: User },
+  { key: 'favorites', label: '我的收藏', icon: Star }
 ]
 
 const displayName = computed(
@@ -325,6 +375,19 @@ async function fetchMemberCourses() {
   }
 }
 
+async function fetchFavoritePosts() {
+  favoriteLoading.value = true
+  try {
+    const { data } = await getMyFavoriteCommunityPosts({
+      pageNum: 1,
+      pageSize: 100
+    })
+    favoritePosts.value = data?.list || []
+  } finally {
+    favoriteLoading.value = false
+  }
+}
+
 async function handleUnenroll(course) {
   await ElMessageBox.confirm(
     `确认退出《${course.title || '当前课程'}》吗？`,
@@ -357,6 +420,17 @@ function goMyCourse(course) {
     return
   }
   router.push(`/member/courses/${course.id}/learn`)
+}
+
+function goFavoritePost(postId) {
+  router.push(`/member/community/${postId}`)
+}
+
+function formatDateTime(value) {
+  if (!value) {
+    return '--'
+  }
+  return String(value).replace('T', ' ').replace(/\.\d+$/, '').replace(/Z$/, '').slice(0, 16)
 }
 
 function validateAvatar(file) {
@@ -462,6 +536,15 @@ onMounted(async () => {
   await Promise.all([fetchProfile(), fetchMemberCourses()])
 })
 
+watch(
+  activeMenu,
+  async (value) => {
+    if (value === 'favorites' && !favoritePosts.value.length) {
+      await fetchFavoritePosts()
+    }
+  }
+)
+
 onBeforeUnmount(() => {
   revokeAvatarPreview()
 })
@@ -551,6 +634,8 @@ function revokeAvatarPreview() {
 .profile-sidebar {
   overflow: hidden;
   align-self: start;
+  position: sticky;
+  top: 24px;
 }
 
 .profile-card {
@@ -626,6 +711,102 @@ function revokeAvatarPreview() {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+}
+
+.favorite-post-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.favorite-post-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid #dcdfe6;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 10px 24px rgba(31, 45, 61, 0.05);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.favorite-post-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(31, 45, 61, 0.08);
+}
+
+.favorite-post-main {
+  min-width: 0;
+}
+
+.favorite-post-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.favorite-post-author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.favorite-post-author-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.favorite-post-author-copy strong {
+  color: #1f2d3d;
+  font-size: 15px;
+}
+
+.favorite-post-author-copy span {
+  color: #909399;
+  font-size: 12px;
+}
+
+.favorite-post-card h3 {
+  margin: 14px 0 8px;
+  color: #1f2d3d;
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.favorite-post-card p {
+  margin: 0;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.favorite-post-meta {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  color: #909399;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.favorite-post-side img {
+  width: 100%;
+  height: 132px;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #eef2f7;
 }
 
 .my-course-card {
@@ -784,6 +965,10 @@ function revokeAvatarPreview() {
     grid-template-columns: 1fr;
   }
 
+  .profile-sidebar {
+    position: static;
+  }
+
   .profile-header {
     padding: 0 18px;
   }
@@ -796,11 +981,23 @@ function revokeAvatarPreview() {
   .my-course-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .favorite-post-card {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
   .my-course-grid {
     grid-template-columns: 1fr;
+  }
+
+  .favorite-post-card {
+    padding: 16px;
+  }
+
+  .favorite-post-card h3 {
+    font-size: 18px;
   }
 }
 </style>

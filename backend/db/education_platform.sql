@@ -712,7 +712,7 @@ CREATE TABLE `community_post` (
   KEY `idx_community_post_status_created_at` (`status`,`created_at`),
   KEY `idx_community_post_status_hot` (`status`,`like_count`,`comment_count`,`created_at`),
   KEY `idx_community_post_member_id_created_at` (`member_id`,`created_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='社区帖子表';
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='社区帖子表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -724,7 +724,13 @@ LOCK TABLES `community_post` WRITE;
 INSERT INTO `community_post` VALUES
 (1,1,'交流社区第一版已上线','第一阶段先把发帖、评论、点赞、收藏打通。后续还会继续补充内容治理和更完整的互动体验。',1,3,2,1,18,'2026-06-10 10:05:00','2026-06-10 10:05:00',0,0),
 (2,2,'今天学完课程后有什么收获？','欢迎大家在这里分享最近学到的知识点，也可以说说你希望社区后续增加什么能力。',1,1,1,1,9,'2026-06-10 10:20:00','2026-06-10 10:20:00',0,0),
-(3,3,'课程学习和交流社区可以怎么联动？','比如学完一个章节后直接跳转到讨论区，或者给课程关联专题帖。这个方向后面可以继续迭代。',1,0,0,0,4,'2026-06-10 10:40:00','2026-06-10 10:40:00',0,0);
+(3,3,'课程学习和交流社区可以怎么联动？','比如学完一个章节后直接跳转到讨论区，或者给课程关联专题帖。这个方向后面可以继续迭代。',1,0,0,0,4,'2026-06-10 10:40:00','2026-06-10 10:40:00',0,0),
+(4,1,'test','wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\n\nwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\nwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww',1,1,0,0,0,'2026-06-10 11:47:00','2026-06-10 11:47:00',0,0),
+(5,2,'今天把章节学习页和社区入口串起来了','短帖测试：学完内容后能直接进入讨论区，这样提问和复盘的链路顺很多。',1,2,0,1,3,'2026-06-10 12:10:00','2026-06-10 12:10:00',0,0),
+(6,3,'关于课程讨论区的一点想法','这是一条长帖测试，用来验证详情页、列表摘要、个人收藏和评论区在正文较长时的展示稳定性。\n\n如果学习平台后续继续迭代，我更希望讨论区不仅能承接“吐槽”或者“闲聊”，还应该变成课程学习过程中的问题沉淀区。比如：每节课下方自动生成讨论串，老师可以置顶高质量回答，学员可以把自己的实操截图、踩坑记录、补充资料贴进来，后面的同学再遇到相同问题时，就不需要反复问一遍。\n\n另外，长帖也能承担复盘和总结作用。有人学完一门课后，会愿意写一篇自己的理解、实践过程和结果对比，这类内容其实比零碎评论更有价值。只要页面在长文本、换行、超长单词、连续字符、图片混排这些场景下都不溢出，体验就会稳定很多。',1,3,2,1,7,'2026-06-10 12:26:00','2026-06-10 12:26:00',0,0),
+(7,4,'短问题：大家更想先补“我的帖子”还是“消息提醒”？','我个人更偏向先做我的帖子，这样内容回看会更完整。',1,2,1,0,2,'2026-06-10 12:40:00','2026-06-10 12:40:00',0,0),
+(8,5,'这周学习计划打卡','本周准备把 Spring Boot 实战课和高效沟通方法课各推进两个章节。\n\n如果晚上能把作业也顺手做完，就来社区发一篇阶段复盘。',1,1,1,1,5,'2026-06-10 13:05:00','2026-06-10 13:05:00',0,0),
+(9,6,'长内容稳定性专项测试','为了验证页面在极端情况下的稳定性，这里放一条偏长正文。正文里会包含多段换行、较长的叙述，以及一些用于观察换行效果的连续短句。\n\n第一段主要看段间距是否自然。第二段主要看右侧评论区 sticky 时，左侧帖子内容继续向下延展是否会把布局拉坏。第三段则用于观察当用户收藏这类帖子后，个人中心里的“我的收藏”列表是否还能保持一致的展示密度。\n\n如果这些都正常，说明第一阶段的社区骨架已经基本够用了，后面可以把重点转去内容质量、筛选能力和通知能力。',1,2,0,1,1,'2026-06-10 13:26:00','2026-06-10 13:26:00',0,0);
 /*!40000 ALTER TABLE `community_post` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -746,7 +752,7 @@ CREATE TABLE `community_post_image` (
   `updated_by` bigint unsigned DEFAULT '0' COMMENT '更新人',
   PRIMARY KEY (`id`),
   KEY `idx_community_post_image_post_id_sort` (`post_id`,`sort`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='社区帖子图片表';
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='社区帖子图片表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -758,7 +764,10 @@ LOCK TABLES `community_post_image` WRITE;
 INSERT INTO `community_post_image` VALUES
 (1,1,'https://images.unsplash.com/photo-1541746972996-4e0b0f43e02a?auto=format&fit=crop&fm=jpg&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&ixlib=rb-4.1.0&q=60&w=3000',1,'2026-06-10 10:05:00','2026-06-10 10:05:00',0,0),
 (2,2,'https://images.unsplash.com/photo-1759884247231-24a9d8f6d454?auto=format&fit=crop&fm=jpg&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&ixlib=rb-4.1.0&q=60&w=3000',1,'2026-06-10 10:20:00','2026-06-10 10:20:00',0,0),
-(3,2,'https://images.unsplash.com/photo-1758518731814-50848c31d1ae?auto=format&fit=crop&fm=jpg&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&ixlib=rb-4.1.0&q=60&w=3000',2,'2026-06-10 10:20:00','2026-06-10 10:20:00',0,0);
+(3,2,'https://images.unsplash.com/photo-1758518731814-50848c31d1ae?auto=format&fit=crop&fm=jpg&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&ixlib=rb-4.1.0&q=60&w=3000',2,'2026-06-10 10:20:00','2026-06-10 10:20:00',0,0),
+(4,5,'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&fm=jpg&q=60&w=1600',1,'2026-06-10 12:10:00','2026-06-10 12:10:00',0,0),
+(5,6,'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&fm=jpg&q=60&w=1600',1,'2026-06-10 12:26:00','2026-06-10 12:26:00',0,0),
+(6,8,'https://images.unsplash.com/photo-1501504905252-473c47e087f8?auto=format&fit=crop&fm=jpg&q=60&w=1600',1,'2026-06-10 13:05:00','2026-06-10 13:05:00',0,0);
 /*!40000 ALTER TABLE `community_post_image` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -784,7 +793,7 @@ CREATE TABLE `community_comment` (
   PRIMARY KEY (`id`),
   KEY `idx_community_comment_post_id_parent_id_created_at` (`post_id`,`parent_id`,`created_at`),
   KEY `idx_community_comment_member_id_created_at` (`member_id`,`created_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='社区评论表';
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='社区评论表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -797,7 +806,18 @@ INSERT INTO `community_comment` VALUES
 (1,1,2,0,NULL,'这个模块先把基础互动打通很合理，后面再慢慢丰富。',1,'2026-06-10 10:12:00','2026-06-10 10:12:00',0,0),
 (2,1,3,0,NULL,'详情页右侧评论单独滚动的交互挺顺手，阅读和回复不会互相打断。',1,'2026-06-10 10:18:00','2026-06-10 10:18:00',0,0),
 (3,1,1,1,2,'第一版先控制复杂度，后续再补更多能力。',1,'2026-06-10 10:22:00','2026-06-10 10:22:00',0,0),
-(4,2,4,0,NULL,'如果后面能把课程学习和讨论串起来，使用频率会更高。',1,'2026-06-10 10:28:00','2026-06-10 10:28:00',0,0);
+(4,2,4,0,NULL,'如果后面能把课程学习和讨论串起来，使用频率会更高。',1,'2026-06-10 10:28:00','2026-06-10 10:28:00',0,0),
+(5,4,1,0,NULL,'111',1,'2026-06-10 11:48:00','2026-06-10 11:48:00',0,0),
+(6,5,3,0,NULL,'这个入口很有必要，用户学完内容后立刻讨论，参与率会高很多。',1,'2026-06-10 12:18:00','2026-06-10 12:18:00',0,0),
+(7,5,1,6,3,'我也这么觉得，至少提问链路顺了很多。',1,'2026-06-10 12:21:00','2026-06-10 12:21:00',0,0),
+(8,6,4,0,NULL,'长帖如果能沉淀到课程章节下面，后面复用价值会很高。',1,'2026-06-10 12:31:00','2026-06-10 12:31:00',0,0),
+(9,6,2,8,4,'是的，特别适合总结类和踩坑类内容。',1,'2026-06-10 12:34:00','2026-06-10 12:34:00',0,0),
+(10,6,5,0,NULL,'希望后面还能支持老师置顶高质量回复。',1,'2026-06-10 12:38:00','2026-06-10 12:38:00',0,0),
+(11,7,6,0,NULL,'我更想先看我的帖子，方便回看自己发过什么。',1,'2026-06-10 12:45:00','2026-06-10 12:45:00',0,0),
+(12,7,1,11,6,'同意，消息提醒可以放第二阶段。',1,'2026-06-10 12:47:00','2026-06-10 12:47:00',0,0),
+(13,8,7,0,NULL,'打卡类帖子很适合做成周报汇总。',1,'2026-06-10 13:12:00','2026-06-10 13:12:00',0,0),
+(14,9,8,0,NULL,'这条长帖刚好可以验证收藏页、详情页和评论区在长内容下的稳定性。',1,'2026-06-10 13:33:00','2026-06-10 13:33:00',0,0),
+(15,9,1,14,8,'对，这类数据比较适合回归测试。',1,'2026-06-10 13:36:00','2026-06-10 13:36:00',0,0);
 /*!40000 ALTER TABLE `community_comment` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -820,7 +840,7 @@ CREATE TABLE `community_post_action` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_community_post_action` (`post_id`,`member_id`,`action_type`),
   KEY `idx_community_post_action_member_id_action_type_created_at` (`member_id`,`action_type`,`created_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='社区帖子互动行为表';
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='社区帖子互动行为表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -830,11 +850,17 @@ CREATE TABLE `community_post_action` (
 LOCK TABLES `community_post_action` WRITE;
 /*!40000 ALTER TABLE `community_post_action` DISABLE KEYS */;
 INSERT INTO `community_post_action` VALUES
-(1,1,2,1,'2026-06-10 10:11:00','2026-06-10 10:11:00',0,0),
 (2,1,3,1,'2026-06-10 10:13:00','2026-06-10 10:13:00',0,0),
-(3,1,2,2,'2026-06-10 10:14:00','2026-06-10 10:14:00',0,0),
-(4,2,1,1,'2026-06-10 10:24:00','2026-06-10 10:24:00',0,0),
-(5,2,1,2,'2026-06-10 10:25:00','2026-06-10 10:25:00',0,0);
+(7,1,2,1,'2026-06-10 10:11:00','2026-06-10 10:11:00',0,0),
+(8,1,2,2,'2026-06-10 10:14:00','2026-06-10 10:14:00',0,0),
+(9,5,1,2,'2026-06-10 12:22:00','2026-06-10 12:22:00',0,0),
+(10,6,1,2,'2026-06-10 12:40:00','2026-06-10 12:40:00',0,0),
+(11,9,1,2,'2026-06-10 13:38:00','2026-06-10 13:38:00',0,0),
+(12,6,2,1,'2026-06-10 12:42:00','2026-06-10 12:42:00',0,0),
+(13,6,3,1,'2026-06-10 12:43:00','2026-06-10 12:43:00',0,0),
+(14,7,1,1,'2026-06-10 12:49:00','2026-06-10 12:49:00',0,0),
+(15,8,1,1,'2026-06-10 13:14:00','2026-06-10 13:14:00',0,0),
+(16,8,1,2,'2026-06-10 13:14:30','2026-06-10 13:14:30',0,0);
 /*!40000 ALTER TABLE `community_post_action` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

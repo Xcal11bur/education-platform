@@ -113,11 +113,8 @@
                       v-if="comment.children?.length"
                       class="comment-preview-reply"
                     >
-                      <strong>{{ comment.children[0].memberName || '学员' }}</strong>
+                      <strong>{{ comment.children[0].memberName || '学员' }}：</strong>
                       <span>
-                        <template v-if="comment.children[0].replyToMemberName">
-                          回复 {{ comment.children[0].replyToMemberName }}：
-                        </template>
                         {{ comment.children[0].content }}
                       </span>
                     </div>

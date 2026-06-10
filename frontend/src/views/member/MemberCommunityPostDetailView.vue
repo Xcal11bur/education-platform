@@ -65,14 +65,19 @@
 
         <aside class="comment-column">
           <div class="comment-sticky">
-            <section class="comment-card">
+            <section ref="commentCardRef" class="comment-card">
               <div class="comment-head">
                 <h2>全部评论 {{ postDetail.commentCount || 0 }}</h2>
               </div>
 
               <div class="comment-body" v-loading="commentLoading">
                 <div v-if="commentPage.list.length" class="comment-list">
-                  <article v-for="comment in commentPage.list" :key="comment.id" class="comment-item">
+                  <article
+                    v-for="comment in commentPage.list"
+                    :key="comment.id"
+                    class="comment-item"
+                    @click="startReply(comment)"
+                  >
                     <div class="comment-row">
                       <el-avatar :size="42" :src="comment.memberAvatar">
                         {{ (comment.memberName || '学').slice(0, 1).toUpperCase() }}
@@ -83,22 +88,19 @@
                           <span>{{ formatDateTime(comment.createdAt) }}</span>
                         </div>
                         <div class="comment-content">{{ comment.content }}</div>
-                        <button class="reply-button" type="button" @click="startReply(comment)">
-                          回复
-                        </button>
 
                         <div v-if="comment.children?.length" class="reply-list">
-                          <article v-for="reply in comment.children" :key="reply.id" class="reply-item">
-                            <div class="reply-head">
-                              <strong>{{ reply.memberName || '学员' }}</strong>
-                              <span>{{ formatDateTime(reply.createdAt) }}</span>
-                            </div>
+                          <article
+                            v-for="reply in comment.children"
+                            :key="reply.id"
+                            class="reply-item"
+                            @click.stop="startReply(reply, comment.id)"
+                          >
                             <div class="reply-content">
-                              <template v-if="reply.replyToMemberName">
-                                回复 {{ reply.replyToMemberName }}：
-                              </template>
-                              {{ reply.content }}
+                              <strong>{{ reply.memberName || '学员' }}：</strong>
+                              <span>{{ reply.content }}</span>
                             </div>
+                            <div class="reply-time">{{ formatDateTime(reply.createdAt) }}</div>
                           </article>
                         </div>
                       </div>
@@ -206,6 +208,7 @@ const commentLoading = ref(false)
 const commentSubmitting = ref(false)
 const composerExpanded = ref(false)
 const commentInputRef = ref()
+const commentCardRef = ref()
 const commentFooterRef = ref()
 const commentContent = ref('')
 const replyTarget = ref(null)
@@ -290,9 +293,9 @@ function collapseComposer() {
   replyTarget.value = null
 }
 
-function startReply(comment) {
+function startReply(comment, parentId = comment.id) {
   replyTarget.value = {
-    parentId: comment.id,
+    parentId,
     memberId: comment.memberId,
     memberName: comment.memberName
   }
@@ -307,7 +310,7 @@ function handleOutsideClick(event) {
   if (!composerExpanded.value) {
     return
   }
-  if (commentFooterRef.value?.contains(event.target)) {
+  if (commentCardRef.value?.contains(event.target)) {
     return
   }
   collapseComposer()
@@ -468,7 +471,7 @@ watch([commentPageNum, commentPageSize], () => {
 
 .detail-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 420px;
+  grid-template-columns: minmax(0, 1fr) 470px;
   gap: 20px;
   align-items: start;
 }
@@ -596,6 +599,13 @@ watch([commentPageNum, commentPageSize], () => {
   border-radius: 16px;
   background: #fff;
   border: 1px solid #eef2f7;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.comment-item:hover {
+  border-color: #dbeafe;
+  background: #fcfdff;
 }
 
 .comment-row {
@@ -609,21 +619,18 @@ watch([commentPageNum, commentPageSize], () => {
   min-width: 0;
 }
 
-.comment-main-head,
-.reply-head {
+.comment-main-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.comment-main-head strong,
-.reply-head strong {
+.comment-main-head strong {
   color: #1f2d3d;
 }
 
-.comment-main-head span,
-.reply-head span {
+.comment-main-head span {
   color: #909399;
   font-size: 12px;
 }
@@ -638,13 +645,12 @@ watch([commentPageNum, commentPageSize], () => {
   word-break: break-word;
 }
 
-.reply-button {
-  margin-top: 8px;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: #409eff;
-  cursor: pointer;
+.reply-content strong {
+  color: #374151;
+}
+
+.reply-content span {
+  color: #303133;
 }
 
 .reply-list {
@@ -660,11 +666,18 @@ watch([commentPageNum, commentPageSize], () => {
 .reply-item {
   padding-bottom: 10px;
   border-bottom: 1px solid #e5eaf3;
+  cursor: pointer;
 }
 
 .reply-item:last-child {
   padding-bottom: 0;
   border-bottom: 0;
+}
+
+.reply-time {
+  margin-top: 6px;
+  color: #9ca3af;
+  font-size: 12px;
 }
 
 .comment-pagination {

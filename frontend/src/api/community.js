@@ -8,6 +8,14 @@ export function getCommunityPostList(params) {
   })
 }
 
+export function getMyFavoriteCommunityPosts(params) {
+  return request({
+    url: '/member/community/posts/favorites',
+    method: 'get',
+    params
+  })
+}
+
 export function getCommunityPostDetail(postId) {
   return request({
     url: `/portal/community/posts/${postId}`,

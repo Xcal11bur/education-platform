@@ -16,6 +16,8 @@ public interface CommunityService extends IService<CommunityPost> {
 
     PageResponse<CommunityPostListVO> pagePortalPosts(CommunityPostQueryDTO queryDTO);
 
+    PageResponse<CommunityPostListVO> pageCurrentMemberFavoritePosts(CommunityPostQueryDTO queryDTO);
+
     CommunityPostDetailVO getPortalPostDetail(Long postId);
 
     PageResponse<CommunityCommentVO> pagePortalComments(Long postId, CommunityCommentQueryDTO queryDTO);

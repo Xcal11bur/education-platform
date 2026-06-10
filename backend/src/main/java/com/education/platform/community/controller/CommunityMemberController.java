@@ -1,12 +1,17 @@
 package com.education.platform.community.controller;
 
 import com.education.platform.common.result.Result;
+import com.education.platform.common.model.PageResponse;
 import com.education.platform.community.dto.CommunityCommentSaveDTO;
+import com.education.platform.community.dto.CommunityPostQueryDTO;
 import com.education.platform.community.dto.CommunityPostSaveDTO;
 import com.education.platform.community.service.CommunityService;
 import com.education.platform.community.vo.CommunityPostInteractVO;
+import com.education.platform.community.vo.CommunityPostListVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,6 +25,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class CommunityMemberController {
 
     private final CommunityService communityService;
+
+    @GetMapping("/favorites")
+    public Result<PageResponse<CommunityPostListVO>> pageFavorites(@Validated CommunityPostQueryDTO queryDTO) {
+        return Result.success(communityService.pageCurrentMemberFavoritePosts(queryDTO));
+    }
 
     @PostMapping
     public Result<Void> createPost(@Valid @RequestBody CommunityPostSaveDTO request) {
