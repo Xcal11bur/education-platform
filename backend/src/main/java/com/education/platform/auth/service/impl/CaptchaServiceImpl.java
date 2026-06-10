@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.imageio.ImageIO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +44,9 @@ public class CaptchaServiceImpl implements CaptchaService {
     @Override
     public void validateCaptcha(String captchaKey, String captchaCode) {
         clearExpiredCaptchas();
+        if (!StringUtils.hasText(captchaKey) || !StringUtils.hasText(captchaCode)) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "captcha is required");
+        }
         CaptchaEntry entry = captchaStore.remove(captchaKey);
         if (entry == null || entry.expireAt() < Instant.now().getEpochSecond()) {
             throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "captcha has expired");

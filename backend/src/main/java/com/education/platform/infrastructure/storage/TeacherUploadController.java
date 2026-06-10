@@ -2,6 +2,7 @@ package com.education.platform.infrastructure.storage;
 
 import com.education.platform.common.result.Result;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
+@PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
 @RequestMapping("/api/v1/teacher/uploads")
 @RequiredArgsConstructor
 public class TeacherUploadController {

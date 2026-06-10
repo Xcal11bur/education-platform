@@ -32,9 +32,9 @@ springdoc:
 
 app:
   security:
-    jwt-secret: ${JWT_SECRET:replace-this-with-a-long-random-secret-key-for-dev-only}
+    jwt-secret: ${JWT_SECRET}
     token-expire-seconds: 7200
-    login-captcha-enabled: ${LOGIN_CAPTCHA_ENABLED:false}
+    login-captcha-enabled: ${LOGIN_CAPTCHA_ENABLED:true}
   oss:
     endpoint: ${OSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
     bucket-name: ${OSS_BUCKET_NAME:education-platform-333}

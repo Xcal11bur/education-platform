@@ -148,7 +148,7 @@ public class AuthServiceImpl implements AuthService {
         return LoginResponse.builder()
                 .userId(userId)
                 .token(token)
-                .expiresIn(7200L)
+                .expiresIn(securityProperties.getTokenExpireSeconds())
                 .role(role)
                 .username(username)
                 .displayName(displayName)

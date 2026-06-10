@@ -4,10 +4,10 @@ import com.education.platform.auth.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -26,6 +26,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/captcha").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/portal/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/portal/courses/reviews/*/avatar").permitAll()
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/auth/admin/login",
@@ -33,8 +35,10 @@ public class SecurityConfig {
                                 "/api/v1/auth/member/login",
                                 "/api/v1/auth/member/register"
                         ).permitAll()
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/teacher/**").hasAnyRole("TEACHER", "ADMIN")
+                        .requestMatchers("/api/v1/member/**").hasRole("MEMBER")
                         .requestMatchers(
-                                "/api/v1/health",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
