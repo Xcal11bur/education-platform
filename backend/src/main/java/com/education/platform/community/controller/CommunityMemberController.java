@@ -31,6 +31,11 @@ public class CommunityMemberController {
         return Result.success(communityService.pageCurrentMemberFavoritePosts(queryDTO));
     }
 
+    @GetMapping("/mine")
+    public Result<PageResponse<CommunityPostListVO>> pageMyPosts(@Validated CommunityPostQueryDTO queryDTO) {
+        return Result.success(communityService.pageCurrentMemberPosts(queryDTO));
+    }
+
     @PostMapping
     public Result<Void> createPost(@Valid @RequestBody CommunityPostSaveDTO request) {
         communityService.createCurrentMemberPost(request);
@@ -40,6 +45,18 @@ public class CommunityMemberController {
     @PostMapping("/{postId}/comments")
     public Result<Void> createComment(@PathVariable Long postId, @Valid @RequestBody CommunityCommentSaveDTO request) {
         communityService.createCurrentMemberComment(postId, request);
+        return Result.success();
+    }
+
+    @DeleteMapping("/{postId}")
+    public Result<Void> deletePost(@PathVariable Long postId) {
+        communityService.deleteCurrentMemberPost(postId);
+        return Result.success();
+    }
+
+    @DeleteMapping("/comments/{commentId}")
+    public Result<Void> deleteComment(@PathVariable Long commentId) {
+        communityService.deleteCurrentMemberComment(commentId);
         return Result.success();
     }
 

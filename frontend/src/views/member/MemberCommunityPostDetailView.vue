@@ -85,7 +85,17 @@
                       <div class="comment-main">
                         <div class="comment-main-head">
                           <strong>{{ comment.memberName || '学员' }}</strong>
-                          <span>{{ formatDateTime(comment.createdAt) }}</span>
+                          <div class="comment-head-actions">
+                            <button
+                              v-if="currentUserId && currentUserId === comment.memberId"
+                              class="delete-button"
+                              type="button"
+                              @click.stop="handleDeleteComment(comment)"
+                            >
+                              删除
+                            </button>
+                            <span>{{ formatDateTime(comment.createdAt) }}</span>
+                          </div>
                         </div>
                         <div class="comment-content">{{ comment.content }}</div>
 
@@ -100,7 +110,17 @@
                               <strong>{{ reply.memberName || '学员' }}：</strong>
                               <span>{{ reply.content }}</span>
                             </div>
-                            <div class="reply-time">{{ formatDateTime(reply.createdAt) }}</div>
+                            <div class="reply-time">
+                              <button
+                                v-if="currentUserId && currentUserId === reply.memberId"
+                                class="delete-button"
+                                type="button"
+                                @click.stop="handleDeleteComment(reply)"
+                              >
+                                删除
+                              </button>
+                              <span>{{ formatDateTime(reply.createdAt) }}</span>
+                            </div>
                           </article>
                         </div>
                       </div>
@@ -125,7 +145,6 @@
               <div ref="commentFooterRef" class="comment-footer">
                 <div v-if="replyTarget" class="reply-indicator">
                   <span>回复 {{ replyTarget.memberName }}</span>
-                  <button type="button" @click="clearReply">取消</button>
                 </div>
 
                 <div class="footer-action-bar">
@@ -177,11 +196,12 @@
 
 <script setup>
 import { ArrowLeft, ChatDotRound, Pointer, Star } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   createCommunityComment,
+  deleteCommunityComment,
   favoriteCommunityPost,
   getCommunityCommentList,
   getCommunityPostDetail,
@@ -226,6 +246,7 @@ const commentPage = ref({
 
 const displayName = computed(() => authStore.profile?.displayName || authStore.profile?.username || '学员')
 const avatarUrl = computed(() => authStore.profile?.avatar || '')
+const currentUserId = computed(() => authStore.profile?.userId || null)
 const activeNav = computed(() => (route.path.startsWith('/member/community') ? 'community' : 'home'))
 
 function handleNavSelect(key) {
@@ -338,6 +359,21 @@ async function submitComment() {
   } finally {
     commentSubmitting.value = false
   }
+}
+
+async function handleDeleteComment(comment) {
+  await ElMessageBox.confirm(
+    '确认删除这条评论吗？',
+    '删除评论',
+    {
+      type: 'warning',
+      confirmButtonText: '确认删除',
+      cancelButtonText: '取消'
+    }
+  )
+  await deleteCommunityComment(comment.id)
+  ElMessage.success('评论已删除')
+  await Promise.all([fetchPostDetail(), fetchComments()])
 }
 
 async function toggleLike() {
@@ -630,6 +666,13 @@ watch([commentPageNum, commentPageSize], () => {
   color: #1f2d3d;
 }
 
+.comment-head-actions,
+.reply-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .comment-main-head span {
   color: #909399;
   font-size: 12px;
@@ -680,6 +723,15 @@ watch([commentPageNum, commentPageSize], () => {
   font-size: 12px;
 }
 
+.delete-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 12px;
+}
+
 .comment-pagination {
   margin-top: 16px;
   display: flex;
@@ -696,17 +748,8 @@ watch([commentPageNum, commentPageSize], () => {
   margin-bottom: 12px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   color: #409eff;
   font-size: 13px;
-}
-
-.reply-indicator button {
-  border: 0;
-  background: transparent;
-  color: #909399;
-  cursor: pointer;
 }
 
 .comment-entry-wrap {

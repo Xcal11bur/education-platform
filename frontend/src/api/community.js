@@ -16,6 +16,14 @@ export function getMyFavoriteCommunityPosts(params) {
   })
 }
 
+export function getMyCommunityPosts(params) {
+  return request({
+    url: '/member/community/posts/mine',
+    method: 'get',
+    params
+  })
+}
+
 export function getCommunityPostDetail(postId) {
   return request({
     url: `/portal/community/posts/${postId}`,
@@ -44,6 +52,20 @@ export function createCommunityComment(postId, data) {
     url: `/member/community/posts/${postId}/comments`,
     method: 'post',
     data
+  })
+}
+
+export function deleteCommunityPost(postId) {
+  return request({
+    url: `/member/community/posts/${postId}`,
+    method: 'delete'
+  })
+}
+
+export function deleteCommunityComment(commentId) {
+  return request({
+    url: `/member/community/posts/comments/${commentId}`,
+    method: 'delete'
   })
 }
 

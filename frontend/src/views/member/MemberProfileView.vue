@@ -132,6 +132,61 @@
           </div>
         </div>
 
+        <div v-else-if="activeMenu === 'posts'" class="placeholder-panel">
+          <div v-loading="myPostLoading">
+            <div v-if="myPosts.length" class="favorite-post-list">
+              <article
+                v-for="post in myPosts"
+                :key="post.id"
+                class="favorite-post-card"
+                @click="goFavoritePost(post.id)"
+              >
+                <div class="favorite-post-main">
+                  <div class="favorite-post-head">
+                    <div class="favorite-post-author">
+                      <el-avatar :size="38" :src="post.authorAvatar">
+                        {{ (post.authorName || '学').slice(0, 1).toUpperCase() }}
+                      </el-avatar>
+                      <div class="favorite-post-author-copy">
+                        <strong>{{ post.authorName || '学员' }}</strong>
+                        <span>{{ formatDateTime(post.createdAt) }}</span>
+                      </div>
+                    </div>
+
+                    <el-button
+                      type="danger"
+                      size="small"
+                      plain
+                      @click.stop="handleDeletePost(post)"
+                    >
+                      删除帖子
+                    </el-button>
+                  </div>
+
+                  <h3>{{ post.title }}</h3>
+                  <p>{{ post.content }}</p>
+
+                  <div class="favorite-post-meta">
+                    <span>评论 {{ post.commentCount || 0 }}</span>
+                    <span>点赞 {{ post.likeCount || 0 }}</span>
+                    <span>收藏 {{ post.favoriteCount || 0 }}</span>
+                  </div>
+                </div>
+
+                <div v-if="post.images?.length" class="favorite-post-side">
+                  <img :src="post.images[0]" :alt="`${post.title} 配图`" />
+                </div>
+              </article>
+            </div>
+
+            <el-empty
+              v-else
+              description="还没有发布过帖子"
+              :image-size="90"
+            />
+          </div>
+        </div>
+
         <el-form
           v-else-if="activeMenu === 'info'"
           ref="profileFormRef"
@@ -241,7 +296,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
-import { getMyFavoriteCommunityPosts } from '@/api/community'
+import { deleteCommunityPost, getMyCommunityPosts, getMyFavoriteCommunityPosts } from '@/api/community'
 import { getMemberCourseList, unenrollCourse } from '@/api/course'
 import brandLogo from '@/assets/education-cloud-logo.jpg'
 import {
@@ -265,6 +320,8 @@ const courseLoading = ref(false)
 const memberCourses = ref([])
 const favoriteLoading = ref(false)
 const favoritePosts = ref([])
+const myPostLoading = ref(false)
+const myPosts = ref([])
 const mobileDialogVisible = ref(false)
 const passwordDialogVisible = ref(false)
 const mobileSaving = ref(false)
@@ -295,6 +352,7 @@ const passwordForm = reactive({
 const menuItems = [
   { key: 'courses', label: '我的课程', icon: Collection },
   { key: 'info', label: '个人信息', icon: User },
+  { key: 'posts', label: '我的帖子', icon: Collection },
   { key: 'favorites', label: '我的收藏', icon: Star }
 ]
 
@@ -388,6 +446,19 @@ async function fetchFavoritePosts() {
   }
 }
 
+async function fetchMyPosts() {
+  myPostLoading.value = true
+  try {
+    const { data } = await getMyCommunityPosts({
+      pageNum: 1,
+      pageSize: 100
+    })
+    myPosts.value = data?.list || []
+  } finally {
+    myPostLoading.value = false
+  }
+}
+
 async function handleUnenroll(course) {
   await ElMessageBox.confirm(
     `确认退出《${course.title || '当前课程'}》吗？`,
@@ -424,6 +495,22 @@ function goMyCourse(course) {
 
 function goFavoritePost(postId) {
   router.push(`/member/community/${postId}`)
+}
+
+async function handleDeletePost(post) {
+  await ElMessageBox.confirm(
+    `确认删除帖子“${post.title || '当前帖子'}”吗？`,
+    '删除帖子',
+    {
+      type: 'warning',
+      confirmButtonText: '确认删除',
+      cancelButtonText: '取消'
+    }
+  )
+  await deleteCommunityPost(post.id)
+  myPosts.value = myPosts.value.filter((item) => item.id !== post.id)
+  favoritePosts.value = favoritePosts.value.filter((item) => item.id !== post.id)
+  ElMessage.success('帖子已删除')
 }
 
 function formatDateTime(value) {
@@ -541,6 +628,10 @@ watch(
   async (value) => {
     if (value === 'favorites' && !favoritePosts.value.length) {
       await fetchFavoritePosts()
+      return
+    }
+    if (value === 'posts' && !myPosts.value.length) {
+      await fetchMyPosts()
     }
   }
 )

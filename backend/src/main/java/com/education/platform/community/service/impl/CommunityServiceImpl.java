@@ -53,7 +53,9 @@ public class CommunityServiceImpl extends ServiceImpl<CommunityPostMapper, Commu
     private static final String ROLE_MEMBER = "MEMBER";
     private static final int MEMBER_STATUS_ENABLED = 1;
     private static final int POST_STATUS_PUBLISHED = 1;
+    private static final int POST_STATUS_DELETED = 2;
     private static final int COMMENT_STATUS_PUBLISHED = 1;
+    private static final int COMMENT_STATUS_HIDDEN = 0;
     private static final int ACTION_TYPE_LIKE = 1;
     private static final int ACTION_TYPE_FAVORITE = 2;
 
@@ -123,6 +125,25 @@ public class CommunityServiceImpl extends ServiceImpl<CommunityPostMapper, Commu
                 .pageSize(actionPage.getSize())
                 .total(actionPage.getTotal())
                 .list(buildPostListVOs(posts, memberId))
+                .build();
+    }
+
+    @Override
+    public PageResponse<CommunityPostListVO> pageCurrentMemberPosts(CommunityPostQueryDTO queryDTO) {
+        Long memberId = getCurrentMemberId();
+        IPage<CommunityPost> page = lambdaQuery()
+                .eq(CommunityPost::getMemberId, memberId)
+                .eq(CommunityPost::getStatus, POST_STATUS_PUBLISHED)
+                .orderByDesc(CommunityPost::getCreatedAt, CommunityPost::getId)
+                .page(new Page<>(queryDTO.getPageNum(), queryDTO.getPageSize()));
+        if (page.getRecords().isEmpty()) {
+            return PageResponse.empty(queryDTO.getPageNum(), queryDTO.getPageSize());
+        }
+        return PageResponse.<CommunityPostListVO>builder()
+                .pageNum(page.getCurrent())
+                .pageSize(page.getSize())
+                .total(page.getTotal())
+                .list(buildPostListVOs(page.getRecords(), memberId))
                 .build();
     }
 
@@ -263,6 +284,52 @@ public class CommunityServiceImpl extends ServiceImpl<CommunityPostMapper, Commu
         communityCommentMapper.insert(comment);
 
         refreshCommentCount(postId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteCurrentMemberPost(Long postId) {
+        Long memberId = getCurrentMemberId();
+        CommunityPost post = getPublishedPostOrThrow(postId);
+        if (!Objects.equals(post.getMemberId(), memberId)) {
+            throw new BusinessException(ResultCode.FORBIDDEN.getCode(), "cannot delete other member post");
+        }
+        post.setStatus(POST_STATUS_DELETED);
+        updateById(post);
+        communityCommentMapper.update(
+                null,
+                Wrappers.<CommunityComment>lambdaUpdate()
+                        .eq(CommunityComment::getPostId, postId)
+                        .set(CommunityComment::getStatus, COMMENT_STATUS_HIDDEN)
+        );
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteCurrentMemberComment(Long commentId) {
+        Long memberId = getCurrentMemberId();
+        CommunityComment comment = getCommentOrThrow(commentId);
+        if (!Objects.equals(comment.getMemberId(), memberId)) {
+            throw new BusinessException(ResultCode.FORBIDDEN.getCode(), "cannot delete other member comment");
+        }
+        if (Objects.equals(comment.getStatus(), COMMENT_STATUS_HIDDEN)) {
+            return;
+        }
+
+        if (Objects.equals(comment.getParentId(), 0L)) {
+            communityCommentMapper.update(
+                    null,
+                    Wrappers.<CommunityComment>lambdaUpdate()
+                            .eq(CommunityComment::getId, commentId)
+                            .or()
+                            .eq(CommunityComment::getParentId, commentId)
+                            .set(CommunityComment::getStatus, COMMENT_STATUS_HIDDEN)
+            );
+        } else {
+            comment.setStatus(COMMENT_STATUS_HIDDEN);
+            communityCommentMapper.updateById(comment);
+        }
+        refreshCommentCount(comment.getPostId());
     }
 
     @Override

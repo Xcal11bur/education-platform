@@ -18,6 +18,8 @@ public interface CommunityService extends IService<CommunityPost> {
 
     PageResponse<CommunityPostListVO> pageCurrentMemberFavoritePosts(CommunityPostQueryDTO queryDTO);
 
+    PageResponse<CommunityPostListVO> pageCurrentMemberPosts(CommunityPostQueryDTO queryDTO);
+
     CommunityPostDetailVO getPortalPostDetail(Long postId);
 
     PageResponse<CommunityCommentVO> pagePortalComments(Long postId, CommunityCommentQueryDTO queryDTO);
@@ -25,6 +27,10 @@ public interface CommunityService extends IService<CommunityPost> {
     void createCurrentMemberPost(CommunityPostSaveDTO request);
 
     void createCurrentMemberComment(Long postId, CommunityCommentSaveDTO request);
+
+    void deleteCurrentMemberPost(Long postId);
+
+    void deleteCurrentMemberComment(Long commentId);
 
     CommunityPostInteractVO likeCurrentMemberPost(Long postId);
 
