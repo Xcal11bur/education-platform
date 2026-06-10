@@ -686,6 +686,157 @@ LOCK TABLES `teacher` WRITE;
 INSERT INTO `teacher` VALUES (1,'teacher_li','$2a$10$K/Bk4X/AoR8SH7nMaOn5JONc3/uax1seUz7s.Pah6EJAUmABVl9da','老李','高级讲师','主讲 Java 后端开发与 Spring Boot 实战。','https://education-platform-333.oss-cn-beijing.aliyuncs.com/education-platform/materials/teacher-avatars/2026/06/d23120c6d0594cb0a9ac08bfc2a88c47.png','13900000001','li.teacher@edu.com',1,'2026-06-04 10:11:23','2026-06-04 10:11:23',1,1),(2,'teacher_wang','$2a$10$K/Bk4X/AoR8SH7nMaOn5JONc3/uax1seUz7s.Pah6EJAUmABVl9da','王老师','前端讲师','主讲 Vue 3、工程化与前端项目实战。','https://cdn.edu.com/avatar/teacher-2.png','13900000002','wang.teacher@edu.com',1,'2026-06-04 10:11:23','2026-06-04 10:11:23',1,1);
 /*!40000 ALTER TABLE `teacher` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `community_post`
+--
+
+DROP TABLE IF EXISTS `community_post`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `community_post` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `member_id` bigint unsigned NOT NULL COMMENT '发帖会员ID',
+  `title` varchar(80) NOT NULL COMMENT '帖子标题',
+  `content` text NOT NULL COMMENT '帖子正文',
+  `status` tinyint NOT NULL DEFAULT '1' COMMENT '状态: 0待审核 1已发布 2已删除',
+  `comment_count` int NOT NULL DEFAULT '0' COMMENT '评论数',
+  `like_count` int NOT NULL DEFAULT '0' COMMENT '点赞数',
+  `favorite_count` int NOT NULL DEFAULT '0' COMMENT '收藏数',
+  `view_count` int NOT NULL DEFAULT '0' COMMENT '浏览数',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_by` bigint unsigned DEFAULT '0' COMMENT '创建人',
+  `updated_by` bigint unsigned DEFAULT '0' COMMENT '更新人',
+  PRIMARY KEY (`id`),
+  KEY `idx_community_post_status_created_at` (`status`,`created_at`),
+  KEY `idx_community_post_status_hot` (`status`,`like_count`,`comment_count`,`created_at`),
+  KEY `idx_community_post_member_id_created_at` (`member_id`,`created_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='社区帖子表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `community_post`
+--
+
+LOCK TABLES `community_post` WRITE;
+/*!40000 ALTER TABLE `community_post` DISABLE KEYS */;
+INSERT INTO `community_post` VALUES
+(1,1,'交流社区第一版已上线','第一阶段先把发帖、评论、点赞、收藏打通。后续还会继续补充内容治理和更完整的互动体验。',1,3,2,1,18,'2026-06-10 10:05:00','2026-06-10 10:05:00',0,0),
+(2,2,'今天学完课程后有什么收获？','欢迎大家在这里分享最近学到的知识点，也可以说说你希望社区后续增加什么能力。',1,1,1,1,9,'2026-06-10 10:20:00','2026-06-10 10:20:00',0,0),
+(3,3,'课程学习和交流社区可以怎么联动？','比如学完一个章节后直接跳转到讨论区，或者给课程关联专题帖。这个方向后面可以继续迭代。',1,0,0,0,4,'2026-06-10 10:40:00','2026-06-10 10:40:00',0,0);
+/*!40000 ALTER TABLE `community_post` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `community_post_image`
+--
+
+DROP TABLE IF EXISTS `community_post_image`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `community_post_image` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `post_id` bigint unsigned NOT NULL COMMENT '帖子ID',
+  `image_url` varchar(500) NOT NULL COMMENT '图片地址',
+  `sort` int NOT NULL DEFAULT '0' COMMENT '排序值',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_by` bigint unsigned DEFAULT '0' COMMENT '创建人',
+  `updated_by` bigint unsigned DEFAULT '0' COMMENT '更新人',
+  PRIMARY KEY (`id`),
+  KEY `idx_community_post_image_post_id_sort` (`post_id`,`sort`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='社区帖子图片表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `community_post_image`
+--
+
+LOCK TABLES `community_post_image` WRITE;
+/*!40000 ALTER TABLE `community_post_image` DISABLE KEYS */;
+INSERT INTO `community_post_image` VALUES
+(1,1,'https://images.unsplash.com/photo-1541746972996-4e0b0f43e02a?auto=format&fit=crop&fm=jpg&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&ixlib=rb-4.1.0&q=60&w=3000',1,'2026-06-10 10:05:00','2026-06-10 10:05:00',0,0),
+(2,2,'https://images.unsplash.com/photo-1759884247231-24a9d8f6d454?auto=format&fit=crop&fm=jpg&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&ixlib=rb-4.1.0&q=60&w=3000',1,'2026-06-10 10:20:00','2026-06-10 10:20:00',0,0),
+(3,2,'https://images.unsplash.com/photo-1758518731814-50848c31d1ae?auto=format&fit=crop&fm=jpg&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&ixlib=rb-4.1.0&q=60&w=3000',2,'2026-06-10 10:20:00','2026-06-10 10:20:00',0,0);
+/*!40000 ALTER TABLE `community_post_image` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `community_comment`
+--
+
+DROP TABLE IF EXISTS `community_comment`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `community_comment` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `post_id` bigint unsigned NOT NULL COMMENT '帖子ID',
+  `member_id` bigint unsigned NOT NULL COMMENT '评论会员ID',
+  `parent_id` bigint unsigned NOT NULL DEFAULT '0' COMMENT '父评论ID，一级评论为0',
+  `reply_to_member_id` bigint unsigned DEFAULT NULL COMMENT '被回复会员ID',
+  `content` varchar(1000) NOT NULL COMMENT '评论内容',
+  `status` tinyint NOT NULL DEFAULT '1' COMMENT '状态: 0隐藏 1显示',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_by` bigint unsigned DEFAULT '0' COMMENT '创建人',
+  `updated_by` bigint unsigned DEFAULT '0' COMMENT '更新人',
+  PRIMARY KEY (`id`),
+  KEY `idx_community_comment_post_id_parent_id_created_at` (`post_id`,`parent_id`,`created_at`),
+  KEY `idx_community_comment_member_id_created_at` (`member_id`,`created_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='社区评论表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `community_comment`
+--
+
+LOCK TABLES `community_comment` WRITE;
+/*!40000 ALTER TABLE `community_comment` DISABLE KEYS */;
+INSERT INTO `community_comment` VALUES
+(1,1,2,0,NULL,'这个模块先把基础互动打通很合理，后面再慢慢丰富。',1,'2026-06-10 10:12:00','2026-06-10 10:12:00',0,0),
+(2,1,3,0,NULL,'详情页右侧评论单独滚动的交互挺顺手，阅读和回复不会互相打断。',1,'2026-06-10 10:18:00','2026-06-10 10:18:00',0,0),
+(3,1,1,1,2,'第一版先控制复杂度，后续再补更多能力。',1,'2026-06-10 10:22:00','2026-06-10 10:22:00',0,0),
+(4,2,4,0,NULL,'如果后面能把课程学习和讨论串起来，使用频率会更高。',1,'2026-06-10 10:28:00','2026-06-10 10:28:00',0,0);
+/*!40000 ALTER TABLE `community_comment` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `community_post_action`
+--
+
+DROP TABLE IF EXISTS `community_post_action`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `community_post_action` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `post_id` bigint unsigned NOT NULL COMMENT '帖子ID',
+  `member_id` bigint unsigned NOT NULL COMMENT '会员ID',
+  `action_type` tinyint NOT NULL COMMENT '行为类型: 1点赞 2收藏',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_by` bigint unsigned DEFAULT '0' COMMENT '创建人',
+  `updated_by` bigint unsigned DEFAULT '0' COMMENT '更新人',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_community_post_action` (`post_id`,`member_id`,`action_type`),
+  KEY `idx_community_post_action_member_id_action_type_created_at` (`member_id`,`action_type`,`created_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='社区帖子互动行为表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `community_post_action`
+--
+
+LOCK TABLES `community_post_action` WRITE;
+/*!40000 ALTER TABLE `community_post_action` DISABLE KEYS */;
+INSERT INTO `community_post_action` VALUES
+(1,1,2,1,'2026-06-10 10:11:00','2026-06-10 10:11:00',0,0),
+(2,1,3,1,'2026-06-10 10:13:00','2026-06-10 10:13:00',0,0),
+(3,1,2,2,'2026-06-10 10:14:00','2026-06-10 10:14:00',0,0),
+(4,2,1,1,'2026-06-10 10:24:00','2026-06-10 10:24:00',0,0),
+(5,2,1,2,'2026-06-10 10:25:00','2026-06-10 10:25:00',0,0);
+/*!40000 ALTER TABLE `community_post_action` ENABLE KEYS */;
+UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

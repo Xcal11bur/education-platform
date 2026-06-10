@@ -248,6 +248,9 @@ const displayName = computed(
 const avatarUrl = computed(() => authStore.profile?.avatar || '')
 
 const activeNav = computed(() => {
+  if (route.path.startsWith('/member/community')) {
+    return 'community'
+  }
   if (route.path.startsWith('/member/tasks')) {
     return 'tasks'
   }
@@ -319,7 +322,8 @@ function handleNavSelect(key) {
   const routeMap = {
     home: '/member-home',
     courses: '/member/courses',
-    tasks: '/member/tasks'
+    tasks: '/member/tasks',
+    community: '/member/community'
   }
   if (routeMap[key]) {
     router.push(routeMap[key])

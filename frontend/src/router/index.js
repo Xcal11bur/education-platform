@@ -38,6 +38,18 @@ const router = createRouter({
       meta: { title: '我的任务', roles: ['MEMBER'] }
     },
     {
+      path: '/member/community',
+      name: 'MemberCommunity',
+      component: () => import('@/views/member/MemberCommunityView.vue'),
+      meta: { title: '交流社区', roles: ['MEMBER'] }
+    },
+    {
+      path: '/member/community/:postId',
+      name: 'MemberCommunityPostDetail',
+      component: () => import('@/views/member/MemberCommunityPostDetailView.vue'),
+      meta: { title: '帖子详情', roles: ['MEMBER'] }
+    },
+    {
       path: '/member/courses/:id/learn',
       name: 'MemberCourseLearn',
       component: () => import('@/views/member/MemberCourseLearnView.vue'),
