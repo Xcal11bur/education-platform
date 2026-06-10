@@ -120,47 +120,49 @@
                 </div>
               </div>
 
-              <div class="comment-footer">
+              <div ref="commentFooterRef" class="comment-footer">
                 <div v-if="replyTarget" class="reply-indicator">
                   <span>回复 {{ replyTarget.memberName }}</span>
                   <button type="button" @click="clearReply">取消</button>
                 </div>
 
-                <div v-if="composerExpanded" class="composer-box">
-                  <el-input
-                    ref="commentInputRef"
-                    v-model="commentContent"
-                    type="textarea"
-                    :rows="3"
-                    maxlength="1000"
-                    show-word-limit
-                    placeholder="写下你的评论"
-                  />
-                  <div class="composer-actions">
-                    <el-button @click="collapseComposer">收起</el-button>
-                    <el-button type="primary" :loading="commentSubmitting" @click="submitComment">发表评论</el-button>
-                  </div>
-                </div>
-
                 <div class="footer-action-bar">
-                  <button class="comment-entry" type="button" @click="focusCommentComposer">
-                    参与讨论
-                  </button>
+                  <div class="comment-entry-wrap" :class="{ 'is-expanded': composerExpanded }">
+                    <el-input
+                      ref="commentInputRef"
+                      v-model="commentContent"
+                      class="comment-entry-input"
+                      type="textarea"
+                      :rows="composerExpanded ? 3 : 1"
+                      maxlength="1000"
+                      :show-word-limit="composerExpanded"
+                      resize="none"
+                      placeholder="参与讨论"
+                      @focus="focusCommentComposer"
+                    />
+                  </div>
 
-                  <button class="action-button" :class="{ 'is-active': postDetail.liked }" type="button" @click="toggleLike">
-                    <el-icon><Pointer /></el-icon>
-                    <span>{{ postDetail.likeCount || 0 }}</span>
-                  </button>
+                  <template v-if="composerExpanded">
+                    <el-button @click="collapseComposer">取消</el-button>
+                    <el-button type="primary" :loading="commentSubmitting" @click="submitComment">发送</el-button>
+                  </template>
 
-                  <button class="action-button" :class="{ 'is-active': postDetail.favorited }" type="button" @click="toggleFavorite">
-                    <el-icon><Star /></el-icon>
-                    <span>{{ postDetail.favoriteCount || 0 }}</span>
-                  </button>
+                  <template v-else>
+                    <button class="action-button" :class="{ 'is-active': postDetail.liked }" type="button" @click="toggleLike">
+                      <el-icon><Pointer /></el-icon>
+                      <span>{{ postDetail.likeCount || 0 }}</span>
+                    </button>
 
-                  <button class="action-button" type="button" @click="focusCommentComposer">
-                    <el-icon><ChatDotRound /></el-icon>
-                    <span>{{ postDetail.commentCount || 0 }}</span>
-                  </button>
+                    <button class="action-button" :class="{ 'is-active': postDetail.favorited }" type="button" @click="toggleFavorite">
+                      <el-icon><Star /></el-icon>
+                      <span>{{ postDetail.favoriteCount || 0 }}</span>
+                    </button>
+
+                    <button class="action-button" type="button" @click="focusCommentComposer">
+                      <el-icon><ChatDotRound /></el-icon>
+                      <span>{{ postDetail.commentCount || 0 }}</span>
+                    </button>
+                  </template>
                 </div>
               </div>
             </section>
@@ -174,7 +176,7 @@
 <script setup>
 import { ArrowLeft, ChatDotRound, Pointer, Star } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   createCommunityComment,
@@ -204,6 +206,7 @@ const commentLoading = ref(false)
 const commentSubmitting = ref(false)
 const composerExpanded = ref(false)
 const commentInputRef = ref()
+const commentFooterRef = ref()
 const commentContent = ref('')
 const replyTarget = ref(null)
 const commentPageNum = ref(1)
@@ -283,9 +286,8 @@ function focusCommentComposer() {
 
 function collapseComposer() {
   composerExpanded.value = false
-  if (!replyTarget.value) {
-    commentContent.value = ''
-  }
+  commentContent.value = ''
+  replyTarget.value = null
 }
 
 function startReply(comment) {
@@ -299,6 +301,16 @@ function startReply(comment) {
 
 function clearReply() {
   replyTarget.value = null
+}
+
+function handleOutsideClick(event) {
+  if (!composerExpanded.value) {
+    return
+  }
+  if (commentFooterRef.value?.contains(event.target)) {
+    return
+  }
+  collapseComposer()
 }
 
 async function submitComment() {
@@ -338,10 +350,15 @@ async function toggleFavorite() {
 }
 
 onMounted(async () => {
+  document.addEventListener('click', handleOutsideClick)
   await Promise.all([authStore.fetchProfile(), fetchPostDetail(), fetchComments()])
   if (route.query.focusComment === '1') {
     focusCommentComposer()
   }
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleOutsideClick)
 })
 
 watch(
@@ -456,6 +473,12 @@ watch([commentPageNum, commentPageSize], () => {
   align-items: start;
 }
 
+.comment-column {
+  position: sticky;
+  top: 80px;
+  align-self: start;
+}
+
 .post-panel,
 .comment-card {
   background: rgba(255, 255, 255, 0.94);
@@ -518,6 +541,8 @@ watch([commentPageNum, commentPageSize], () => {
   font-size: 16px;
   line-height: 1.8;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .image-list {
@@ -533,11 +558,6 @@ watch([commentPageNum, commentPageSize], () => {
   object-fit: cover;
   border-radius: 16px;
   background: #f3f4f6;
-}
-
-.comment-sticky {
-  position: sticky;
-  top: 80px;
 }
 
 .comment-card {
@@ -614,6 +634,8 @@ watch([commentPageNum, commentPageSize], () => {
   color: #303133;
   line-height: 1.7;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .reply-button {
@@ -674,34 +696,41 @@ watch([commentPageNum, commentPageSize], () => {
   cursor: pointer;
 }
 
-.composer-box {
-  margin-bottom: 14px;
+.comment-entry-wrap {
+  flex: 1;
+  min-width: 0;
 }
 
-.composer-actions {
-  margin-top: 10px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+.comment-entry-wrap :deep(.el-textarea__inner) {
+  min-height: 44px !important;
+  border-radius: 10px;
+  background: #f5f7fa;
+  border-color: transparent;
+  box-shadow: none;
+  padding: 11px 16px;
+}
+
+.comment-entry-wrap :deep(.el-textarea__inner:focus) {
+  background: #fff;
+  border-color: #c7d2fe;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.18);
+}
+
+.comment-entry-wrap.is-expanded :deep(.el-textarea__inner) {
+  min-height: 92px !important;
+  background: #fff;
+}
+
+.comment-entry-wrap :deep(.el-input__count) {
+  background: transparent;
+  color: #9ca3af;
 }
 
 .footer-action-bar {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
-}
-
-.comment-entry {
-  flex: 1;
-  min-width: 0;
-  height: 44px;
-  border: 0;
-  border-radius: 10px;
-  background: #f5f7fa;
-  color: #a0a7b4;
-  text-align: left;
-  padding: 0 16px;
-  cursor: pointer;
 }
 
 .action-button {
@@ -731,7 +760,7 @@ watch([commentPageNum, commentPageSize], () => {
     grid-template-columns: 1fr;
   }
 
-  .comment-sticky {
+  .comment-column {
     position: static;
   }
 
@@ -787,7 +816,7 @@ watch([commentPageNum, commentPageSize], () => {
     flex-wrap: wrap;
   }
 
-  .comment-entry {
+  .comment-entry-wrap {
     width: 100%;
     flex-basis: 100%;
   }
