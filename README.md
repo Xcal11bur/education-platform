@@ -112,6 +112,8 @@ CREATE DATABASE education_platform
 | `OSS_PUBLIC_BASE_URL` | 否 | `https://education-platform-333.oss-cn-beijing.aliyuncs.com` | OSS 公网访问前缀 |
 | `OSS_BASE_PATH` | 否 | `education-platform/materials` | OSS 存储基础路径 |
 
+说明：`.env.example` 中的 OSS 配置使用的是占位示例值，复制后请按你自己的 Bucket、Endpoint 和公网访问域名替换，不要直接照搬。
+
 Windows PowerShell 示例：
 
 ```powershell
