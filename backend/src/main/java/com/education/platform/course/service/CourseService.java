@@ -40,4 +40,6 @@ public interface CourseService extends IService<Course> {
     CourseDetailVO getPortalCourseDetail(Long id);
 
     List<CourseVO> listCurrentMemberCourses();
+
+    List<CourseVO> listCurrentMemberFavoriteCourses();
 }

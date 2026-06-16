@@ -88,6 +88,9 @@
             <el-button type="primary" size="large" :loading="enrolling" @click="handlePrimaryAction">
               {{ course.enrolled ? '进入学习' : '报名课程' }}
             </el-button>
+            <el-button size="large" plain :loading="favoriting" @click="handleFavoriteAction">
+              {{ course.favorited ? '取消收藏' : '收藏课程' }}
+            </el-button>
           </div>
         </div>
       </section>
@@ -295,7 +298,7 @@ import { ArrowDown, Lock } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { enrollCourse, getPortalCourseDetail } from '@/api/course'
+import { enrollCourse, favoriteCourse, getPortalCourseDetail, unfavoriteCourse } from '@/api/course'
 import {
   deleteMemberCourseReview,
   getPortalCourseReviews,
@@ -310,6 +313,7 @@ const authStore = useAuthStore()
 
 const loading = ref(false)
 const enrolling = ref(false)
+const favoriting = ref(false)
 const activeTab = ref('chapters')
 const expandedChapterIds = ref([])
 const reviewLoading = ref(false)
@@ -333,6 +337,7 @@ const course = ref({
   categoryLevel2: null,
   chapters: [],
   enrolled: false,
+  favorited: false,
   lastStudySectionId: null
 })
 const reviewForm = ref({
@@ -465,6 +470,23 @@ async function handlePrimaryAction() {
     ElMessage.success(data ? '报名成功' : '您已报名该课程')
   } finally {
     enrolling.value = false
+  }
+}
+
+async function handleFavoriteAction() {
+  favoriting.value = true
+  try {
+    if (course.value.favorited) {
+      await unfavoriteCourse(route.params.id)
+      course.value.favorited = false
+      ElMessage.success('已取消收藏')
+    } else {
+      await favoriteCourse(route.params.id)
+      course.value.favorited = true
+      ElMessage.success('课程已收藏')
+    }
+  } finally {
+    favoriting.value = false
   }
 }
 
@@ -810,6 +832,10 @@ onMounted(async () => {
 
 .action-row {
   margin-top: 28px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .content-grid {

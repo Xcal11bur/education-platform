@@ -1,6 +1,7 @@
 package com.education.platform.course.controller;
 
 import com.education.platform.common.result.Result;
+import com.education.platform.course.service.CourseFavoriteService;
 import com.education.platform.course.service.CourseEnrollmentService;
 import com.education.platform.course.service.CourseService;
 import com.education.platform.course.vo.CourseVO;
@@ -20,10 +21,16 @@ public class MemberCourseController {
 
     private final CourseService courseService;
     private final CourseEnrollmentService courseEnrollmentService;
+    private final CourseFavoriteService courseFavoriteService;
 
     @GetMapping
     public Result<List<CourseVO>> list() {
         return Result.success(courseService.listCurrentMemberCourses());
+    }
+
+    @GetMapping("/favorites")
+    public Result<List<CourseVO>> listFavorites() {
+        return Result.success(courseService.listCurrentMemberFavoriteCourses());
     }
 
     @PostMapping("/{courseId}/enroll")
@@ -34,5 +41,15 @@ public class MemberCourseController {
     @DeleteMapping("/{courseId}/enroll")
     public Result<Boolean> unenroll(@PathVariable Long courseId) {
         return Result.success(courseEnrollmentService.unenrollCurrentMember(courseId));
+    }
+
+    @PostMapping("/{courseId}/favorite")
+    public Result<Boolean> favorite(@PathVariable Long courseId) {
+        return Result.success(courseFavoriteService.favoriteCurrentMemberCourse(courseId));
+    }
+
+    @DeleteMapping("/{courseId}/favorite")
+    public Result<Boolean> unfavorite(@PathVariable Long courseId) {
+        return Result.success(courseFavoriteService.unfavoriteCurrentMemberCourse(courseId));
     }
 }

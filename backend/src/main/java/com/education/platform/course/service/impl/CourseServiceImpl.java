@@ -18,6 +18,7 @@ import com.education.platform.course.entity.Course;
 import com.education.platform.course.entity.CourseChapter;
 import com.education.platform.course.entity.CourseCategory;
 import com.education.platform.course.entity.CourseEnrollment;
+import com.education.platform.course.entity.CourseFavorite;
 import com.education.platform.course.entity.CourseMaterial;
 import com.education.platform.course.entity.CourseReview;
 import com.education.platform.course.entity.CourseSection;
@@ -25,6 +26,7 @@ import com.education.platform.course.entity.CourseSectionContent;
 import com.education.platform.course.mapper.CourseBannerMapper;
 import com.education.platform.course.mapper.CourseChapterMapper;
 import com.education.platform.course.mapper.CourseEnrollmentMapper;
+import com.education.platform.course.mapper.CourseFavoriteMapper;
 import com.education.platform.course.mapper.CourseMaterialMapper;
 import com.education.platform.course.mapper.CourseMapper;
 import com.education.platform.course.mapper.CourseReviewMapper;
@@ -32,6 +34,7 @@ import com.education.platform.course.mapper.CourseSectionContentMapper;
 import com.education.platform.course.mapper.CourseSectionMapper;
 import com.education.platform.course.service.CourseChapterService;
 import com.education.platform.course.service.CourseEnrollmentService;
+import com.education.platform.course.service.CourseFavoriteService;
 import com.education.platform.course.service.CourseService;
 import com.education.platform.course.service.TeacherCourseAccessService;
 import com.education.platform.course.vo.CourseVO;
@@ -68,6 +71,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     private final com.education.platform.course.mapper.CourseCategoryMapper courseCategoryMapper;
     private final CourseChapterService courseChapterService;
     private final CourseEnrollmentService courseEnrollmentService;
+    private final CourseFavoriteService courseFavoriteService;
     private final TeacherCourseAccessService teacherCourseAccessService;
     private final CourseBannerMapper courseBannerMapper;
     private final CourseChapterMapper courseChapterMapper;
@@ -75,6 +79,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     private final CourseSectionContentMapper courseSectionContentMapper;
     private final CourseMaterialMapper courseMaterialMapper;
     private final CourseEnrollmentMapper courseEnrollmentMapper;
+    private final CourseFavoriteMapper courseFavoriteMapper;
     private final CourseReviewMapper courseReviewMapper;
     private final CourseTaskMapper courseTaskMapper;
     private final CourseExamMapper courseExamMapper;
@@ -87,6 +92,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
                              com.education.platform.course.mapper.CourseCategoryMapper courseCategoryMapper,
                              CourseChapterService courseChapterService,
                              CourseEnrollmentService courseEnrollmentService,
+                             CourseFavoriteService courseFavoriteService,
                              TeacherCourseAccessService teacherCourseAccessService,
                              CourseBannerMapper courseBannerMapper,
                              CourseChapterMapper courseChapterMapper,
@@ -94,6 +100,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
                              CourseSectionContentMapper courseSectionContentMapper,
                              CourseMaterialMapper courseMaterialMapper,
                              CourseEnrollmentMapper courseEnrollmentMapper,
+                             CourseFavoriteMapper courseFavoriteMapper,
                              CourseReviewMapper courseReviewMapper,
                              CourseTaskMapper courseTaskMapper,
                              CourseExamMapper courseExamMapper,
@@ -105,6 +112,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         this.courseCategoryMapper = courseCategoryMapper;
         this.courseChapterService = courseChapterService;
         this.courseEnrollmentService = courseEnrollmentService;
+        this.courseFavoriteService = courseFavoriteService;
         this.teacherCourseAccessService = teacherCourseAccessService;
         this.courseBannerMapper = courseBannerMapper;
         this.courseChapterMapper = courseChapterMapper;
@@ -112,6 +120,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         this.courseSectionContentMapper = courseSectionContentMapper;
         this.courseMaterialMapper = courseMaterialMapper;
         this.courseEnrollmentMapper = courseEnrollmentMapper;
+        this.courseFavoriteMapper = courseFavoriteMapper;
         this.courseReviewMapper = courseReviewMapper;
         this.courseTaskMapper = courseTaskMapper;
         this.courseExamMapper = courseExamMapper;
@@ -251,7 +260,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
                 .pageNum(page.getCurrent())
                 .pageSize(page.getSize())
                 .total(page.getTotal())
-                .list(fillEnrollmentFields(list))
+                .list(fillMemberCourseFlags(list))
                 .build();
     }
 
@@ -286,7 +295,30 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
                 .stream()
                 .sorted(Comparator.comparingInt(course -> orderMap.getOrDefault(course.getId(), Integer.MAX_VALUE)))
                 .toList();
-        return fillEnrollmentFields(fillCourseVOs(courses), enrollmentMap);
+        return fillFavoriteFields(fillEnrollmentFields(fillCourseVOs(courses), enrollmentMap));
+    }
+
+    @Override
+    public List<CourseVO> listCurrentMemberFavoriteCourses() {
+        List<CourseFavorite> favorites = courseFavoriteService.listCurrentMemberFavorites();
+        if (favorites.isEmpty()) {
+            return List.of();
+        }
+        List<Long> courseIds = favorites.stream()
+                .map(CourseFavorite::getCourseId)
+                .distinct()
+                .toList();
+        Map<Long, Integer> orderMap = java.util.stream.IntStream.range(0, courseIds.size())
+                .boxed()
+                .collect(Collectors.toMap(courseIds::get, Function.identity()));
+        List<Course> courses = lambdaQuery()
+                .in(Course::getId, courseIds)
+                .eq(Course::getPublishStatus, PUBLISH_STATUS_PUBLISHED)
+                .list()
+                .stream()
+                .sorted(Comparator.comparingInt(course -> orderMap.getOrDefault(course.getId(), Integer.MAX_VALUE)))
+                .toList();
+        return fillMemberCourseFlags(fillCourseVOs(courses));
     }
 
     private CourseDetailVO buildCourseDetail(Course course, boolean portalOnly) {
@@ -323,6 +355,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         detailVO.setChapters(chapters);
         if (portalOnly) {
             applyEnrollmentFields(detailVO, courseEnrollmentService.getCurrentMemberEnrollmentMap(List.of(course.getId())).get(course.getId()));
+            applyFavoriteFields(detailVO, courseFavoriteService.getCurrentMemberFavoriteMap(List.of(course.getId())).get(course.getId()));
         }
         return detailVO;
     }
@@ -409,6 +442,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         courseBannerMapper.delete(Wrappers.<CourseBanner>lambdaQuery().eq(CourseBanner::getCourseId, courseId));
         courseReviewMapper.delete(Wrappers.<CourseReview>lambdaQuery().eq(CourseReview::getCourseId, courseId));
         courseEnrollmentMapper.delete(Wrappers.<CourseEnrollment>lambdaQuery().eq(CourseEnrollment::getCourseId, courseId));
+        courseFavoriteMapper.delete(Wrappers.<CourseFavorite>lambdaQuery().eq(CourseFavorite::getCourseId, courseId));
         courseMaterialMapper.delete(Wrappers.<CourseMaterial>lambdaQuery().eq(CourseMaterial::getCourseId, courseId));
         courseSectionContentMapper.delete(Wrappers.<CourseSectionContent>lambdaQuery().eq(CourseSectionContent::getCourseId, courseId));
         courseSectionMapper.delete(Wrappers.<CourseSection>lambdaQuery().eq(CourseSection::getCourseId, courseId));
@@ -470,6 +504,21 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         return fillEnrollmentFields(courses, enrollmentMap);
     }
 
+    private List<CourseVO> fillFavoriteFields(List<CourseVO> courses) {
+        if (courses.isEmpty()) {
+            return courses;
+        }
+        Map<Long, CourseFavorite> favoriteMap = courseFavoriteService.getCurrentMemberFavoriteMap(
+                courses.stream().map(CourseVO::getId).toList()
+        );
+        courses.forEach(course -> applyFavoriteFields(course, favoriteMap.get(course.getId())));
+        return courses;
+    }
+
+    private List<CourseVO> fillMemberCourseFlags(List<CourseVO> courses) {
+        return fillFavoriteFields(fillEnrollmentFields(courses));
+    }
+
     private List<CourseVO> fillEnrollmentFields(List<CourseVO> courses, Map<Long, CourseEnrollment> enrollmentMap) {
         courses.forEach(course -> applyEnrollmentFields(course, enrollmentMap.get(course.getId())));
         return courses;
@@ -483,12 +532,20 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         }
     }
 
+    private void applyFavoriteFields(CourseVO course, CourseFavorite favorite) {
+        course.setFavorited(favorite != null);
+    }
+
     private void applyEnrollmentFields(CourseDetailVO course, CourseEnrollment enrollment) {
         course.setEnrolled(enrollment != null);
         if (enrollment != null) {
             course.setStudyProgress(enrollment.getStudyProgress());
             course.setLastStudySectionId(enrollment.getLastStudySectionId());
         }
+    }
+
+    private void applyFavoriteFields(CourseDetailVO course, CourseFavorite favorite) {
+        course.setFavorited(favorite != null);
     }
 
     private Map<Long, Teacher> listTeachersByIds(Collection<Long> ids) {

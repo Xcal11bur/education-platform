@@ -58,6 +58,27 @@ export function getMemberCourseList() {
   })
 }
 
+export function getFavoriteCourseList() {
+  return request({
+    url: '/member/courses/favorites',
+    method: 'get'
+  })
+}
+
+export function favoriteCourse(courseId) {
+  return request({
+    url: `/member/courses/${courseId}/favorite`,
+    method: 'post'
+  })
+}
+
+export function unfavoriteCourse(courseId) {
+  return request({
+    url: `/member/courses/${courseId}/favorite`,
+    method: 'delete'
+  })
+}
+
 export function getCourseDetail(id) {
   return request({
     url: `/admin/courses/${id}`,

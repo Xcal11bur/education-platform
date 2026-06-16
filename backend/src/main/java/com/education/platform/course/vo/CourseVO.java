@@ -23,6 +23,7 @@ public class CourseVO {
     private Integer studyCount;
     private Integer sort;
     private Boolean enrolled;
+    private Boolean favorited;
     private BigDecimal studyProgress;
     private Long lastStudySectionId;
 }

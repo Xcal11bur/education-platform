@@ -25,6 +25,7 @@ public class CourseDetailVO {
     private CourseCategoryVO categoryLevel2;
     private List<CourseChapterVO> chapters;
     private Boolean enrolled;
+    private Boolean favorited;
     private BigDecimal studyProgress;
     private Long lastStudySectionId;
 }

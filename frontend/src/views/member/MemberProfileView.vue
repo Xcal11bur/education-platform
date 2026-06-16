@@ -132,6 +132,38 @@
           </div>
         </div>
 
+        <div v-else-if="activeMenu === 'courseFavorites'" class="placeholder-panel">
+          <div v-loading="favoriteCourseLoading">
+            <div v-if="favoriteCourses.length" class="my-course-grid">
+              <article
+                v-for="course in favoriteCourses"
+                :key="course.id"
+                class="my-course-card"
+                @click="goFavoriteCourse(course)"
+              >
+                <div class="my-course-cover" :style="buildCourseCoverStyle(course.coverUrl)">
+                  <div class="my-course-overlay"></div>
+                  <span class="my-course-category">{{ course.category }}</span>
+                </div>
+                <div class="my-course-body">
+                  <h3>{{ course.title }}</h3>
+                  <p>{{ course.summary }}</p>
+                  <div class="my-course-meta">
+                    <span>{{ course.teacherName || '平台课程' }}</span>
+                    <span>{{ course.learners }} 人学习</span>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <el-empty
+              v-else
+              description="还没有收藏的课程"
+              :image-size="90"
+            />
+          </div>
+        </div>
+
         <div v-else-if="activeMenu === 'posts'" class="placeholder-panel">
           <div v-loading="myPostLoading">
             <div v-if="myPosts.length" class="favorite-post-list">
@@ -291,13 +323,13 @@
 </template>
 
 <script setup>
-import { Collection, Star, User } from '@element-plus/icons-vue'
+import { Collection, Reading, Star, User } from '@element-plus/icons-vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { deleteCommunityPost, getMyCommunityPosts, getMyFavoriteCommunityPosts } from '@/api/community'
-import { getMemberCourseList, unenrollCourse } from '@/api/course'
+import { getFavoriteCourseList, getMemberCourseList, unenrollCourse } from '@/api/course'
 import brandLogo from '@/assets/education-cloud-logo.jpg'
 import {
   getMemberProfile,
@@ -321,6 +353,8 @@ const courseLoading = ref(false)
 const memberCourses = ref([])
 const favoriteLoading = ref(false)
 const favoritePosts = ref([])
+const favoriteCourseLoading = ref(false)
+const favoriteCourses = ref([])
 const myPostLoading = ref(false)
 const myPosts = ref([])
 const mobileDialogVisible = ref(false)
@@ -354,7 +388,8 @@ const menuItems = [
   { key: 'courses', label: '我的课程', icon: Collection },
   { key: 'info', label: '个人信息', icon: User },
   { key: 'posts', label: '我的帖子', icon: Collection },
-  { key: 'favorites', label: '我的收藏', icon: Star }
+  { key: 'favorites', label: '帖子收藏', icon: Star },
+  { key: 'courseFavorites', label: '课程收藏', icon: Reading }
 ]
 
 const displayName = computed(
@@ -447,6 +482,16 @@ async function fetchFavoritePosts() {
   }
 }
 
+async function fetchFavoriteCourses() {
+  favoriteCourseLoading.value = true
+  try {
+    const { data } = await getFavoriteCourseList()
+    favoriteCourses.value = (data || []).map(mapMemberCourse)
+  } finally {
+    favoriteCourseLoading.value = false
+  }
+}
+
 async function fetchMyPosts() {
   myPostLoading.value = true
   try {
@@ -502,6 +547,10 @@ function goFavoritePost(postId) {
       tab: activeMenu.value
     }
   })
+}
+
+function goFavoriteCourse(course) {
+  router.push(`/member/courses/${course.id}`)
 }
 
 async function handleDeletePost(post) {
@@ -638,6 +687,10 @@ watch(
   async (value) => {
     if (value === 'favorites' && !favoritePosts.value.length) {
       await fetchFavoritePosts()
+      return
+    }
+    if (value === 'courseFavorites' && !favoriteCourses.value.length) {
+      await fetchFavoriteCourses()
       return
     }
     if (value === 'posts' && !myPosts.value.length) {
