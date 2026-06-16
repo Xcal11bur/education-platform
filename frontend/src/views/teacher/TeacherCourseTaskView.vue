@@ -1,41 +1,43 @@
 <template>
   <div class="page-card">
-    <div class="page-header">
-      <h2 class="page-title">{{ pageTitle }}</h2>
-      <el-button type="primary" @click="openCreate">新增{{ entityName }}</el-button>
+    <div class="search-card">
+      <el-form :inline="true">
+        <el-form-item label="选择课程">
+          <el-select
+            v-model="courseId"
+            placeholder="请选择课程"
+            filterable
+            style="width: 280px"
+            @change="handleCourseChange"
+          >
+            <el-option
+              v-for="item in courseOptions"
+              :key="item.id"
+              :label="item.title"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="openCreate" :disabled="!courseId">新增{{ entityName }}</el-button>
+        </el-form-item>
+      </el-form>
     </div>
 
-    <el-alert
-      :title="pageAlertText"
-      type="info"
-      :closable="false"
-      show-icon
-      class="page-alert"
-    />
-
-    <div class="filter-bar">
-      <el-select v-model="query.courseId" placeholder="课程" clearable filterable>
-        <el-option
-          v-for="item in courseOptions"
-          :key="item.id"
-          :label="item.title"
-          :value="item.id"
-        />
-      </el-select>
-      <el-input v-model="query.title" :placeholder="`${entityName}标题`" clearable />
-      <el-select v-model="query.status" placeholder="状态" clearable>
-        <el-option label="草稿" :value="0" />
-        <el-option label="已发布" :value="1" />
-      </el-select>
-      <el-button type="primary" @click="fetchTasks">查询</el-button>
+    <div v-if="courseInfo" class="task-toolbar">
+      <div class="task-course-info">
+        <div class="task-course-title">{{ courseInfo.title }}</div>
+        <div class="muted" style="margin-top: 6px;">
+          {{ courseInfo.teacher?.name || '-' }} / {{ courseInfo.categoryLevel1?.name || '-' }} / {{ courseInfo.categoryLevel2?.name || '-' }}
+        </div>
+      </div>
     </div>
 
-    <el-table :data="tasks" border>
+    <el-table v-if="courseId" v-loading="listLoading" :data="tasks" border>
       <el-table-column label="ID" width="90">
         <template #default="{ $index }">{{ rowIndex($index) }}</template>
       </el-table-column>
-      <el-table-column prop="courseTitle" label="所属课程" min-width="180" />
-      <el-table-column :label="`${entityName}标题`" prop="title" min-width="180" />
+      <el-table-column :label="`${entityName}标题`" prop="title" min-width="220" />
       <el-table-column prop="questionCount" label="题目数" width="100" />
       <el-table-column label="总分/及格" width="120">
         <template #default="{ row }">{{ row.totalScore }}/{{ row.passScore }}</template>
@@ -66,18 +68,28 @@
       </el-table-column>
     </el-table>
 
-    <div class="list-footer">
+    <div v-if="courseId" class="list-footer">
       <el-pagination
         v-model:current-page="query.pageNum"
         v-model:page-size="query.pageSize"
         :total="total"
         layout="total, prev, pager, next, sizes"
         @current-change="fetchTasks"
-        @size-change="fetchTasks"
+        @size-change="handlePageSizeChange"
       />
     </div>
 
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="760px">
+    <div v-if="!courseId" class="empty-state">
+      <div class="empty-icon-box">↑</div>
+      <p>请先选择一门课程</p>
+    </div>
+
+    <div v-else-if="!listLoading && tasks.length === 0" class="empty-state">
+      <div class="empty-icon-box">{{ isExamScene ? 'E' : 'T' }}</div>
+      <p>该课程暂无{{ entityName }}</p>
+    </div>
+
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="760px" @closed="resetForm">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="110px">
         <el-form-item label="所属课程" prop="courseId">
           <el-select v-model="form.courseId" placeholder="请选择课程" filterable style="width: 100%">
@@ -94,7 +106,6 @@
         </el-form-item>
         <el-form-item label="总分">
           <el-input-number v-model="form.totalScore" :min="0" :max="1000" />
-          <span class="field-tip">添加题目后自动按题目分值汇总</span>
         </el-form-item>
         <el-form-item label="及格分">
           <el-input-number v-model="form.passScore" :min="0" :max="1000" />
@@ -142,7 +153,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getTeacherCourseList } from '@/api/teacherCourse'
+import { getTeacherCourseDetail, getTeacherCourseList } from '@/api/teacherCourse'
 import {
   createTeacherTask,
   deleteTeacherTask,
@@ -160,11 +171,15 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+
+const courseId = ref(null)
+const courseOptions = ref([])
+const courseInfo = ref(null)
 const tasks = ref([])
 const total = ref(0)
-const courseOptions = ref([])
 const dialogVisible = ref(false)
 const saving = ref(false)
+const listLoading = ref(false)
 const editingId = ref(null)
 const formRef = ref()
 const initialized = ref(false)
@@ -172,24 +187,17 @@ const initialized = ref(false)
 const isExamScene = computed(() => route.meta?.scene === 'exam')
 const entityName = computed(() => (isExamScene.value ? '考试' : '作业'))
 const entityPluralPath = computed(() => (isExamScene.value ? 'exams' : 'tasks'))
-const pageTitle = computed(() => `${entityName.value}管理`)
 const dialogTitle = computed(() => `${editingId.value ? '编辑' : '新增'}${entityName.value}`)
-const pageAlertText = computed(() => (
-  isExamScene.value
-    ? '考试创建后可继续维护题目，题目分值会自动汇总回总分。发布前至少需要配置一道题，并设置考试时长。'
-    : '作业创建后可继续维护题目，题目分值会自动汇总回总分。发布前至少需要配置一道题。'
-))
+const routeBasePath = computed(() => `/teacher/course-management/${entityPluralPath.value}`)
 
 const query = reactive({
   pageNum: 1,
   pageSize: 10,
-  courseId: null,
-  title: '',
-  status: null
+  courseId: null
 })
 
 const defaultForm = () => ({
-  courseId: null,
+  courseId: courseId.value,
   title: '',
   totalScore: 100,
   passScore: 60,
@@ -239,18 +247,30 @@ async function fetchCourseOptions() {
   courseOptions.value = data.list || []
 }
 
-async function fetchTasks() {
-  const { data } = await getListRequest()(query)
-  tasks.value = data.list || []
-  total.value = data.total || 0
+async function fetchCourseInfo() {
+  if (!courseId.value) {
+    courseInfo.value = null
+    return
+  }
+  const { data } = await getTeacherCourseDetail(courseId.value)
+  courseInfo.value = data
 }
 
-function resetQuery() {
-  query.pageNum = 1
-  query.pageSize = 10
-  query.courseId = null
-  query.title = ''
-  query.status = null
+async function fetchTasks() {
+  if (!courseId.value) {
+    tasks.value = []
+    total.value = 0
+    return
+  }
+  query.courseId = courseId.value
+  listLoading.value = true
+  try {
+    const { data } = await getListRequest()(query)
+    tasks.value = data.list || []
+    total.value = data.total || 0
+  } finally {
+    listLoading.value = false
+  }
 }
 
 function resetForm() {
@@ -258,19 +278,48 @@ function resetForm() {
   formRef.value?.clearValidate()
 }
 
-async function syncSceneData() {
-  dialogVisible.value = false
-  editingId.value = null
-  tasks.value = []
-  total.value = 0
-  resetQuery()
-  resetForm()
+async function syncCourseContext() {
+  await Promise.all([fetchCourseInfo(), fetchTasks()])
+}
+
+async function initializeCourseContext() {
+  await fetchCourseOptions()
+  const routeCourseId = Number(route.query.courseId)
+  const hasRouteCourse = Number.isFinite(routeCourseId) && routeCourseId > 0
+  const matchedCourse = hasRouteCourse
+    ? courseOptions.value.find((item) => item.id === routeCourseId)
+    : null
+
+  if (matchedCourse) {
+    courseId.value = matchedCourse.id
+  } else {
+    courseId.value = courseOptions.value[0]?.id ?? null
+    if (courseId.value) {
+      router.replace({ path: routeBasePath.value, query: { courseId: courseId.value } })
+    }
+  }
+
+  query.pageNum = 1
+  query.courseId = courseId.value
+  await syncCourseContext()
+}
+
+async function handleCourseChange(value) {
+  query.pageNum = 1
+  query.courseId = value
+  router.replace({ path: routeBasePath.value, query: value ? { courseId: value } : {} })
+  await syncCourseContext()
+}
+
+async function handlePageSizeChange() {
+  query.pageNum = 1
   await fetchTasks()
 }
 
 function openCreate() {
   editingId.value = null
   resetForm()
+  form.courseId = courseId.value
   dialogVisible.value = true
 }
 
@@ -325,6 +374,9 @@ async function handleDelete(row) {
   await ElMessageBox.confirm(`确定删除${entityName.value}“${row.title}”吗？`, `删除${entityName.value}`, { type: 'warning' })
   await getDeleteRequest()(row.id)
   ElMessage.success(`${entityName.value}已删除`)
+  if (tasks.value.length === 1 && query.pageNum > 1) {
+    query.pageNum -= 1
+  }
   await fetchTasks()
 }
 
@@ -341,30 +393,97 @@ function rowIndex(index) {
 }
 
 onMounted(async () => {
-  await fetchCourseOptions()
+  await initializeCourseContext()
   initialized.value = true
-  await syncSceneData()
 })
 
 watch(
-  () => route.fullPath,
+  () => route.query.courseId,
+  async (value) => {
+    if (!initialized.value) {
+      return
+    }
+    const nextId = Number(value)
+    if (!Number.isFinite(nextId) || nextId <= 0 || nextId === courseId.value) {
+      return
+    }
+    courseId.value = nextId
+    query.pageNum = 1
+    query.courseId = nextId
+    await syncCourseContext()
+  }
+)
+
+watch(
+  () => isExamScene.value,
   async () => {
     if (!initialized.value) {
       return
     }
-    await syncSceneData()
+    dialogVisible.value = false
+    editingId.value = null
+    await fetchTasks()
   }
 )
 </script>
 
 <style scoped>
-.page-alert {
-  margin-bottom: 16px;
+.search-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px 20px 4px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
-.field-tip {
-  margin-left: 12px;
-  color: var(--text-secondary);
-  font-size: 12px;
+.search-card :deep(.el-form-item) {
+  margin-bottom: 12px;
+}
+
+.task-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.task-course-info {
+  min-width: 0;
+}
+
+.task-course-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 0;
+}
+
+.empty-icon-box {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: #f5f7fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: #c0c4cc;
+}
+
+.empty-state p {
+  color: #909399;
+  font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .task-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 </style>
