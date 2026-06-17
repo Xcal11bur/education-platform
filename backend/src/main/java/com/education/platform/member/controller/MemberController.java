@@ -54,4 +54,9 @@ public class MemberController {
     public Result<UploadResult> uploadAvatar(@RequestParam("file") MultipartFile file) {
         return Result.success(ossUploadService.uploadMemberAvatar(file));
     }
+
+    @PostMapping("/uploads/community-images")
+    public Result<UploadResult> uploadCommunityImage(@RequestParam("file") MultipartFile file) {
+        return Result.success(ossUploadService.uploadCommunityImage(file));
+    }
 }

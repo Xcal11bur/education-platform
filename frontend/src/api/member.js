@@ -43,3 +43,16 @@ export function uploadMemberAvatar(file) {
     }
   })
 }
+
+export function uploadCommunityImage(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/member/uploads/community-images',
+    method: 'post',
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}

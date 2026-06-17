@@ -109,7 +109,7 @@
                   </div>
 
                   <h3>{{ post.title }}</h3>
-                  <p>{{ post.content }}</p>
+                  <p>{{ summarizePostContent(post.content) }}</p>
 
                   <div class="favorite-post-meta">
                     <span>评论 {{ post.commentCount || 0 }}</span>
@@ -196,7 +196,7 @@
                   </div>
 
                   <h3>{{ post.title }}</h3>
-                  <p>{{ post.content }}</p>
+                  <p>{{ summarizePostContent(post.content) }}</p>
 
                   <div class="favorite-post-meta">
                     <span>评论 {{ post.commentCount || 0 }}</span>
@@ -574,6 +574,18 @@ function formatDateTime(value) {
     return '--'
   }
   return String(value).replace('T', ' ').replace(/\.\d+$/, '').replace(/Z$/, '').slice(0, 16)
+}
+
+function summarizePostContent(value) {
+  if (!value) {
+    return ''
+  }
+  if (typeof window === 'undefined') {
+    return String(value).replace(/<[^>]+>/g, ' ')
+  }
+  const container = document.createElement('div')
+  container.innerHTML = String(value)
+  return container.textContent || container.innerText || ''
 }
 
 function validateAvatar(file) {

@@ -72,6 +72,15 @@ public class OssUploadService {
         return upload(file, "member-avatars");
     }
 
+    public UploadResult uploadCommunityImage(MultipartFile file) {
+        validateOssConfig();
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "upload file must not be empty");
+        }
+        validateImageFile(file);
+        return upload(file, "community-images", true);
+    }
+
     public UploadResult uploadTeacherAvatar(MultipartFile file) {
         validateOssConfig();
         if (file == null || file.isEmpty()) {

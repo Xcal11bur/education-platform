@@ -70,7 +70,7 @@
                 </div>
 
                 <h2>{{ post.title }}</h2>
-                <p class="post-summary">{{ post.content }}</p>
+                <p class="post-summary">{{ summarizePostContent(post.content) }}</p>
 
                 <div v-if="post.images?.length" class="post-image-grid" :class="`is-count-${Math.min(post.images.length, 3)}`">
                   <img
@@ -154,28 +154,52 @@
       </section>
     </main>
 
-    <el-dialog v-model="createDialogVisible" title="发布帖子" width="640px" destroy-on-close>
+    <el-dialog
+      v-model="createDialogVisible"
+      title="发布帖子"
+      width="760px"
+      destroy-on-close
+      @closed="resetCreateForm"
+    >
       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="72px">
         <el-form-item label="标题" prop="title">
           <el-input v-model="createForm.title" maxlength="80" show-word-limit placeholder="输入帖子标题" />
         </el-form-item>
         <el-form-item label="正文" prop="content">
-          <el-input
+          <RichTextEditor
             v-model="createForm.content"
-            type="textarea"
-            :rows="8"
-            maxlength="5000"
-            show-word-limit
+            :min-height="260"
             placeholder="写点什么，分享你的想法"
           />
         </el-form-item>
         <el-form-item label="图片">
-          <el-input
-            v-model="imageUrlText"
-            type="textarea"
-            :rows="4"
-            placeholder="可选，每行一个图片 URL"
-          />
+          <div class="dialog-upload-field">
+            <input
+              :key="imageInputKey"
+              type="file"
+              class="dialog-upload-input"
+              accept="image/*"
+              multiple
+              @change="handleImageChange"
+            />
+            <p class="dialog-upload-tip">支持最多 9 张图片，选择后先本地预览，发布时再上传。</p>
+            <div v-if="selectedImages.length" class="dialog-image-grid">
+              <div
+                v-for="(item, index) in selectedImages"
+                :key="item.previewUrl"
+                class="dialog-image-card"
+              >
+                <img :src="item.previewUrl" :alt="item.file.name || `帖子图片 ${index + 1}`" />
+                <button
+                  class="dialog-image-remove"
+                  type="button"
+                  @click="removeSelectedImage(index)"
+                >
+                  删除
+                </button>
+              </div>
+            </div>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -193,6 +217,8 @@ import { ElMessage } from 'element-plus'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createCommunityPost, getCommunityCommentList, getCommunityPostList } from '@/api/community'
+import RichTextEditor from '@/components/RichTextEditor.vue'
+import { uploadCommunityImage } from '@/api/member'
 import { useAuthStore } from '@/stores/auth'
 import brandLogo from '@/assets/education-cloud-logo.jpg'
 
@@ -224,11 +250,21 @@ const createForm = ref({
   title: '',
   content: ''
 })
-const imageUrlText = ref('')
+const selectedImages = ref([])
+const imageInputKey = ref(0)
 
 const createRules = {
   title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
-  content: [{ required: true, message: '请输入正文', trigger: 'blur' }]
+  content: [{
+    validator: (_rule, value, callback) => {
+      if (!getPlainText(value).trim()) {
+        callback(new Error('请输入正文'))
+        return
+      }
+      callback()
+    },
+    trigger: 'blur'
+  }]
 }
 
 const displayName = computed(() => authStore.profile?.displayName || authStore.profile?.username || '学员')
@@ -268,6 +304,7 @@ function goPostDetail(postId) {
 }
 
 function openCreateDialog() {
+  resetCreateForm()
   createDialogVisible.value = true
 }
 
@@ -275,11 +312,176 @@ function handlePageSizeChange() {
   pageNum.value = 1
 }
 
-function resolveImageUrls() {
-  return imageUrlText.value
-    .split(/\r?\n/)
-    .map((item) => item.trim())
-    .filter(Boolean)
+function summarizePostContent(value) {
+  return getPlainText(value).trim()
+}
+
+function getPlainText(value) {
+  if (!value) {
+    return ''
+  }
+  if (typeof window === 'undefined') {
+    return String(value).replace(/<[^>]+>/g, ' ')
+  }
+  const container = document.createElement('div')
+  container.innerHTML = String(value)
+  return container.textContent || container.innerText || ''
+}
+
+function sanitizeRichText(value) {
+  if (!value) {
+    return ''
+  }
+  if (typeof window === 'undefined') {
+    return String(value)
+  }
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(String(value), 'text/html')
+  doc.querySelectorAll('script,style,iframe,object,embed').forEach((node) => node.remove())
+  doc.body.querySelectorAll('*').forEach((element) => {
+    Array.from(element.attributes).forEach((attr) => {
+      const attrName = attr.name.toLowerCase()
+      const attrValue = attr.value || ''
+      if (attrName.startsWith('on')) {
+        element.removeAttribute(attr.name)
+        return
+      }
+      if ((attrName === 'href' || attrName === 'src') && /^javascript:/i.test(attrValue)) {
+        element.removeAttribute(attr.name)
+      }
+    })
+  })
+  return doc.body.innerHTML
+}
+
+function validateSelectedImage(file) {
+  const isImage = typeof file.type === 'string' && file.type.startsWith('image/')
+  if (!isImage) {
+    ElMessage.warning('只能选择图片文件')
+    return false
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.warning('单张图片大小不能超过 5MB')
+    return false
+  }
+  return true
+}
+
+function handleImageChange(event) {
+  const files = Array.from(event.target.files || [])
+  if (!files.length) {
+    return
+  }
+
+  const remainCount = 9 - selectedImages.value.length
+  if (remainCount <= 0) {
+    ElMessage.warning('最多只能上传 9 张图片')
+    imageInputKey.value += 1
+    return
+  }
+
+  const nextItems = []
+  for (const file of files) {
+    if (nextItems.length >= remainCount) {
+      break
+    }
+    if (!validateSelectedImage(file)) {
+      continue
+    }
+    nextItems.push({
+      file,
+      previewUrl: URL.createObjectURL(file)
+    })
+  }
+
+  if (files.length > remainCount) {
+    ElMessage.warning('最多只能上传 9 张图片')
+  }
+
+  selectedImages.value = [...selectedImages.value, ...nextItems]
+  imageInputKey.value += 1
+}
+
+function removeSelectedImage(index) {
+  const [removed] = selectedImages.value.splice(index, 1)
+  if (removed?.previewUrl) {
+    URL.revokeObjectURL(removed.previewUrl)
+  }
+}
+
+function clearSelectedImages() {
+  selectedImages.value.forEach((item) => {
+    if (item.previewUrl) {
+      URL.revokeObjectURL(item.previewUrl)
+    }
+  })
+  selectedImages.value = []
+  imageInputKey.value += 1
+}
+
+function resetCreateForm() {
+  createForm.value = {
+    title: '',
+    content: ''
+  }
+  clearSelectedImages()
+  createFormRef.value?.clearValidate()
+}
+
+async function uploadSelectedImages() {
+  if (!selectedImages.value.length) {
+    return []
+  }
+  const results = []
+  for (const item of selectedImages.value) {
+    const { data } = await uploadCommunityImage(item.file)
+    results.push(data.url)
+  }
+  return results
+}
+
+function dataUrlToFile(dataUrl, filename = 'community-image.png') {
+  const matches = String(dataUrl).match(/^data:(.+);base64,(.+)$/)
+  if (!matches) {
+    return null
+  }
+  const mimeType = matches[1]
+  const binary = window.atob(matches[2])
+  const bytes = new Uint8Array(binary.length)
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index)
+  }
+  const extension = mimeType.split('/')[1] || 'png'
+  return new File([bytes], filename.replace(/\.[^.]+$/, '') + `.${extension}`, { type: mimeType })
+}
+
+async function uploadInlineImages(content) {
+  if (!content || typeof window === 'undefined') {
+    return content
+  }
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(String(content), 'text/html')
+  const images = Array.from(doc.querySelectorAll('img'))
+  if (!images.length) {
+    return content
+  }
+
+  let uploadIndex = 1
+  for (const image of images) {
+    const src = image.getAttribute('src') || ''
+    if (!src.startsWith('data:image/')) {
+      continue
+    }
+    const file = dataUrlToFile(src, `community-inline-${uploadIndex}.png`)
+    if (!file) {
+      continue
+    }
+    const { data } = await uploadCommunityImage(file)
+    image.setAttribute('src', data.url)
+    uploadIndex += 1
+  }
+
+  return doc.body.innerHTML
 }
 
 async function fetchPosts() {
@@ -325,15 +527,16 @@ async function submitPost() {
   await createFormRef.value.validate()
   submitting.value = true
   try {
+    const imageUrls = await uploadSelectedImages()
+    const content = await uploadInlineImages(sanitizeRichText(createForm.value.content))
     await createCommunityPost({
       title: createForm.value.title.trim(),
-      content: createForm.value.content.trim(),
-      imageUrls: resolveImageUrls()
+      content,
+      imageUrls
     })
     ElMessage.success('帖子已发布')
     createDialogVisible.value = false
-    createForm.value = { title: '', content: '' }
-    imageUrlText.value = ''
+    resetCreateForm()
     pageNum.value = 1
     await fetchPosts()
   } finally {
@@ -723,6 +926,71 @@ watch([pageNum, pageSize], () => {
   gap: 10px;
 }
 
+.dialog-upload-field {
+  width: 100%;
+}
+
+.dialog-upload-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #dcdfe6;
+  border-radius: 10px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.dialog-upload-input::file-selector-button {
+  margin-right: 12px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(64, 158, 255, 0.12);
+  color: #409eff;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.dialog-upload-tip {
+  margin: 8px 0 0;
+  color: #909399;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.dialog-image-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dialog-image-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.dialog-image-card img {
+  display: block;
+  width: 100%;
+  height: 132px;
+  object-fit: cover;
+}
+
+.dialog-image-remove {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(17, 24, 39, 0.72);
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+}
+
 @media (max-width: 900px) {
   .topbar {
     flex-wrap: wrap;
@@ -796,6 +1064,10 @@ watch([pageNum, pageSize], () => {
   .post-meta {
     flex-wrap: wrap;
     gap: 10px 16px;
+  }
+
+  .dialog-image-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }
 </style>

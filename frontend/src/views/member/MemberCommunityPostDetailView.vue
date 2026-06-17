@@ -51,7 +51,7 @@
           </div>
 
           <h1>{{ postDetail.title || '帖子详情' }}</h1>
-          <div class="post-content">{{ postDetail.content || '' }}</div>
+          <div class="post-content" v-html="renderRichText(postDetail.content)"></div>
 
           <div v-if="postDetail.images?.length" class="image-list">
             <img
@@ -286,6 +286,32 @@ function formatDateTime(value) {
     return '--'
   }
   return String(value).replace('T', ' ').replace(/\.\d+$/, '').replace(/Z$/, '').slice(0, 16)
+}
+
+function renderRichText(value) {
+  if (!value) {
+    return ''
+  }
+  if (typeof window === 'undefined') {
+    return String(value)
+  }
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(String(value), 'text/html')
+  doc.querySelectorAll('script,style,iframe,object,embed').forEach((node) => node.remove())
+  doc.body.querySelectorAll('*').forEach((element) => {
+    Array.from(element.attributes).forEach((attr) => {
+      const attrName = attr.name.toLowerCase()
+      const attrValue = attr.value || ''
+      if (attrName.startsWith('on')) {
+        element.removeAttribute(attr.name)
+        return
+      }
+      if ((attrName === 'href' || attrName === 'src') && /^javascript:/i.test(attrValue)) {
+        element.removeAttribute(attr.name)
+      }
+    })
+  })
+  return doc.body.innerHTML
 }
 
 async function fetchPostDetail() {
@@ -590,9 +616,35 @@ watch([commentPageNum, commentPageSize], () => {
   color: #303133;
   font-size: 16px;
   line-height: 1.8;
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.post-content :deep(p) {
+  margin: 0 0 12px;
+}
+
+.post-content :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.post-content :deep(ul),
+.post-content :deep(ol) {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+
+.post-content :deep(blockquote) {
+  margin: 12px 0;
+  padding: 8px 12px;
+  border-left: 4px solid #bfdbfe;
+  background: #f8fbff;
+  color: #475569;
+}
+
+.post-content :deep(img) {
+  max-width: 100%;
+  border-radius: 12px;
 }
 
 .image-list {

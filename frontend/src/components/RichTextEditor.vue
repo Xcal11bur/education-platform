@@ -6,17 +6,27 @@
       <el-button size="small" :type="editor.isActive('bulletList') ? 'primary' : 'default'" @click="editor.chain().focus().toggleBulletList().run()">列表</el-button>
       <el-button size="small" :type="editor.isActive('orderedList') ? 'primary' : 'default'" @click="editor.chain().focus().toggleOrderedList().run()">编号</el-button>
       <el-button size="small" :type="editor.isActive('blockquote') ? 'primary' : 'default'" @click="editor.chain().focus().toggleBlockquote().run()">引用</el-button>
+      <el-button size="small" @click="triggerImageSelect">图片</el-button>
       <el-button size="small" @click="editor.chain().focus().unsetAllMarks().clearNodes().run()">清除</el-button>
     </div>
+    <input
+      v-if="editor && !readonly"
+      ref="imageInputRef"
+      class="editor-image-input"
+      type="file"
+      accept="image/*"
+      @change="handleImageChange"
+    />
     <editor-content :editor="editor" class="editor-surface" />
   </div>
 </template>
 
 <script setup>
+import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
-import { computed, onBeforeUnmount, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 const props = defineProps({
   modelValue: {
@@ -38,11 +48,15 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue'])
+const imageInputRef = ref()
 const editorMinHeight = computed(() => `${props.minHeight}px`)
 
 const editor = useEditor({
   extensions: [
     StarterKit,
+    Image.configure({
+      allowBase64: true
+    }),
     Placeholder.configure({
       placeholder: props.placeholder
     })
@@ -80,6 +94,28 @@ watch(
 onBeforeUnmount(() => {
   editor.value?.destroy()
 })
+
+function triggerImageSelect() {
+  imageInputRef.value?.click()
+}
+
+function handleImageChange(event) {
+  const file = event.target.files?.[0]
+  if (!file || !editor.value) {
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = () => {
+    if (typeof reader.result === 'string') {
+      editor.value.chain().focus().setImage({
+        src: reader.result,
+        alt: file.name || ''
+      }).run()
+    }
+  }
+  reader.readAsDataURL(file)
+  event.target.value = ''
+}
 </script>
 
 <style scoped>
@@ -98,6 +134,10 @@ onBeforeUnmount(() => {
   padding: 10px 12px;
   border-bottom: 1px solid #ebeef5;
   background: #f8fafc;
+}
+
+.editor-image-input {
+  display: none;
 }
 
 .editor-surface {
@@ -142,5 +182,12 @@ onBeforeUnmount(() => {
   border-left: 4px solid #bfdbfe;
   background: #f8fbff;
   color: #475569;
+}
+
+.editor-surface :deep(.ProseMirror img) {
+  display: block;
+  max-width: 100%;
+  margin: 12px 0;
+  border-radius: 10px;
 }
 </style>
