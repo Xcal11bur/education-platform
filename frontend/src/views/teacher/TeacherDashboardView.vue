@@ -2,20 +2,23 @@
   <div class="teacher-dashboard">
     <section class="hero-card">
       <div class="hero-copy">
-        <span class="hero-kicker">Teacher Workspace</span>
-        <h1>教师端骨架已经接入，后续课程与作业模块从这里展开。</h1>
-        <p>
-          当前先把登录、路由、布局和模块入口固定下来。后续会把管理员端现有课程表单、章节表单和资料管理能力逐步收敛到教师名下课程范围。
-        </p>
+        <span class="hero-kicker">Teacher Console</span>
+        <h1>欢迎回来，开始今天的教学管理</h1>
+
+        <div class="hero-actions">
+          <el-button type="primary" @click="router.push('/teacher/courses')">查看我的课程</el-button>
+          <el-button @click="router.push('/teacher/profile')">进入个人信息</el-button>
+        </div>
       </div>
+
       <div class="hero-panel">
         <div class="hero-stat">
-          <strong>4</strong>
-          <span>已挂载入口</span>
+          <span>当前角色</span>
+          <strong>{{ authStore.profile?.role || 'TEACHER' }}</strong>
         </div>
         <div class="hero-stat">
-          <strong>TEACHER</strong>
-          <span>当前角色</span>
+          <span>欢迎使用</span>
+          <strong>{{ authStore.profile?.displayName || '教师' }}</strong>
         </div>
       </div>
     </section>
@@ -29,7 +32,6 @@
         @click="router.push(item.path)"
       >
         <strong>{{ item.title }}</strong>
-        <p>{{ item.description }}</p>
       </button>
     </section>
   </div>
@@ -37,29 +39,27 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const entries = [
   {
     path: '/teacher/courses',
-    title: '我的课程',
-    description: '教师课程列表、课程编辑入口和后续课程概览会落在这里。'
+    title: '我的课程'
   },
   {
     path: '/teacher/course-management/chapters',
-    title: '课程章节',
-    description: '后续复用管理员章节管理能力，改成教师仅操作本人课程。'
-  },
-  {
-    path: '/teacher/course-management/materials',
-    title: '课程资料',
-    description: '后续复用资料上传与维护表单，只保留教师课程范围。'
+    title: '课程章节'
   },
   {
     path: '/teacher/course-management/tasks',
-    title: '作业管理',
-    description: '后续接入作业创建、题目维护、提交查看和批改。'
+    title: '作业管理'
+  },
+  {
+    path: '/teacher/course-management/exams',
+    title: '考试管理'
   }
 ]
 </script>
@@ -77,10 +77,10 @@ const entries = [
   padding: 28px;
   border-radius: 22px;
   background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.35), transparent 28%),
-    linear-gradient(135deg, #4f5fd5 0%, #6377c5 100%);
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.34), transparent 30%),
+    linear-gradient(135deg, #1f4e79 0%, #2d6ea3 100%);
   color: #fff;
-  box-shadow: 0 18px 40px rgba(79, 95, 189, 0.18);
+  box-shadow: 0 18px 40px rgba(31, 78, 121, 0.16);
 }
 
 .hero-kicker {
@@ -99,11 +99,11 @@ const entries = [
   line-height: 1.2;
 }
 
-.hero-copy p {
-  margin: 0;
-  max-width: 720px;
-  color: rgba(255, 255, 255, 0.84);
-  line-height: 1.7;
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
 }
 
 .hero-panel {
@@ -114,21 +114,21 @@ const entries = [
 .hero-stat {
   padding: 18px 20px;
   border-radius: 18px;
-  background: rgba(13, 40, 36, 0.18);
+  background: rgba(12, 28, 44, 0.18);
   border: 1px solid rgba(255, 255, 255, 0.14);
-}
-
-.hero-stat strong {
-  display: block;
-  font-size: 28px;
-  font-weight: 800;
 }
 
 .hero-stat span {
   display: block;
-  margin-top: 8px;
-  color: rgba(255, 255, 255, 0.76);
+  color: rgba(255, 255, 255, 0.72);
   font-size: 13px;
+}
+
+.hero-stat strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 24px;
+  font-weight: 700;
 }
 
 .entry-grid {
@@ -149,20 +149,14 @@ const entries = [
 
 .entry-card:hover {
   transform: translateY(-2px);
-  border-color: #bfd5ff;
-  box-shadow: 0 14px 30px rgba(47, 104, 255, 0.08);
+  border-color: #b8d2e8;
+  box-shadow: 0 14px 30px rgba(45, 110, 163, 0.08);
 }
 
 .entry-card strong {
   display: block;
   color: #1f2d3d;
   font-size: 18px;
-}
-
-.entry-card p {
-  margin: 10px 0 0;
-  color: #606266;
-  line-height: 1.65;
 }
 
 @media (max-width: 900px) {

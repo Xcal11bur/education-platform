@@ -1,7 +1,13 @@
 <template>
   <div class="page-card">
+    <el-alert type="info" show-icon :closable="false" class="banner-tip">
+      <template #title>
+        轮播图最多支持 6 张，当前已设置 {{ bannerCount }} 张。
+      </template>
+    </el-alert>
+
     <div class="toolbar" style="justify-content: flex-end; margin-bottom: 18px;">
-      <el-button type="primary" @click="openCreate">新增轮播图</el-button>
+      <el-button type="primary" :disabled="bannerCount >= 6" @click="openCreate">新增轮播图</el-button>
     </div>
 
     <div class="filter-bar">
@@ -120,6 +126,7 @@ import {
 
 const banners = ref([])
 const total = ref(0)
+const bannerCount = ref(0)
 const dialogVisible = ref(false)
 const saving = ref(false)
 const editingId = ref(null)
@@ -161,11 +168,23 @@ async function fetchBanners() {
   total.value = data?.total || 0
 }
 
+async function fetchBannerCount() {
+  const { data } = await getCourseBannerList({
+    pageNum: 1,
+    pageSize: 1
+  })
+  bannerCount.value = data?.total || 0
+}
+
 function resetForm() {
   Object.assign(form, defaultForm())
 }
 
 function openCreate() {
+  if (bannerCount.value >= 6) {
+    ElMessage.warning('轮播图最多只能设置 6 张')
+    return
+  }
   editingId.value = null
   resetForm()
   dialogVisible.value = true
@@ -196,7 +215,7 @@ async function submitForm() {
       ElMessage.success('轮播图已创建')
     }
     dialogVisible.value = false
-    fetchBanners()
+    await Promise.all([fetchBanners(), fetchBannerCount()])
   } finally {
     saving.value = false
   }
@@ -219,15 +238,19 @@ async function handleDelete(row) {
   })
   await deleteCourseBanner(row.id)
   ElMessage.success('轮播图已删除')
-  fetchBanners()
+  await Promise.all([fetchBanners(), fetchBannerCount()])
 }
 
 onMounted(async () => {
-  await Promise.all([fetchCourses(), fetchBanners()])
+  await Promise.all([fetchCourses(), fetchBanners(), fetchBannerCount()])
 })
 </script>
 
 <style scoped>
+.banner-tip {
+  margin-bottom: 16px;
+}
+
 .banner-cover-preview {
   width: 110px;
   height: 62px;

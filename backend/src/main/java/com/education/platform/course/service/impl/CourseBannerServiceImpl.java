@@ -39,6 +39,7 @@ import org.springframework.util.StringUtils;
 @Service
 public class CourseBannerServiceImpl extends ServiceImpl<CourseBannerMapper, CourseBanner> implements CourseBannerService {
 
+    private static final int ADMIN_BANNER_LIMIT = 6;
     private static final int PUBLISH_STATUS_PUBLISHED = 1;
     private static final int PORTAL_BANNER_MIN_SIZE = 3;
     private static final int PORTAL_BANNER_MAX_SIZE = 4;
@@ -81,6 +82,7 @@ public class CourseBannerServiceImpl extends ServiceImpl<CourseBannerMapper, Cou
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void createBanner(CourseBannerSaveDTO request) {
+        enforceBannerLimit();
         Course course = validateCourseForBanner(request.getCourseId());
         boolean exists = lambdaQuery().eq(CourseBanner::getCourseId, course.getId()).exists();
         if (exists) {
@@ -105,6 +107,13 @@ public class CourseBannerServiceImpl extends ServiceImpl<CourseBannerMapper, Cou
         }
         applyBannerRequest(banner, request);
         updateById(banner);
+    }
+
+    private void enforceBannerLimit() {
+        long count = count();
+        if (count >= ADMIN_BANNER_LIMIT) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "course banners are limited to 6 items");
+        }
     }
 
     @Override
