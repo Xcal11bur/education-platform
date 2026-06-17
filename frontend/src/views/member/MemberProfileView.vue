@@ -80,9 +80,19 @@
 
             <el-empty
               v-else
-              description="暂无已报名课程"
+              description="暂无已购课程"
               :image-size="90"
             />
+          </div>
+        </div>
+
+        <div v-else-if="activeMenu === 'wallet'" class="placeholder-panel">
+          <div class="wallet-panel">
+            <div class="wallet-balance-card">
+              <div class="wallet-balance-label">余额</div>
+              <div class="wallet-balance-value">{{ balanceText }}</div>
+              <el-button type="primary" plain disabled>充值</el-button>
+            </div>
           </div>
         </div>
 
@@ -323,7 +333,7 @@
 </template>
 
 <script setup>
-import { Collection, Reading, Star, User } from '@element-plus/icons-vue'
+import { Collection, Reading, Star, User, CreditCard } from '@element-plus/icons-vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -371,7 +381,8 @@ const profileForm = reactive({
   realName: '',
   avatar: '',
   gender: 1,
-  birthday: ''
+  birthday: '',
+  balance: 0
 })
 
 const mobileForm = reactive({
@@ -386,6 +397,7 @@ const passwordForm = reactive({
 
 const menuItems = [
   { key: 'courses', label: '我的课程', icon: Collection },
+  { key: 'wallet', label: '我的钱包', icon: CreditCard },
   { key: 'info', label: '个人信息', icon: User },
   { key: 'posts', label: '我的帖子', icon: Collection },
   { key: 'favorites', label: '帖子收藏', icon: Star },
@@ -401,6 +413,7 @@ const activeMenuItem = computed(() =>
 )
 
 const activeMenuLabel = computed(() => activeMenuItem.value.label)
+const balanceText = computed(() => `¥${Number(profileForm.balance || 0).toFixed(2)}`)
 
 const profileRules = {
   nickname: [{ required: true, message: '请输入昵称', trigger: 'blur' }]
@@ -442,7 +455,8 @@ async function fetchProfile() {
     realName: data?.realName || '',
     avatar: data?.avatar || '',
     gender: data?.gender ?? 1,
-    birthday: data?.birthday || ''
+    birthday: data?.birthday || '',
+    balance: Number(data?.balance || 0)
   })
 }
 
@@ -1071,6 +1085,31 @@ function revokeAvatarPreview() {
 .profile-form {
   margin-top: 28px;
   max-width: 700px;
+}
+
+.wallet-panel {
+  max-width: 420px;
+}
+
+.wallet-balance-card {
+  padding: 28px;
+  border: 1px solid #dcdfe6;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%);
+  box-shadow: 0 10px 24px rgba(31, 45, 61, 0.06);
+}
+
+.wallet-balance-label {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.wallet-balance-value {
+  margin: 14px 0 22px;
+  color: #1f2d3d;
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .avatar-editor {

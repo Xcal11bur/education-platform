@@ -105,6 +105,7 @@ public class AuthServiceImpl implements AuthService {
                         .role(ROLE_MEMBER)
                         .displayName(member.getNickname())
                         .avatar(member.getAvatar())
+                        .balance(member.getBalance())
                         .build();
             }
         }

@@ -74,7 +74,7 @@
                 <strong>{{ difficultyText }}</strong>
               </div>
               <div class="meta-item">
-                <span class="meta-label">报名人数</span>
+                <span class="meta-label">学习人数</span>
                 <strong>{{ course.studyCount || 0 }} 人</strong>
               </div>
             </div>
@@ -85,8 +85,8 @@
           </div>
 
           <div class="action-row">
-            <el-button type="primary" size="large" :loading="enrolling" @click="handlePrimaryAction">
-              {{ course.enrolled ? '进入学习' : '报名课程' }}
+            <el-button type="primary" size="large" :loading="purchasing" @click="handlePrimaryAction">
+              {{ course.enrolled ? '进入学习' : '购买课程' }}
             </el-button>
             <el-button size="large" plain :loading="favoriting" @click="handleFavoriteAction">
               {{ course.favorited ? '取消收藏' : '收藏课程' }}
@@ -229,7 +229,7 @@
                 </div>
 
                 <div v-else-if="!course.enrolled" class="review-tip-card">
-                  报名课程后可发表评价。
+                  购买课程后可发表评价。
                 </div>
 
                 <div class="review-list">
@@ -290,6 +290,26 @@
         </aside>
       </section>
     </div>
+
+    <el-dialog v-model="purchaseDialogVisible" title="购买课程" width="420px">
+      <div class="purchase-dialog-body">
+        <div class="purchase-dialog-row">
+          <span>课程价格</span>
+          <strong>{{ priceText }}</strong>
+        </div>
+        <div class="purchase-dialog-row">
+          <span>账户余额</span>
+          <strong>{{ balanceText }}</strong>
+        </div>
+        <div v-if="!canAffordCourse" class="purchase-dialog-error">余额不足</div>
+      </div>
+      <template #footer>
+        <el-button @click="purchaseDialogVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="!canAffordCourse" :loading="purchasing" @click="confirmPurchase">
+          确认购买
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -298,7 +318,7 @@ import { ArrowDown, Lock } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { enrollCourse, favoriteCourse, getPortalCourseDetail, unfavoriteCourse } from '@/api/course'
+import { favoriteCourse, getPortalCourseDetail, purchaseCourse, unfavoriteCourse } from '@/api/course'
 import {
   deleteMemberCourseReview,
   getPortalCourseReviews,
@@ -312,8 +332,9 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const loading = ref(false)
-const enrolling = ref(false)
+const purchasing = ref(false)
 const favoriting = ref(false)
+const purchaseDialogVisible = ref(false)
 const activeTab = ref('chapters')
 const expandedChapterIds = ref([])
 const reviewLoading = ref(false)
@@ -352,6 +373,8 @@ const displayName = computed(
 )
 
 const avatarUrl = computed(() => authStore.profile?.avatar || '')
+const balanceText = computed(() => `¥${Number(authStore.profile?.balance || 0).toFixed(2)}`)
+const canAffordCourse = computed(() => Number(authStore.profile?.balance || 0) >= Number(course.value.price || 0))
 
 const categoryText = computed(() =>
   [course.value.categoryLevel1?.name, course.value.categoryLevel2?.name].filter(Boolean).join(' / ') || '-'
@@ -452,24 +475,20 @@ async function handlePrimaryAction() {
     goLearnPage()
     return
   }
-  await ElMessageBox.confirm(
-    `确认报名《${course.value.title || '当前课程'}》吗？`,
-    '报名确认',
-    {
-      type: 'warning',
-      confirmButtonText: '确认报名',
-      cancelButtonText: '取消'
-    }
-  )
-  enrolling.value = true
+  purchaseDialogVisible.value = true
+}
+
+async function confirmPurchase() {
+  purchasing.value = true
   try {
-    const { data } = await enrollCourse(route.params.id)
+    const { data } = await purchaseCourse(route.params.id)
     course.value.enrolled = true
     course.value.studyCount = Number(course.value.studyCount || 0) + (data ? 1 : 0)
-    await fetchReviewData()
-    ElMessage.success(data ? '报名成功' : '您已报名该课程')
+    purchaseDialogVisible.value = false
+    await Promise.all([authStore.fetchProfile(), fetchReviewData()])
+    ElMessage.success(data ? '购买成功' : '您已购买该课程')
   } finally {
-    enrolling.value = false
+    purchasing.value = false
   }
 }
 
@@ -836,6 +855,30 @@ onMounted(async () => {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.purchase-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.purchase-dialog-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: #4b5563;
+}
+
+.purchase-dialog-row strong {
+  color: #111827;
+  font-size: 18px;
+}
+
+.purchase-dialog-error {
+  color: #ef4444;
+  font-size: 13px;
 }
 
 .content-grid {

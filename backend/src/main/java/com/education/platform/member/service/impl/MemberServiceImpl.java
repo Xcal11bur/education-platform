@@ -19,6 +19,7 @@ import com.education.platform.member.mapper.MemberMapper;
 import com.education.platform.member.service.MemberService;
 import com.education.platform.member.vo.MemberProfileVO;
 import com.education.platform.member.vo.MemberVO;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.BeanUtils;
@@ -86,6 +87,7 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
         member.setGender(request.getGender() == null ? 0 : request.getGender());
         member.setBirthday(request.getBirthday());
         member.setStatus(request.getStatus() == null ? StatusEnum.ENABLED.getCode() : request.getStatus());
+        member.setBalance(BigDecimal.ZERO);
         save(member);
     }
 
@@ -162,6 +164,26 @@ public class MemberServiceImpl extends ServiceImpl<MemberMapper, Member> impleme
             throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "old password is incorrect");
         }
         member.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        updateById(member);
+    }
+
+    @Override
+    public Member getCurrentMemberEntity() {
+        return getCurrentMember();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deductCurrentMemberBalance(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "deduct amount is invalid");
+        }
+        Member member = getCurrentMember();
+        BigDecimal currentBalance = member.getBalance() == null ? BigDecimal.ZERO : member.getBalance();
+        if (currentBalance.compareTo(amount) < 0) {
+            throw new BusinessException(ResultCode.BAD_REQUEST.getCode(), "member balance is insufficient");
+        }
+        member.setBalance(currentBalance.subtract(amount));
         updateById(member);
     }
 

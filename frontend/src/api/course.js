@@ -37,9 +37,9 @@ export function getPortalCourseMaterials(courseId) {
   })
 }
 
-export function enrollCourse(courseId) {
+export function purchaseCourse(courseId) {
   return request({
-    url: `/member/courses/${courseId}/enroll`,
+    url: `/member/courses/${courseId}/purchase`,
     method: 'post'
   })
 }

@@ -11,6 +11,8 @@ import com.education.platform.course.entity.CourseEnrollment;
 import com.education.platform.course.mapper.CourseMapper;
 import com.education.platform.course.mapper.CourseEnrollmentMapper;
 import com.education.platform.course.service.CourseEnrollmentService;
+import com.education.platform.member.service.MemberService;
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -31,14 +33,16 @@ public class CourseEnrollmentServiceImpl extends ServiceImpl<CourseEnrollmentMap
     private static final int ENROLL_TYPE_SELF = 1;
 
     private final CourseMapper courseMapper;
+    private final MemberService memberService;
 
-    public CourseEnrollmentServiceImpl(CourseMapper courseMapper) {
+    public CourseEnrollmentServiceImpl(CourseMapper courseMapper, MemberService memberService) {
         this.courseMapper = courseMapper;
+        this.memberService = memberService;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean enrollCurrentMember(Long courseId) {
+    public boolean purchaseCourseForCurrentMember(Long courseId) {
         Long memberId = getCurrentMemberId();
         Course course = getPublishedCourseOrThrow(courseId);
         CourseEnrollment enrollment = getEnrollment(memberId, courseId);
@@ -46,10 +50,12 @@ public class CourseEnrollmentServiceImpl extends ServiceImpl<CourseEnrollmentMap
             if (Objects.equals(enrollment.getStatus(), ENROLLMENT_STATUS_ACTIVE)) {
                 return false;
             }
+            deductCoursePrice(course);
             enrollment.setStatus(ENROLLMENT_STATUS_ACTIVE);
             enrollment.setEnrollType(ENROLL_TYPE_SELF);
             updateById(enrollment);
         } else {
+            deductCoursePrice(course);
             enrollment = new CourseEnrollment();
             enrollment.setCourseId(courseId);
             enrollment.setMemberId(memberId);
@@ -142,6 +148,14 @@ public class CourseEnrollmentServiceImpl extends ServiceImpl<CourseEnrollmentMap
             throw new BusinessException(ResultCode.NOT_FOUND.getCode(), "course not found");
         }
         return course;
+    }
+
+    private void deductCoursePrice(Course course) {
+        BigDecimal price = course.getPrice() == null ? BigDecimal.ZERO : course.getPrice();
+        if (price.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+        memberService.deductCurrentMemberBalance(price);
     }
 
     private Long getCurrentMemberId() {

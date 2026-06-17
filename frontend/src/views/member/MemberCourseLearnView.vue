@@ -639,7 +639,7 @@ async function fetchCourseDetail() {
     course.value = data || { title: '', coverUrl: '', chapters: [] }
     expandAllChapters()
     if (!course.value.enrolled) {
-      ElMessage.warning('请先报名课程后再开始学习')
+      ElMessage.warning('请先购买课程后再开始学习')
       router.replace(`/member/courses/${route.params.id}`)
       return false
     }

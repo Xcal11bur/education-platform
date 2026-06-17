@@ -2,6 +2,7 @@ package com.education.platform.auth.vo;
 
 import lombok.Builder;
 import lombok.Data;
+import java.math.BigDecimal;
 
 @Data
 @Builder
@@ -12,4 +13,5 @@ public class UserProfileResponse {
     private String role;
     private String displayName;
     private String avatar;
+    private BigDecimal balance;
 }

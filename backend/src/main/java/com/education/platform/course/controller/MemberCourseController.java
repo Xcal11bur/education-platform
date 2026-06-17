@@ -33,9 +33,9 @@ public class MemberCourseController {
         return Result.success(courseService.listCurrentMemberFavoriteCourses());
     }
 
-    @PostMapping("/{courseId}/enroll")
-    public Result<Boolean> enroll(@PathVariable Long courseId) {
-        return Result.success(courseEnrollmentService.enrollCurrentMember(courseId));
+    @PostMapping("/{courseId}/purchase")
+    public Result<Boolean> purchase(@PathVariable Long courseId) {
+        return Result.success(courseEnrollmentService.purchaseCourseForCurrentMember(courseId));
     }
 
     @DeleteMapping("/{courseId}/enroll")

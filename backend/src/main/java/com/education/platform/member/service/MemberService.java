@@ -10,6 +10,7 @@ import com.education.platform.member.dto.MemberSaveDTO;
 import com.education.platform.member.entity.Member;
 import com.education.platform.member.vo.MemberProfileVO;
 import com.education.platform.member.vo.MemberVO;
+import java.math.BigDecimal;
 import java.util.Optional;
 
 public interface MemberService extends IService<Member> {
@@ -33,4 +34,8 @@ public interface MemberService extends IService<Member> {
     void updateCurrentMobile(MemberMobileUpdateDTO request);
 
     void updateCurrentPassword(MemberPasswordUpdateDTO request);
+
+    Member getCurrentMemberEntity();
+
+    void deductCurrentMemberBalance(BigDecimal amount);
 }

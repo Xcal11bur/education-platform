@@ -8,7 +8,7 @@ import java.util.Map;
 
 public interface CourseEnrollmentService extends IService<CourseEnrollment> {
 
-    boolean enrollCurrentMember(Long courseId);
+    boolean purchaseCourseForCurrentMember(Long courseId);
 
     boolean unenrollCurrentMember(Long courseId);
 

@@ -270,7 +270,7 @@ function selectSection(sectionId) {
   }
   const section = flattenedSections.value.find((item) => item.id === sectionId)
   if (!canAccessSection(section)) {
-    ElMessage.warning('请先报名课程后再学习该章节')
+    ElMessage.warning('请先购买课程后再学习该章节')
     return
   }
   router.push(`/member/courses/${route.params.id}/learn/sections/${sectionId}`)
@@ -304,7 +304,7 @@ async function fetchCourseDetail() {
       return false
     }
     if (!canAccessSection(targetSection)) {
-      ElMessage.warning('请先报名课程后再学习该章节')
+      ElMessage.warning('请先购买课程后再学习该章节')
       router.replace(`/member/courses/${route.params.id}`)
       return false
     }
